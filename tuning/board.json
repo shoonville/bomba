@@ -41,5 +41,6 @@
       "display_name": "SHIELD"
     }
   },
-  "default_board": "main"
+  "default_board": "main",
+  "dice_sides": 8
 }

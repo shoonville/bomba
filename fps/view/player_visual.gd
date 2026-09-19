@@ -33,6 +33,7 @@ func setup(p: Player, p_cfg: MovementConfig) -> void:
 	name_label.modulate = Palette.hud_colour("paper")
 	name_label.outline_modulate = Palette.map_colour("arena", "line")
 	name_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	name_label.alpha_cut = Label3D.ALPHA_CUT_DISCARD
 	name_label.no_depth_test = false
 	name_label.position.y = cfg.head_center_height + 0.5
 	add_child(name_label)

@@ -258,6 +258,14 @@ Board camera (Sean: "more zoomed in on whoever's turn it is, like Pummel Party")
 middle of both paths, so LEFT and RIGHT are left and right on screen; the fork buttons moved
 out to the sides. `board_turn.png`, `board_hop.png`, `board_fork.png`.
 
+Eight-sided die (Sean): rolls 1–8 from `board.json` `dice_sides`, an octahedron with ink
+numbers (opposite faces sum to 9) that lands to the camera's right with the number reading
+upright; TURBO shows as "5 +3". Found while doing it: every `Label3D` in a post-processed scene
+(pawn names, the "?" event sign, floating +3 labels, arena name tags, the die numbers) had
+never rendered, because the outline post quad samples the screen texture from the opaque pass
+and paints over transparent objects drawn before it. Labels now use alpha-cut (opaque pass)
+and get inked with everything else. `board_dice_landed.png`, `board_turn.png`.
+
 ### Bugs found and fixed today (all measured before and after)
 
 1. Client's view of remote players lagged whole tick loops → 25 % hit confirmation. netfox

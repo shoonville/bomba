@@ -117,10 +117,12 @@ static func roll(state: BoardState, graph: BoardGraph, cfg: Dictionary) -> Array
 		return events
 	var ap := state.active_player()
 	var r := rng(state)
-	state.dice = r.randi_range(1, 6) + ap.roll_bonus
+	var raw := r.randi_range(1, int(cfg.get("dice_sides", 8)))
+	var bonus := ap.roll_bonus
+	state.dice = raw + bonus
 	ap.roll_bonus = 0
 	state.steps_left = state.dice
-	events.append({"kind": "roll", "peer": ap.peer_id, "value": state.dice})
+	events.append({"kind": "roll", "peer": ap.peer_id, "value": state.dice, "roll": raw, "bonus": bonus})
 	_move_continue(state, graph, cfg, events)
 	return events
 

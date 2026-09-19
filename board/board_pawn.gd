@@ -52,8 +52,9 @@ func setup(p_peer_id: int, p_colour: Color, p_name: String) -> void:
 	label.modulate = Palette.hud_colour("paper")
 	label.outline_modulate = ink
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.alpha_cut = Label3D.ALPHA_CUT_DISCARD
 	label.position.y = 2.25
-	label.no_depth_test = true
+	label.no_depth_test = false   # depth-test-disabled materials go to the transparent pass, under the post quad
 	add_child(label)
 
 

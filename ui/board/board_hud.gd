@@ -6,6 +6,7 @@ extends Control
 var director: BoardDirector
 var _font: Font
 var _dice_value: int = 0
+var _dice_bonus: int = 0
 var _dice_t: float = 0.0
 var _fork_options: PackedStringArray = []
 var _item_target_mode: String = ""
@@ -62,7 +63,7 @@ func _on_events(events: Array) -> void:
 	for e in events:
 		match str(e.get("kind", "")):
 			"roll":
-				pass  # the number slams in when the 3D die lands (Events.board_dice_landed)
+				_dice_bonus = int(e.get("bonus", 0))   # the number slams in when the die lands
 			"choose":
 				_fork_options.clear()
 				for o in e["options"]:
@@ -307,9 +308,10 @@ func _draw() -> void:
 	_text(Vector2(size.x - 250, 84), "GOAL COSTS %d" % int(director.cfg.get("goal_cost", 10)), 18, Palette.hud_colour("score"))
 	if _dice_t > 0.0:
 		var s := 120 + int(24.0 * clampf(_dice_t - 1.3, 0.0, 0.3) / 0.3)
-		var txt := "%d" % _dice_value
+		var txt := "%d" % _dice_value if _dice_bonus <= 0 else "%d +%d" % [_dice_value - _dice_bonus, _dice_bonus]
 		var tw := _font.get_string_size(txt, HORIZONTAL_ALIGNMENT_CENTER, -1, s).x
-		_text(Vector2((size.x - tw) * 0.5, size.y * 0.42), txt, s, Color(Palette.hud_colour("score"), clampf(_dice_t * 2.0, 0.0, 1.0)), 10.0, -0.22)
+		# High enough to clear the centred pawn's name tag now that the camera is close.
+		_text(Vector2((size.x - tw) * 0.5, size.y * 0.24), txt, s, Color(Palette.hud_colour("score"), clampf(_dice_t * 2.0, 0.0, 1.0)), 10.0, -0.22)
 	if _intro_t > 0.0:
 		var a := clampf(_intro_t * 1.5, 0.0, 1.0)
 		var tw := _font.get_string_size(_intro, HORIZONTAL_ALIGNMENT_CENTER, -1, 54).x

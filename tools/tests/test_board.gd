@@ -65,7 +65,9 @@ func test_roll_is_seeded_and_moves() -> void:
 	var dice_b := int(eb[0]["value"])
 	assert_eq(dice_a, dice_b, "same seed → same dice")
 	assert_eq(a.players[0].space, b.players[0].space)
-	assert_true(dice_a >= 1 and dice_a <= 6)
+	assert_true(dice_a >= 1 and dice_a <= int(cfg["dice_sides"]), "d%d" % int(cfg["dice_sides"]))
+	assert_eq(int(ea[0]["roll"]), dice_a, "no bonus: roll is the value")
+	assert_eq(int(ea[0]["bonus"]), 0)
 	var landed := a.players[0].space
 	var teleported := ea.any(func(e): return e["kind"] == "teleport")
 	if not teleported:
@@ -166,16 +168,20 @@ func test_items() -> void:
 	assert_false(user.items.has("bomb"))
 	var ev2 := BoardRules.use_item(s, graph, cfg, 1, "turbo", 1)
 	assert_eq(user.roll_bonus, 3)
-	BoardRules.roll(s, graph, cfg)
-	assert_true(s.dice >= 4 and s.dice <= 9, "turbo adds 3: %d" % s.dice)
+	var ev3 := BoardRules.roll(s, graph, cfg)
+	assert_eq(str(ev3[0]["kind"]), "roll")
+	assert_eq(int(ev3[0]["bonus"]), 3)
+	var total := int(ev3[0]["value"])
+	assert_true(total >= 4 and total <= int(cfg["dice_sides"]) + 3, "turbo adds 3: %d" % total)
+	assert_eq(total, int(ev3[0]["roll"]) + 3)
 	assert_eq(user.roll_bonus, 0)
-	# cannot use after rolling
+	# cannot use mid-turn (a roll in progress)
 	var t := _fresh(4)
 	t.players[0].items = ["turbo"]
-	BoardRules.roll(t, graph, cfg)
-	t.active = 0
-	t.phase = BoardState.PHASE_TURNS
+	t.dice = 3
+	t.steps_left = 3
 	assert_eq(BoardRules.use_item(t, graph, cfg, 1, "turbo", 1).size(), 0)
+	assert_true(t.players[0].items.has("turbo"), "item kept")
 
 
 func test_round_minigame_and_finish() -> void:
@@ -347,3 +353,16 @@ func test_shield_space_and_damage_space() -> void:
 	var ev3 := []
 	BoardRules._land(s, graph, cfg, ev3)
 	assert_eq(me.coins, maxi(0, coins - 3), "no shield: damage costs coins")
+
+
+func test_d8_faces() -> void:
+	assert_eq(int(cfg["dice_sides"]), 8)
+	var seen := {}
+	for v in range(1, 9):
+		var n := BoardDice.face_normal(v)
+		assert_near(n.length(), 1.0)
+		assert_false(seen.has(n), "face %d shares a normal" % v)
+		seen[n] = v
+		assert_true(BoardDice.face_normal(9 - v).is_equal_approx(-n), "faces %d and %d are opposite" % [v, 9 - v])
+		var up := BoardDice.face_up_basis(v) * n
+		assert_true(up.is_equal_approx(Vector3.UP), "face %d rolls to the top: %s" % [v, str(up)])

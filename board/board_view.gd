@@ -188,6 +188,7 @@ func _build_marker(space: BoardGraph.Space, shadow: Color) -> void:
 			sign.modulate = Palette.hud_colour("paper")
 			sign.outline_modulate = ink
 			sign.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			sign.alpha_cut = Label3D.ALPHA_CUT_DISCARD
 			sign.position.y = 0.2
 			root.add_child(sign)
 		"shield":
@@ -381,6 +382,7 @@ func _play_next() -> void:
 		"roll":
 			var pawn: BoardPawn = pawns.get(int(e["peer"]), null)
 			var v := int(e["value"])
+			var raw := int(e.get("roll", v))
 			if pawn != null and not Game.headless:
 				var base := pawn.global_position
 				var dice := BoardDice.new()
@@ -389,11 +391,14 @@ func _play_next() -> void:
 				dice.setup(Palette.hud_colour("score"), Palette.map_colour("board", "line"), Palette.map_colour("board", "shadow_tint"))
 				var rng := RandomNumberGenerator.new()
 				rng.seed = (director.state.turn_serial if director.state != null else 0) * 7919 + v
-				var to := base + Vector3(1.5, BoardDice.SIZE * 0.5, 1.0)
-				dice.roll(base + Vector3(0.3, 2.8, 0.2), to, v, rng)
-				dice.landed.connect(func(val: int):
+				# Beside the pawn, to the camera's right, the number reading upright from the camera.
+				var right := Vector3(cos(_cam_yaw), 0.0, -sin(_cam_yaw))
+				var forward := -Vector3(sin(_cam_yaw), 0.0, cos(_cam_yaw))
+				var to := base + right * 1.5 - forward * 0.6 + Vector3.UP * BoardDice.INRADIUS
+				dice.roll(base + Vector3(0.3, 2.8, 0.2), to, raw, rng, forward)
+				dice.landed.connect(func(_val: int):
 					Audio.play("land", -9.0)
-					Events.board_dice_landed.emit(val)
+					Events.board_dice_landed.emit(v)
 				)
 				_focus(base)
 				Audio.play("dice", -2.0)
@@ -497,7 +502,8 @@ func _float_label(peer_id: int, text: String, colour: Color) -> void:
 	l.modulate = colour
 	l.outline_modulate = Palette.map_colour("board", "line")
 	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	l.no_depth_test = true
+	l.alpha_cut = Label3D.ALPHA_CUT_DISCARD
+	l.no_depth_test = false
 	add_child(l)
 	l.global_position = pawn.global_position + Vector3(0, 2.6, 0)
 	var tw := create_tween()
