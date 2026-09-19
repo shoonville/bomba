@@ -52,6 +52,7 @@ every seat this peer owns; the determinism harness uses it).
 ## Verifying
 
 ```sh
+tools/check_all.sh       # everything below except the soak, PASS/FAIL per stage, ~3 min (SOAK=1 adds it)
 tools/test.sh            # unit tests + compile-all (re-imports first)
 tools/determinism.sh     # same seeded input log at 60 and 240 fps must give identical trajectories
 tools/soak.sh bad 45 1 1 # host + 1 client through a profile + 1 bot, 45 s; prints NETPLAN §11 numbers

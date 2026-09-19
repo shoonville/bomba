@@ -136,6 +136,9 @@ Cost: host tick loop 2.4–2.8 ms mean with three seats; client tick loop p95 4 
   3 forks, 6 goal candidates). Lobby button cycles boards; `--board_id=eight`. Tests: every
   board validates, loops to its start and reaches every goal from every space; 2-round
   headless match on it with 4 seats (SNIPERS then LAST STAND, one Bomba claimed), 0 errors.
+- **`tools/check_all.sh`**: tests + compile-all, determinism, and a 4-seat 2-round headless
+  board match on every shipped board with random minigames, PASS/FAIL per stage. Last run:
+  4 of 4 PASS in 3 min 11 s (69 tests, 2400 trajectory rows identical, both boards clean).
 - **Harness**: `--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results|shield`,
   `--give_item=ID`, `--give_bots_item=ID`, `--board_auto_roll`, `--minigame=ID`.
 - **Netcode soak after the refactor** (`tools/soak.sh bad 45 1 1`, 3 seats): client RTT 128.0 ms
@@ -252,8 +255,9 @@ on one machine with `tools/soak.sh`-style flags. Try, in this order:
 
 ### Next
 
-1. A human plays it (checklist above, plus one board turn with the mouse) and writes the
-   verdict into this file.
+1. A human plays it (checklist above, plus one board turn with the mouse, a LAST STAND death
+   and the spectator camera) and writes the verdict into this file. `tools/check_all.sh`
+   first, so the verdict is about feel and not about a broken build.
 2. Bandwidth: quantise position, pack weapon ints, so six seats fit the public relay cap.
 3. A third-person or objective minigame (the SDK's `camera` field is still read by nothing;
    `scoring` now has kills and survival behind it).
