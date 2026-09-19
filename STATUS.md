@@ -268,10 +268,9 @@ and get inked with everything else. Pawn name tags moved to the HUD (projected f
 head, sized by distance, pushed apart when four pawns share the start tile, the active
 player's in the accent colour). `board_dice_landed.png`, `board_turn.png`.
 
-Board icons are flat stamps printed on the tile faces (cream base, ink detail: coin, gift,
-danger X, "?", shield emblem), no longer floating markers; they are children of the tiles so
-the fork hover lift carries them. Die numbers are bold (96 px with a 16 px same-colour
-outline). `board_turn.png`, `board_overview.png`, `board_dice_landed.png`.
+Board icons went flat onto the tile faces for one build and came straight back as the
+floating, spinning markers on Sean's word ("it looks ugly on the spot"). Die numbers are bold
+(96 px with a 16 px same-colour outline). `board_turn.png`, `board_dice_landed.png`.
 
 ### Bugs found and fixed today (all measured before and after)
 

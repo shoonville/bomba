@@ -9,6 +9,8 @@ var tiles: Dictionary = {}
 var pawns: Dictionary = {}
 var goal_ring: MeshInstance3D
 var camera: Camera3D
+var markers: Array = []
+var _marker_t: float = 0.0
 var _cam_target: Vector3 = Vector3.ZERO
 var _cam_look: Vector3 = Vector3.ZERO
 var _cam_yaw: float = 0.0          # camera sits behind the pawn along this heading
@@ -108,54 +110,107 @@ func clear_highlight() -> void:
 	_highlight_id = ""
 
 
-## A flat stamp on the tile face so the board reads without a legend (Sean: on the spot, not
-## floating): a coin, a wrapped gift, a danger X, a "?" for events, a shield emblem on the safe
-## spot. Stamps are children of the tile, so the fork hover lift carries them. The start keeps
-## its standing flag.
+## A marker over every special space so the board reads without a legend: a spinning coin,
+## a crate for items, a spiked ball for LOSE, a "?" sign for events, a flag for the start.
 func _build_marker(space: BoardGraph.Space, shadow: Color) -> void:
-	var tile: MeshInstance3D = tiles.get(space.id, null)
-	if tile == null:
-		return
 	var ink := Palette.map_colour("board", "line")
-	var ink_col := Color.from_hsv(ink.h, 0.45, 0.24)
-	var ink_mat := CelMaterial.for_colour(ink_col, shadow)
-	# Printed look: a cream base with ink detail on every tile colour.
-	var paper_mat := CelMaterial.for_colour(Palette.hud_colour("paper"), shadow, 0.15)
+	var ink_mat := CelMaterial.for_colour(Color.from_hsv(ink.h, 0.45, 0.24), shadow)
 	var root := Node3D.new()
-	root.position = Vector3(0, 0.21 + 0.012, 0)   # the tile mesh is centred 0.21 below its face
-	root.rotation.y = -deg_to_rad(30.0)
+	root.position = space.position + Vector3(0, 0.55, 0)
 	match space.type:
 		"coin":
-			_stamp_disc(root, 0.46, 0.0, paper_mat)
-			_stamp_ring(root, 0.46, 0.54, 0.02, ink_mat)
-			_stamp_ring(root, 0.16, 0.25, 0.03, ink_mat)
+			var coin := MeshInstance3D.new()
+			var cm := CylinderMesh.new()
+			cm.top_radius = 0.28
+			cm.bottom_radius = 0.28
+			cm.height = 0.08
+			cm.radial_segments = 16
+			coin.mesh = cm
+			coin.rotation.x = PI * 0.5
+			coin.material_override = CelMaterial.for_colour(_tone_for("coin"), shadow, 0.35)
+			root.add_child(coin)
+			var rim := MeshInstance3D.new()
+			var rm := TorusMesh.new()
+			rm.inner_radius = 0.26
+			rm.outer_radius = 0.31
+			rm.rings = 16
+			rm.ring_segments = 6
+			rim.mesh = rm
+			rim.rotation.x = PI * 0.5
+			rim.material_override = ink_mat
+			root.add_child(rim)
 		"item":
-			_stamp_box(root, Vector3(0.82, 0.03, 0.82), 0.0, 0.0, paper_mat)
-			_stamp_box(root, Vector3(0.86, 0.036, 0.14), 0.0, 0.0, ink_mat)
-			_stamp_box(root, Vector3(0.14, 0.036, 0.86), 0.0, 0.0, ink_mat)
-			_stamp_disc(root, 0.15, 0.04, ink_mat)
+			var crate := MeshInstance3D.new()
+			var bm := BoxMesh.new()
+			bm.size = Vector3(0.42, 0.42, 0.42)
+			crate.mesh = bm
+			crate.material_override = CelMaterial.for_colour(_tone_for("item"), shadow, 0.2)
+			root.add_child(crate)
+			for axis in [Vector3(1, 0, 0), Vector3(0, 0, 1)]:
+				var strap := MeshInstance3D.new()
+				var sb := BoxMesh.new()
+				sb.size = Vector3(0.46, 0.46, 0.46) - axis * 0.36
+				strap.mesh = sb
+				strap.material_override = ink_mat
+				root.add_child(strap)
 		"lose":
-			_stamp_disc(root, 0.46, 0.0, paper_mat)
-			_stamp_box(root, Vector3(0.78, 0.036, 0.17), PI * 0.25, 0.02, ink_mat)
-			_stamp_box(root, Vector3(0.78, 0.036, 0.17), -PI * 0.25, 0.02, ink_mat)
+			var ball := MeshInstance3D.new()
+			var sm := SphereMesh.new()
+			sm.radius = 0.24
+			sm.height = 0.48
+			ball.mesh = sm
+			ball.material_override = CelMaterial.for_colour(_tone_for("lose"), shadow, 0.2)
+			root.add_child(ball)
+			for k in 6:
+				var spike := MeshInstance3D.new()
+				var cm := CylinderMesh.new()
+				cm.top_radius = 0.0
+				cm.bottom_radius = 0.07
+				cm.height = 0.22
+				cm.radial_segments = 6
+				spike.mesh = cm
+				var dir := [Vector3.UP, Vector3.DOWN, Vector3.LEFT, Vector3.RIGHT, Vector3.FORWARD, Vector3.BACK][k] as Vector3
+				spike.position = dir * 0.3
+				if dir.is_equal_approx(Vector3.UP):
+					pass
+				elif dir.is_equal_approx(Vector3.DOWN):
+					spike.rotation.x = PI
+				else:
+					spike.basis = Basis(Quaternion(Vector3.UP, dir))
+				spike.material_override = ink_mat
+				root.add_child(spike)
 		"event":
-			_stamp_disc(root, 0.46, 0.0, paper_mat)
 			var sign := Label3D.new()
 			sign.text = "?"
-			sign.font_size = 150
-			sign.pixel_size = 0.0052
-			sign.outline_size = 14
-			sign.modulate = ink_col
-			sign.outline_modulate = ink_col
+			sign.font_size = 96
+			sign.pixel_size = 0.008
+			sign.outline_size = 22
+			sign.modulate = Palette.hud_colour("paper")
+			sign.outline_modulate = ink
+			sign.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 			sign.alpha_cut = Label3D.ALPHA_CUT_DISCARD
-			sign.rotation.x = -PI * 0.5   # lie on the tile, face up
-			sign.position.y = 0.024
+			sign.position.y = 0.2
 			root.add_child(sign)
 		"shield":
-			_stamp_disc(root, 0.46, 0.0, paper_mat)
-			_stamp_ring(root, 0.46, 0.54, 0.02, ink_mat)
-			_stamp_ring(root, 0.24, 0.32, 0.03, CelMaterial.for_colour(Palette.hud_colour("meter"), shadow, 0.5))
-			_stamp_disc(root, 0.12, 0.04, ink_mat)
+			var dome := MeshInstance3D.new()
+			var dm := SphereMesh.new()
+			dm.radius = 0.3
+			dm.height = 0.6
+			dm.radial_segments = 14
+			dm.rings = 7
+			dome.mesh = dm
+			dome.scale = Vector3(1.0, 0.6, 1.0)
+			dome.material_override = CelMaterial.for_colour(Palette.hud_colour("meter"), shadow, 0.5)
+			root.add_child(dome)
+			var band := MeshInstance3D.new()
+			var bm2 := TorusMesh.new()
+			bm2.inner_radius = 0.3
+			bm2.outer_radius = 0.38
+			bm2.rings = 16
+			bm2.ring_segments = 6
+			band.mesh = bm2
+			band.material_override = ink_mat
+			root.add_child(band)
 		"start":
 			var pole := MeshInstance3D.new()
 			var pm := CylinderMesh.new()
@@ -163,59 +218,23 @@ func _build_marker(space: BoardGraph.Space, shadow: Color) -> void:
 			pm.bottom_radius = 0.04
 			pm.height = 1.3
 			pole.mesh = pm
-			pole.position = Vector3(0.7, 0.65, -0.7)
+			pole.position = Vector3(0.7, 0.1, -0.7)
 			pole.material_override = ink_mat
 			root.add_child(pole)
 			var flag := MeshInstance3D.new()
 			var fm := PrismMesh.new()
 			fm.size = Vector3(0.5, 0.34, 0.04)
 			flag.mesh = fm
-			flag.position = Vector3(0.7 + 0.27, 1.13, -0.7)
+			flag.position = Vector3(0.7 + 0.27, 0.58, -0.7)
 			flag.rotation.z = -PI * 0.5
 			flag.material_override = CelMaterial.for_colour(Palette.map_colour("board", "accent"), shadow, 0.3)
 			root.add_child(flag)
 		_:
 			root.queue_free()
 			return
-	tile.add_child(root)
-
-
-func _stamp_disc(parent: Node3D, radius: float, lift: float, mat: Material) -> void:
-	var mi := MeshInstance3D.new()
-	var cm := CylinderMesh.new()
-	cm.top_radius = radius
-	cm.bottom_radius = radius
-	cm.height = 0.03
-	cm.radial_segments = 24
-	mi.mesh = cm
-	mi.position.y = lift
-	mi.material_override = mat
-	parent.add_child(mi)
-
-
-func _stamp_ring(parent: Node3D, inner: float, outer: float, lift: float, mat: Material) -> void:
-	var mi := MeshInstance3D.new()
-	var tm := TorusMesh.new()
-	tm.inner_radius = inner
-	tm.outer_radius = outer
-	tm.rings = 32
-	tm.ring_segments = 4
-	mi.mesh = tm
-	mi.position.y = lift
-	mi.scale = Vector3(1.0, 0.35, 1.0)
-	mi.material_override = mat
-	parent.add_child(mi)
-
-
-func _stamp_box(parent: Node3D, size: Vector3, yaw: float, lift: float, mat: Material) -> void:
-	var mi := MeshInstance3D.new()
-	var bm := BoxMesh.new()
-	bm.size = size
-	mi.mesh = bm
-	mi.position.y = lift
-	mi.rotation.y = yaw
-	mi.material_override = mat
-	parent.add_child(mi)
+	add_child(root)
+	root.set_meta("base_y", root.position.y)
+	markers.append(root)
 
 
 func _tone_for(type: String) -> Color:
@@ -537,4 +556,9 @@ func _process(delta: float) -> void:
 	camera.look_at(_cam_target + Vector3(0, 1.0, 0), Vector3.UP)
 	if goal_ring != null:
 		goal_ring.rotation.y += delta * 0.8
-
+	_marker_t += delta
+	for i in markers.size():
+		var n := markers[i] as Node3D
+		if n != null and is_instance_valid(n):
+			n.rotation.y = _marker_t * 1.1 + float(i)
+			n.position.y = float(n.get_meta("base_y", n.position.y)) + sin(_marker_t * 2.2 + float(i)) * 0.06
