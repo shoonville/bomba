@@ -214,6 +214,11 @@ func _update_spectator() -> void:
 		Log.info("arena", "Spectating %s" % first.display_name)
 	if Input.is_action_just_pressed("fire") and not Game.is_paused():
 		_spectator.cycle(1)
+	for p in _players.values():
+		var pl := p as Player
+		for child in pl.visual.get_children():
+			if child is PlayerVisual:
+				child.hide_tag = pl == _spectator.target
 
 
 func alive_count() -> int:

@@ -14,6 +14,7 @@ var _speed: float = 0.0
 var _vspeed: float = 0.0
 var _last_health: int = 100
 var name_label: Label3D
+var hide_tag: bool = false   # the spectator camera sits behind this player: its tag would fill the screen
 
 
 func setup(p: Player, p_cfg: MovementConfig) -> void:
@@ -75,4 +76,4 @@ func _process(delta: float) -> void:
 		figure.set_weapon_slot(player.weapons.slot)
 		figure.animate(_speed, on_floor, pitch, player.health > 0, delta)
 	if name_label != null:
-		name_label.visible = player.health > 0
+		name_label.visible = player.health > 0 and not hide_tag
