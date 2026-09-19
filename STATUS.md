@@ -279,6 +279,14 @@ the aim point at ADS, and the HUD crosshair hides there (`ar_ads.png`, `arena_hi
 reproduce (build times 4–31 ms; cold shader cache: one 208 ms hitch at arena start); frames
 over 150 ms wall-clock are now logged with the phase so the next occurrence names itself.
 
+Characters rebuilt to Sean's FLCL references (Canti): boxy cream screen head with a dark
+screen, scanline and ears in the identity colour on a thin neck; open bomber jacket in the
+identity colour over a dark ribbed core with a shirt in the opening; belt; thin jointed arms
+with cream forearm guards and dark gloves; long thin legs with knee balls; chunky boots with
+red soles. Same rig, so arena, board and podium changed together. The AR's sight got its red
+dot on the screen itself (a translucent pane you aim through at ADS). `figures.png`,
+`board_turn.png`, `last_stand_spectate.png`, `ar_ads.png`.
+
 ### Bugs found and fixed today (all measured before and after)
 
 1. Client's view of remote players lagged whole tick loops → 25 % hit confirmation. netfox
