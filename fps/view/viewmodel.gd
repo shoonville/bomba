@@ -44,6 +44,10 @@ func setup(p: Player) -> void:
 	var accent_mat := CelMaterial.for_colour(colour, shadow, 0.0, true)
 	var glow_mat := CelMaterial.for_colour(Palette.hud_colour("meter"), shadow, 1.2, true)
 	var glass_mat := CelMaterial.for_colour(Color.from_hsv(ink.h, 0.5, 0.34), shadow, 0.15, true)
+	# The sniper is cream with tan fittings (Sean: "cream instead of the purple"); the AR keeps
+	# the player's colour. The sleeve on both is the player's outfit.
+	var cream_mat := CelMaterial.for_colour(Palette.hud_colour("paper"), shadow, 0.0, true)
+	var tan_mat := CelMaterial.for_colour(Color.from_hsv(0.09, 0.5, 0.6), shadow, 0.0, true)
 	# Sniper: long and thin. Barrel, receiver, scope, stock, bolt handle.
 	var sniper := Node3D.new()
 	sniper.name = "Sniper"
@@ -52,25 +56,25 @@ func setup(p: Player) -> void:
 	# knob, and a telescopic sight. Rounded parts everywhere the real rifle is rounded (note 2).
 	_cyl(sniper, 0.021, 0.95, Vector3(0, 0.02, -0.55), dark_mat)
 	_cyl(sniper, 0.034, 0.11, Vector3(0, 0.02, -1.0), dark_mat)
-	_cyl(sniper, 0.03, 0.06, Vector3(0, 0.02, -0.93), accent_mat)
+	_cyl(sniper, 0.03, 0.06, Vector3(0, 0.02, -0.93), tan_mat)
 	for bx: float in [-0.028, 0.028]:
 		_cyl(sniper, 0.007, 0.24, Vector3(bx, -0.012, -0.66), dark_mat)
-	_cyl(sniper, 0.052, 0.44, Vector3(0, 0.0, -0.1), body_mat, Vector3(1.0, 0.9, 1.0))
+	_cyl(sniper, 0.052, 0.44, Vector3(0, 0.0, -0.1), cream_mat, Vector3(1.0, 0.9, 1.0))
 	_capsule(sniper, 0.034, 0.18, Vector3(0, -0.058, -0.03), dark_mat)
-	_cone(sniper, 0.046, 0.062, 0.36, Vector3(0, -0.02, 0.29), body_mat)
+	_cone(sniper, 0.046, 0.062, 0.36, Vector3(0, -0.02, 0.29), cream_mat)
 	_cyl(sniper, 0.066, 0.03, Vector3(0, -0.02, 0.47), dark_mat)
-	_capsule(sniper, 0.03, 0.17, Vector3(0, 0.05, 0.31), accent_mat)
+	_capsule(sniper, 0.03, 0.17, Vector3(0, 0.05, 0.31), tan_mat)
 	_capsule(sniper, 0.03, 0.15, Vector3(0, -0.115, 0.07), dark_mat, -0.4)
 	_box(sniper, Vector3(0.03, 0.05, 0.03), Vector3(0, 0.075, -0.22), dark_mat)
 	_box(sniper, Vector3(0.03, 0.05, 0.03), Vector3(0, 0.075, -0.02), dark_mat)
 	_cyl(sniper, 0.024, 0.34, Vector3(0, 0.115, -0.12), dark_mat)
 	_cyl(sniper, 0.038, 0.08, Vector3(0, 0.115, -0.32), dark_mat)
 	_cyl(sniper, 0.032, 0.07, Vector3(0, 0.115, 0.07), dark_mat)
-	_cyl(sniper, 0.032, 0.028, Vector3(0, 0.115, -0.22), accent_mat)
-	_cyl(sniper, 0.032, 0.028, Vector3(0, 0.115, -0.02), accent_mat)
+	_cyl(sniper, 0.032, 0.028, Vector3(0, 0.115, -0.22), tan_mat)
+	_cyl(sniper, 0.032, 0.028, Vector3(0, 0.115, -0.02), tan_mat)
 	_cyl(sniper, 0.031, 0.012, Vector3(0, 0.115, -0.362), glow_mat)
 	_cyl(sniper, 0.024, 0.012, Vector3(0, 0.115, 0.107), glass_mat)  # rear lens: what you look into
-	_cyl(sniper, 0.034, 0.02, Vector3(0, 0.115, 0.095), accent_mat)  # eyepiece ring
+	_cyl(sniper, 0.034, 0.02, Vector3(0, 0.115, 0.095), tan_mat)  # eyepiece ring
 	var bolt := MeshInstance3D.new()
 	var bolt_mesh := CylinderMesh.new()
 	bolt_mesh.top_radius = 0.011
@@ -80,7 +84,7 @@ func setup(p: Player) -> void:
 	bolt.mesh = bolt_mesh
 	bolt.position = Vector3(0.065, 0.028, 0.03)
 	bolt.rotation.z = PI * 0.5
-	bolt.material_override = accent_mat
+	bolt.material_override = tan_mat
 	bolt.layers = 2
 	bolt.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	sniper.add_child(bolt)

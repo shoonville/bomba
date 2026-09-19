@@ -186,12 +186,18 @@ static func build(name: String) -> PackedFloat32Array:
 			out = mix(out, tail, 0.45)
 			return softclip(out, 2.2)
 		"ar_fire":
-			var n := samples(0.22)
-			var crack := mul(lowpass(noise(n, 21), 4800.0), env_exp(n, 0.028))
-			var thump := mul(tone(n, 240.0, 70.0, "sine"), env_exp(n, 0.055))
-			var out := mix(silence(n), crack, 1.0)
-			out = mix(out, thump, 0.9)
-			return softclip(out, 2.0)
+			# Crisp, not a thud (Sean): a hard 1.5–7 kHz snap, a mid crack, a short low kick that
+			# is over in 30 ms, and a tiny action click behind it.
+			var n := samples(0.16)
+			var snap := mul(lowpass(highpass(noise(n, 21), 1500.0), 7000.0), env_exp(n, 0.006))
+			var crack := mul(lowpass(highpass(noise(n, 22), 900.0), 4200.0), env_exp(n, 0.018))
+			var kick := mul(tone(n, 260.0, 110.0, "sine"), env_exp(n, 0.022))
+			var click := mul(lowpass(noise(samples(0.015), 23), 3000.0), env_exp(samples(0.015), 0.004))
+			var out := mix(silence(n), snap, 1.0)
+			out = mix(out, crack, 0.8)
+			out = mix(out, kick, 0.5)
+			out = mix(out, click, 0.5, samples(0.035))
+			return softclip(out, 2.2)
 		"hitmarker":
 			# Call of Duty style, take two (Sean: "too high pitched"): a woody click banded
 			# 0.9–3.2 kHz, a 1.5→1.15 kHz knock and a little 320 Hz body; 60 ms, instant attack.
@@ -274,15 +280,19 @@ static func build(name: String) -> PackedFloat32Array:
 			var out := mul(tone(n, 220.0, 880.0, "sine"), env_adsr(n, 0.02, 0.1, 0.5, 0.2))
 			return mix(out, mul(tone(n, 1760.0, 2200.0, "square"), env_adsr(n, 0.1, 0.1, 0.3, 0.2)), 0.18)
 		"ui_hover":
-			var n := samples(0.045)
-			return mul(tone(n, 880.0, 940.0, "sine"), env_exp(n, 0.018))
+			# Menu sounds, low and soft (Sean: "too high pitched and annoying"): a felt tap.
+			var n := samples(0.05)
+			var out := mul(tone(n, 300.0, 250.0, "tri"), env_exp(n, 0.016))
+			return mix(out, mul(lowpass(noise(n, 150), 1200.0), env_exp(n, 0.005)), 0.35)
 		"ui_click":
-			var n := samples(0.08)
-			var out := mul(tone(n, 560.0, 920.0, "square"), env_exp(n, 0.03))
-			return mix(out, mul(noise(n, 151), env_exp(n, 0.004)), 0.4)
-		"ui_back":
+			# A woody knock: a low-passed click over a 240→190 Hz thump.
 			var n := samples(0.09)
-			return mul(tone(n, 760.0, 420.0, "square"), env_exp(n, 0.035))
+			var out := mul(lowpass(noise(n, 151), 1400.0), env_exp(n, 0.007))
+			return mix(out, mul(tone(n, 240.0, 190.0, "sine"), env_exp(n, 0.03)), 0.8)
+		"ui_back":
+			var n := samples(0.1)
+			var out := mul(lowpass(noise(n, 152), 1100.0), env_exp(n, 0.007))
+			return mix(out, mul(tone(n, 190.0, 140.0, "sine"), env_exp(n, 0.035)), 0.8)
 		"round_start":
 			var out := silence(samples(0.6))
 			out = mix(out, mul(lowpass(tone(samples(0.2), 523.25, 523.25, "square"), 2500.0), env_adsr(samples(0.2), 0.005, 0.05, 0.6, 0.08)), 0.7)
@@ -301,12 +311,16 @@ static func build(name: String) -> PackedFloat32Array:
 				out = mix(out, mul(lowpass(noise(m, 161 + i), 3000.0 - 400.0 * i), env_exp(m, 0.008)), 0.9, samples(0.06 * i))
 			return out
 		"shell_in":
-			# One round pressed into the sniper: a short press-click, a brass slide and a seat thock.
-			var out := silence(samples(0.14))
-			out = mix(out, mul(lowpass(highpass(noise(samples(0.02), 171), 800.0), 3000.0), env_exp(samples(0.02), 0.005)), 0.9)
-			out = mix(out, mul(tone(samples(0.06), 1400.0, 900.0, "tri"), env_exp(samples(0.06), 0.02)), 0.45, samples(0.015))
-			out = mix(out, mul(tone(samples(0.05), 210.0, 150.0, "sine"), env_exp(samples(0.05), 0.02)), 0.7, samples(0.055))
-			return mix(out, mul(lowpass(noise(samples(0.02), 172), 1800.0), env_exp(samples(0.02), 0.005)), 0.8, samples(0.058))
+			# One heavy round going into the deadliest rifle (Sean: think Halo 3's shotgun): a
+			# thick low-passed clack, a metal ring around 500 Hz, a deep seat thump under 100 Hz,
+			# and the action closing 80 ms later. 220 ms.
+			var out := silence(samples(0.24))
+			out = mix(out, mul(lowpass(noise(samples(0.03), 171), 1600.0), env_exp(samples(0.03), 0.008)), 1.0)
+			out = mix(out, mul(lowpass(tone(samples(0.09), 560.0, 430.0, "square"), 1800.0), env_exp(samples(0.09), 0.03)), 0.35, samples(0.01))
+			out = mix(out, mul(tone(samples(0.13), 120.0, 62.0, "sine"), env_exp(samples(0.13), 0.05)), 1.0, samples(0.018))
+			out = mix(out, mul(lowpass(noise(samples(0.035), 172), 1300.0), env_exp(samples(0.035), 0.009)), 0.9, samples(0.085))
+			out = mix(out, mul(tone(samples(0.1), 95.0, 55.0, "sine"), env_exp(samples(0.1), 0.04)), 0.7, samples(0.09))
+			return softclip(out, 1.8)
 		"coin":
 			var n := samples(0.22)
 			var out := mul(tone(n, 1318.5, 1318.5, "square"), env_exp(n, 0.08))

@@ -75,6 +75,38 @@ func _build_environment() -> void:
 	add_child(sun)
 
 
+## Hover on LEFT / RIGHT: the tile you would take glows (a brighter, emissive copy of its
+## material, lifted 12 cm) until the pointer leaves.
+var _highlight_id: String = ""
+var _highlight_mat: Material
+
+
+func highlight_space(sid: String) -> void:
+	if sid == _highlight_id:
+		return
+	clear_highlight()
+	if not tiles.has(sid):
+		return
+	var tile: MeshInstance3D = tiles[sid]
+	_highlight_id = sid
+	_highlight_mat = tile.material_override
+	var shadow := Palette.map_colour("board", "shadow_tint")
+	var base: Color = _tone_for(director.graph.get_space(sid).type)
+	tile.material_override = CelMaterial.for_colour(base.lightened(0.25), shadow, 1.1)
+	tile.position.y += 0.12
+	Log.info("board", "Hover: space '%s' glows" % sid)
+
+
+func clear_highlight() -> void:
+	if _highlight_id == "" or not tiles.has(_highlight_id):
+		_highlight_id = ""
+		return
+	var tile: MeshInstance3D = tiles[_highlight_id]
+	tile.material_override = _highlight_mat
+	tile.position.y -= 0.12
+	_highlight_id = ""
+
+
 ## A marker over every special space so the board reads without a legend: a spinning coin,
 ## a crate for items, a spiked ball for LOSE, a "?" sign for events, a flag for the start.
 func _build_marker(space: BoardGraph.Space, shadow: Color) -> void:

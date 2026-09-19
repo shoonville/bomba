@@ -35,6 +35,10 @@ func _ready() -> void:
 	_fork_right = UiStyle.button("RIGHT  ▶", func(): _choose_side(false), 24)
 	_fork_left.visible = false
 	_fork_right.visible = false
+	_fork_left.mouse_entered.connect(func(): _hover_side(true))
+	_fork_right.mouse_entered.connect(func(): _hover_side(false))
+	_fork_left.mouse_exited.connect(_unhover)
+	_fork_right.mouse_exited.connect(_unhover)
 	add_child(_fork_left)
 	add_child(_fork_right)
 	_item_box = HBoxContainer.new()
@@ -66,6 +70,7 @@ func _on_events(events: Array) -> void:
 			"turn":
 				_fork_options.clear()
 				_item_target_mode = ""
+				_unhover()
 				var lp := director.local_player()
 				if lp != null and int(e["peer"]) == lp.peer_id:
 					Audio.play("round_start", -8.0)
@@ -123,6 +128,8 @@ func _layout_buttons() -> void:
 	var forking := mine and st.phase == BoardState.PHASE_CHOOSING and _fork_options.size() >= 2
 	_fork_left.visible = forking
 	_fork_right.visible = forking
+	if forking and Game.args.has("hover_fork"):
+		_hover_side(str(Game.args["hover_fork"]) == "left")
 	if forking:
 		_fork_left.position = Vector2(size.x * 0.5 - _fork_left.size.x - 30, size.y - 160)
 		_fork_right.position = Vector2(size.x * 0.5 + 30, size.y - 160)
@@ -158,6 +165,20 @@ func _side_index(left: bool) -> int:
 	return left_index if left else 1 - left_index
 
 
+## Hovering LEFT or RIGHT lights the tile that choice leads to (Sean's note).
+func _hover_side(left: bool) -> void:
+	if director == null or director.view == null or _fork_options.size() < 2:
+		return
+	var idx := _side_index(left)
+	if director.view.has_method("highlight_space"):
+		director.view.highlight_space(str(_fork_options[idx]))
+
+
+func _unhover() -> void:
+	if director != null and director.view != null and director.view.has_method("clear_highlight"):
+		director.view.clear_highlight()
+
+
 func _roll() -> void:
 	if director != null and director.is_local_turn():
 		director.request_roll()
@@ -166,6 +187,7 @@ func _roll() -> void:
 func _choose_side(left: bool) -> void:
 	if director != null and director.is_local_turn():
 		director.request_choose(_side_index(left))
+		_unhover()
 
 
 func _use_item_index(idx: int) -> void:

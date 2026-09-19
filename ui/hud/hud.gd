@@ -236,7 +236,7 @@ func _draw_health(size: Vector2) -> void:
 
 
 func _draw_score(size: Vector2) -> void:
-	var kills := "%d" % _player.kills
+	var kills := "%d" % (_arena.kills_for(_player.peer_id) if _arena != null and _arena.has_method("kills_for") else _player.kills)
 	var pos := Vector2(size.x - 40.0 - _font.get_string_size(kills, HORIZONTAL_ALIGNMENT_RIGHT, -1, 84).x, 96.0)
 	_draw_outlined(pos, kills, 84, _score_col, 8.0, -0.24)
 	var remaining := 0.0
@@ -247,7 +247,7 @@ func _draw_score(size: Vector2) -> void:
 	var timer := "%d:%02d" % [mins, secs]
 	var tw := _font.get_string_size(timer, HORIZONTAL_ALIGNMENT_RIGHT, -1, 26).x
 	_draw_outlined(Vector2(size.x - 40.0 - tw, 128.0), timer, 26, _paper)
-	var deaths := "%d DOWN" % _player.deaths
+	var deaths := "%d DOWN" % (_arena.deaths_for(_player.peer_id) if _arena != null and _arena.has_method("deaths_for") else _player.deaths)
 	var dw := _font.get_string_size(deaths, HORIZONTAL_ALIGNMENT_RIGHT, -1, 18).x
 	_draw_outlined(Vector2(size.x - 40.0 - dw, 152.0), deaths, 18, _paper)
 

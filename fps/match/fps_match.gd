@@ -128,7 +128,26 @@ func _palette_map() -> String:
 
 
 func _score_for(pl: Player) -> int:
-	return pl.kills
+	return kills_for(pl.peer_id)
+
+
+## Kills and deaths as the kill feed saw them (one message per life). The rollback state
+## counters exist too, but Sean's 2026-09-18 match log had a kill in the feed that the state
+## counter lost; scoring and the HUD read the log so they always agree with what was shown.
+func kills_for(peer: int) -> int:
+	var n := 0
+	for k in kill_log:
+		if int(k["killer"]) == peer and int(k["victim"]) != peer:
+			n += 1
+	return n
+
+
+func deaths_for(peer: int) -> int:
+	var n := 0
+	for k in kill_log:
+		if int(k["victim"]) == peer:
+			n += 1
+	return n
 
 
 ## What the results screen prints for this player instead of the score; "" prints the score.
@@ -480,6 +499,10 @@ func _after_tick_loop() -> void:
 func _finish_round() -> void:
 	_finished_sent = true
 	_flush_kills()  # a kill on the final tick must be in the log before scoring reads it
+	for p in _players.values():
+		var pl := p as Player
+		if pl.kills != kills_for(pl.peer_id) or pl.deaths != deaths_for(pl.peer_id):
+			Log.warn("arena", "%s: state says %d kills %d deaths, the kill log says %d and %d" % [pl.display_name, pl.kills, pl.deaths, kills_for(pl.peer_id), deaths_for(pl.peer_id)])
 	var result := MinigameResult.new()
 	for p in _players.values():
 		var pl := p as Player

@@ -230,6 +230,12 @@ has item / damage / coin spots plus one safe spot that hands out a SHIELD (block
 bomb or damage spot; tested), and the sniper hip pose is copied from his
 `reference/Intervention_MW2.webp`. 73 tests, 9973 assertions.
 
+Sixth round: menu sounds lowered (hover 280 Hz, click 222 Hz), the sniper's round-in sound
+made heavy (peak 79 Hz), the sniper painted cream, the AR shot made crisp (centroid 4.1 kHz,
+76 ms), fork hover glow on the board. His ARENA kill at tick 7170 was in the feed but scored 0:
+scoring and the HUD now read the kill log, and a warning logs any state/log disagreement.
+Not reproduced with bot or scripted seats.
+
 ### Bugs found and fixed today (all measured before and after)
 
 1. Client's view of remote players lagged whole tick loops → 25 % hit confirmation. netfox
