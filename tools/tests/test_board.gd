@@ -277,3 +277,38 @@ func test_bot_swaps_only_for_a_real_gain() -> void:
 	assert_eq(int(pick[1]), s.players[1].peer_id)
 	s.players[1].space = "1"
 	assert_eq(BoardRules.bot_item(s, graph).size(), 0, "no gain, no swap")
+
+
+func test_every_board_validates_and_loops() -> void:
+	var ids := BoardGraph.available_ids()
+	assert_true(ids.has("first") and ids.has("eight"), str(ids))
+	for id in ids:
+		var g := BoardGraph.load_file("res://board/boards/%s.json" % id)
+		assert_true(g != null, id)
+		assert_eq(g.validate().size(), 0, "%s: %s" % [id, str(g.validate())])
+		assert_true(g.goal_candidates().size() >= 4, "%s goal candidates" % id)
+		var forks := 0
+		for sid in g.ids():
+			if g.is_fork(sid):
+				forks += 1
+			assert_true(g.distance(sid, g.start_id) >= 0, "%s: '%s' returns to start" % [id, sid])
+			for goal in g.goal_candidates():
+				assert_true(g.distance(sid, goal) >= 0, "%s: '%s' reaches goal '%s'" % [id, sid, goal])
+		assert_true(forks >= 2, "%s has %d forks" % [id, forks])
+
+
+func test_eight_shape() -> void:
+	var g := BoardGraph.load_file("res://board/boards/eight.json")
+	assert_eq(g.spaces.size(), 27)
+	assert_true(g.is_fork("H"), "hub forks into the two loops")
+	assert_true(g.is_fork("L4") and g.is_fork("R4"), "bridges fork off space 4 of each loop")
+	assert_eq(g.distance("L4", "L8"), 3, "bridge L4→LB1→LB2→L8")
+	assert_eq(g.distance("H", "H"), 0)
+	assert_eq(g.distance("L1", "H"), 10)
+	# tiles never sit closer than 3 m so pawns and rings do not overlap
+	var ids := g.ids()
+	for a in ids:
+		for b in ids:
+			if a < b:
+				var d := (g.get_space(a).position - g.get_space(b).position).length()
+				assert_true(d >= 3.0, "%s-%s %.2f m apart" % [a, b, d])

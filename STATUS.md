@@ -127,10 +127,14 @@ Cost: host tick loop 2.4–2.8 ms mean with three seats; client tick loop p95 4 
 - **Mouse on the board**: ROLL, fork (LEFT/RIGHT by the tiles' screen positions) and item
   buttons, click a player row as the target; keys unchanged.
 - **Results after a board match** read "◆ Bombas · coins" instead of a composite score.
+- **Second board** FIGURE EIGHT: hub start/fork, two loops, a raised bridge in each (27 spaces,
+  3 forks, 6 goal candidates). Lobby button cycles boards; `--board_id=eight`. Tests: every
+  board validates, loops to its start and reaches every goal from every space; 2-round
+  headless match on it with 4 seats (SNIPERS then LAST STAND, one Bomba claimed), 0 errors.
 - **Harness**: `--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results`,
   `--give_item=ID`, `--board_auto_roll`, `--minigame=ID`.
 
-Numbers: `tools/test.sh` 66 tests, 5567 assertions, 85 scripts compiled, 0 failures. Headless
+Numbers: `tools/test.sh` 68 tests, 6304 assertions, 86 scripts compiled, 0 failures. Headless
 host + 2 bots, 2 rounds with 8 s minigames: round 1 ARENA (2 weapons), round 2 SNIPERS (1
 weapon, one headshot kill scored 2), board → minigame → rewards → board → minigame → finish, log
 24 lines, 0 warnings, 0 errors. Headless LAST STAND with 4 seats: 2 kills at ticks 394 and 608,
@@ -157,7 +161,8 @@ on a body that stayed down; clamped.
 New screenshots: `board_intro_card.png`, `board_reward_card.png`, `board_roll_button.png`,
 `snipers_intro.png`, `snipers_hip.png`, `results_board.png`, `last_stand_intro.png`,
 `last_stand_out.png` (eliminated, "OUT · 4 LEFT"), `last_stand_spectate.png` (chase camera),
-`results_last_stand.png`, `board_items.png` (item strip + ROLL), `board_fork.png` (LEFT/RIGHT).
+`results_last_stand.png`, `board_items.png` (item strip + ROLL), `board_fork.png` (LEFT/RIGHT),
+`board_eight.png`.
 
 ### Bugs found and fixed today (all measured before and after)
 
@@ -238,6 +243,6 @@ on one machine with `tools/soak.sh`-style flags. Try, in this order:
 3. A third-person or objective minigame (the SDK's `camera` field is still read by nothing;
    `scoring` now has kills and survival behind it).
 4. Real map pass on the gray-box (`fps/match/graybox_layout.gd` is a table) and first proper
-   viewmodels; a second board.
+   viewmodels.
 5. Choose the display face (OFL candidates: Bowlby One, Rubik Mono One, Titan One, Chango,
    Bungee) and build the type styles once.

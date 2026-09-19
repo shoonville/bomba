@@ -22,7 +22,8 @@ Open the folder in Godot 4.7 and press play, or from a shell (`GODOT` defaults t
 With no arguments the main menu opens: HOST LAN, HOST ONLINE (a friend code through the noray
 relay, default `tomfol.io:8890`, changeable in SETTINGS), JOIN (a friend code or address:port),
 LINE (conditioner profile for direct joins), SETTINGS (name, sensitivity, volumes), BOTS +/−,
-START MATCH (the board, a random minigame each round) or QUICK ARENA. FPS controls: WASD, Space
+BOARD (cycles the shipped boards), START MATCH (the board, a random minigame each round) or
+QUICK ARENA. FPS controls: WASD, Space
 jump, LMB fire, RMB scope, 1/2/Q weapons, R reload, LMB switches who you watch when you are
 out in LAST STAND, Esc pauses (resume, settings, leave), F5
 reloads `tuning/*.json` in debug builds. Board controls: click ROLL, a fork button, an item
@@ -35,8 +36,8 @@ Online from a shell: `-- --host_online --bots=1 --start --expect=1` prints `HOST
 A full match from a shell: `-- --host --bots=2 --start --board --autoplay --board_rounds=2
 --board_minigame_seconds=8 --soak=120` runs the board → minigame → board loop with bots (the
 minigame is drawn from `minigames/*/manifest.json` each round: ARENA, SNIPERS or LAST STAND;
-`--minigame=snipers` pins it);
-the lobby's START MATCH does the same for humans, QUICK ARENA skips the board.
+`--minigame=snipers` pins it; `--board_id=eight` picks the other board); the lobby's START
+MATCH does the same for humans, QUICK ARENA skips the board.
 
 Useful flags after `--`: `--autoplay` (a bot drives your seat), `--seed=N`, `--soak=SECONDS`
 (quit and write `reports/<label>_summary.json` + `_traj.csv`), `--report=LABEL`, `--expect=N`

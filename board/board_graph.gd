@@ -19,6 +19,19 @@ var spaces: Dictionary = {}
 var _prev: Dictionary = {}
 
 
+## Every board shipped in board/boards/, by id (file name), sorted.
+static func available_ids() -> Array:
+	var out: Array = []
+	var dir := DirAccess.open("res://board/boards")
+	if dir == null:
+		return ["first"]
+	for f in dir.get_files():
+		if f.ends_with(".json"):
+			out.append(f.get_basename())
+	out.sort()
+	return out
+
+
 static func load_file(path: String) -> BoardGraph:
 	var d := TuningLoader.load_file(path)
 	if d.is_empty():

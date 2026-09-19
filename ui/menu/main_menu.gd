@@ -11,6 +11,9 @@ var _status: Label
 var _code_label: Label
 var _code_row: HBoxContainer
 var _start_btn: Button
+var _board_btn: Button
+var _board_ids: Array = []
+var _board_id: String = "first"
 var _arena_btn: Button
 var _bots_label: Label
 var _host_btn: Button
@@ -124,7 +127,16 @@ func _build() -> void:
 	_lobby = VBoxContainer.new()
 	_lobby.add_theme_constant_override("separation", 8)
 	lobby_col.add_child(_lobby)
-	_start_btn = UiStyle.button("START MATCH", func(): Session.start_board(str(Tuning.value("board.default_board", "first"))), 30)
+	_board_ids = BoardGraph.available_ids()
+	_board_id = str(Tuning.value("board.default_board", "first"))
+	_board_btn = UiStyle.button("", func():
+		var i := _board_ids.find(_board_id)
+		_board_id = str(_board_ids[posmod(i + 1, _board_ids.size())])
+		_refresh_board_btn()
+	, 20)
+	_refresh_board_btn()
+	lobby_col.add_child(_board_btn)
+	_start_btn = UiStyle.button("START MATCH", func(): Session.start_board(_board_id), 30)
 	lobby_col.add_child(_start_btn)
 	_arena_btn = UiStyle.button("QUICK ARENA", func(): Session.start_minigame("arena"), 20)
 	lobby_col.add_child(_arena_btn)
@@ -132,6 +144,12 @@ func _build() -> void:
 	var hint := UiStyle.label("WASD MOVE · SPACE JUMP · LMB FIRE · RMB SCOPE · 1/2/Q WEAPONS · R RELOAD · ESC PAUSE", 15)
 	hint.position = Vector2(80, 840)
 	add_child(hint)
+
+
+func _refresh_board_btn() -> void:
+	var g := BoardGraph.load_file("res://board/boards/%s.json" % _board_id)
+	var name := g.display_name if g != null else _board_id.to_upper()
+	_board_btn.text = "BOARD: %s  ▸" % name if _board_ids.size() > 1 else "BOARD: %s" % name
 
 
 func _set_status(text: String) -> void:
