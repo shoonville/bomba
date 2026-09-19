@@ -64,6 +64,11 @@ func setup(p: Player) -> void:
 	lens_mat.emission = Color(0.25, 0.6, 0.85)
 	lens_mat.emission_energy_multiplier = 0.35
 	lens_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	# The cel viewmodel parts squash their depth toward the near plane (so they never clip into
+	# walls); a normal-depth lens would lose that test and hide behind the eyepiece cap. The
+	# glass sits at the very ends of the scope, so drawing it without the depth test is safe.
+	lens_mat.no_depth_test = true
+	lens_mat.render_priority = 2
 	# Sniper: long and thin. Barrel, receiver, scope, stock, bolt handle.
 	var sniper := Node3D.new()
 	sniper.name = "Sniper"
