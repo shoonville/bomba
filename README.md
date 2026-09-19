@@ -42,7 +42,8 @@ Useful flags after `--`: `--autoplay` (a bot drives your seat), `--seed=N`, `--s
 (quit and write `reports/<label>_summary.json` + `_traj.csv`), `--report=LABEL`, `--expect=N`
 (host waits for N humans before `--start`), `--round_seconds=N`, `--log=0..4`,
 `--screenshot=path.png --screenshot_at=5 --screenshot_quit` (add
-`--screenshot_event=minigame|reward|myturn|finished` to start the timer on a board event),
+`--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results` to start the timer on
+an event; `--give_item=bomb` and `--board_auto_roll` exercise the board UI from a fresh match),
 `--spectate` (fixed showcase camera,
 no local player), `--rounds=N` (host rematches N times), `--scripted` (seeded per-tick inputs for
 every seat this peer owns; the determinism harness uses it).

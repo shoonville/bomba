@@ -52,6 +52,11 @@ func start(players_data: Array, seed_value: int, p_board_id: String) -> void:
 	if is_server():
 		state = BoardState.new()
 		var events := BoardRules.setup(state, graph, players_data, seed_value, cfg)
+		if Game.args.has("give_item"):
+			# Harness: hand the host's seat an item so the item UI can be exercised from a fresh match.
+			var me := state.player(multiplayer.get_unique_id())
+			if me != null:
+				me.items.append(str(Game.args["give_item"]))
 		_broadcast(events)
 	else:
 		state = null
@@ -175,6 +180,8 @@ func _process(delta: float) -> void:
 						_timer = 0.0
 						return
 					_do_roll()
+			elif Game.args.has("board_auto_roll") and _timer >= 1.0:
+				_do_roll()  # harness: the human seat rolls by itself but keeps its fork and item choices
 			elif _timer >= float(cfg.get("turn_timeout_seconds", 20.0)):
 				Log.info("board", "%s timed out, auto-rolling" % ap.display_name)
 				_do_roll()

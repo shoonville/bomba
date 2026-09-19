@@ -475,6 +475,8 @@ func _arm_screenshot_on(events: Array) -> void:
 			hit = kind == "coins" and e.has("rank")
 		elif want == "myturn":
 			hit = kind == "turn" and int(e.get("peer", 0)) == multiplayer.get_unique_id()
+		elif want == "mychoose":
+			hit = kind == "choose" and int(e.get("peer", 0)) == multiplayer.get_unique_id()
 		if hit:
 			_shot_armed = true
 			_shot_timer = 0.0

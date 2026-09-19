@@ -127,7 +127,8 @@ Cost: host tick loop 2.4–2.8 ms mean with three seats; client tick loop p95 4 
 - **Mouse on the board**: ROLL, fork (LEFT/RIGHT by the tiles' screen positions) and item
   buttons, click a player row as the target; keys unchanged.
 - **Results after a board match** read "◆ Bombas · coins" instead of a composite score.
-- **Harness**: `--screenshot_event=minigame|reward|myturn|finished`.
+- **Harness**: `--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results`,
+  `--give_item=ID`, `--board_auto_roll`, `--minigame=ID`.
 
 Numbers: `tools/test.sh` 66 tests, 5567 assertions, 85 scripts compiled, 0 failures. Headless
 host + 2 bots, 2 rounds with 8 s minigames: round 1 ARENA (2 weapons), round 2 SNIPERS (1
@@ -156,7 +157,7 @@ on a body that stayed down; clamped.
 New screenshots: `board_intro_card.png`, `board_reward_card.png`, `board_roll_button.png`,
 `snipers_intro.png`, `snipers_hip.png`, `results_board.png`, `last_stand_intro.png`,
 `last_stand_out.png` (eliminated, "OUT · 4 LEFT"), `last_stand_spectate.png` (chase camera),
-`results_last_stand.png`.
+`results_last_stand.png`, `board_items.png` (item strip + ROLL), `board_fork.png` (LEFT/RIGHT).
 
 ### Bugs found and fixed today (all measured before and after)
 
