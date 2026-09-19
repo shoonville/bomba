@@ -191,7 +191,15 @@ func _on_host() -> void:
 		_set_status("HOST FAILED: %s" % error_string(err).to_upper())
 		return
 	Session.host_session(Session.local_name)
+	_fill_bots()
 	_set_status("HOSTING ON LAN, PORT %d" % port)
+
+
+## A fresh lobby starts with two bots so a solo host never lands in an empty 90 s minigame;
+## the − button removes them and joining friends take the free seats.
+func _fill_bots() -> void:
+	while Session.players.size() < 3 and Session.players.size() < Tuning.int_value("arena.max_players", 6):
+		Session.add_bot()
 
 
 func _on_host_online() -> void:
@@ -207,6 +215,7 @@ func _on_host_online() -> void:
 		_refresh()
 		return
 	Session.host_session(Session.local_name)
+	_fill_bots()
 	_set_status("HOSTING ONLINE. SHARE THE CODE.")
 	_refresh()
 
