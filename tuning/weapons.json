@@ -1,0 +1,48 @@
+{
+  "_comment": "Ticks are 60 Hz. scope_in_ticks is read by BOTH the server accuracy rule and the scope animation; they must never be two numbers.",
+  "loadout": ["sniper", "ar"],
+  "swap_ticks": 20,
+  "sniper": {
+    "display_name": "INTERVENTION",
+    "auto": false,
+    "fire_interval_ticks": 66,
+    "damage_body": 100,
+    "damage_head": 100,
+    "damage_legs": 70,
+    "legs_below_height": 0.75,
+    "magazine": 5,
+    "reload_ticks": 156,
+    "range_m": 400.0,
+    "scope_in_ticks": 16,
+    "hip_spread_deg": 3.5,
+    "ads_spread_deg": 0.0,
+    "ads_fov_vertical": 18.0,
+    "recoil_kick_deg": 3.0,
+    "recoil_recovery_delay_ticks": 8,
+    "recoil_recovery_per_tick_deg": 0.25
+  },
+  "ar": {
+    "display_name": "SCAR",
+    "auto": true,
+    "fire_interval_ticks": 6,
+    "damage_near": 22,
+    "damage_far": 12,
+    "headshot_multiplier": 1.4,
+    "falloff_start_m": 12.0,
+    "falloff_end_m": 38.0,
+    "magazine": 30,
+    "reload_ticks": 108,
+    "range_m": 200.0,
+    "ads_in_ticks": 8,
+    "ads_fov_vertical": 48.0,
+    "spread_deg": 0.0,
+    "ads_recoil_multiplier": 0.7,
+    "recoil_reset_ticks": 14,
+    "recoil_recovery_delay_ticks": 6,
+    "recoil_recovery_per_tick_deg": 0.18,
+    "recoil_pattern_deg": [
+      [0.00, 0.55], [0.05, 0.60], [-0.10, 0.60], [0.20, 0.55], [0.30, 0.50], [-0.35, 0.45],
+      [-0.40, 0.40], [0.45, 0.35], [0.50, 0.30], [-0.50, 0.30], [0.55, 0.25], [-0.60, 0.25]
+    ]
+  }
+}

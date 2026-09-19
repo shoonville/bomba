@@ -1,0 +1,6 @@
+{
+  "_comment": "Local control feel. Not balance, but editable without a rebuild like everything else.",
+  "mouse_sensitivity": 0.0022,
+  "ads_sensitivity_multiplier": 0.6,
+  "invert_y": false
+}

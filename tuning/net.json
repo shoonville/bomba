@@ -1,0 +1,19 @@
+{
+  "_comment": "Conditioner rtt_ms is round trip; half is applied per direction. jitter_ms is peak-to-peak per direction. loss_percent is per direction.",
+  "tickrate": 60,
+  "history_limit_ticks": 128,
+  "input_redundancy": 4,
+  "lag_comp_max_ms": 250,
+  "remote_interp_delay_ms": 100,
+  "remote_extrapolate_max_ticks": 2,
+  "remote_snap_distance_m": 2.0,
+  "local_correction_snap_m": 0.75,
+  "default_port": 27015,
+  "conditioner_port_offset": 1000,
+  "conditioner": {
+    "lan":   { "rtt_ms": 0,   "jitter_ms": 0,  "loss_percent": 0.0 },
+    "good":  { "rtt_ms": 40,  "jitter_ms": 5,  "loss_percent": 0.5 },
+    "bad":   { "rtt_ms": 120, "jitter_ms": 30, "loss_percent": 3.0 },
+    "awful": { "rtt_ms": 250, "jitter_ms": 80, "loss_percent": 8.0 }
+  }
+}

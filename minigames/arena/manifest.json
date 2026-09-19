@@ -1,0 +1,12 @@
+{
+  "id": "arena",
+  "display_name": "ARENA",
+  "min_players": 1,
+  "max_players": 6,
+  "camera": "first_person",
+  "scoring": "kills",
+  "time_limit_seconds": 180,
+  "weapons": ["sniper", "ar"],
+  "bot_profile": "fps",
+  "scene": "minigame.tscn"
+}

@@ -1,0 +1,17 @@
+{
+  "_comment": "First minigame: timed free-for-all, most kills wins, instant respawn with protection.",
+  "round_seconds": 180,
+  "warmup_seconds": 3,
+  "health": 100,
+  "respawn_delay_ticks": 0,
+  "spawn_protection_ticks": 90,
+  "spawn_protection_ends_on_fire": true,
+  "respawn_fire_lockout_ticks": 12,
+  "spawn_min_enemy_distance_m": 7.0,
+  "spawn_los_penalty": 100.0,
+  "spawn_distance_weight": 1.0,
+  "spawn_recent_penalty": 25.0,
+  "kill_score": 1,
+  "min_players": 2,
+  "max_players": 6
+}

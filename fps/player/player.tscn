@@ -1,0 +1,51 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://fps/player/player.gd" id="1_player"]
+[ext_resource type="Script" path="res://fps/player/player_input.gd" id="2_input"]
+[ext_resource type="Script" path="res://fps/weapons/weapon_slots.gd" id="3_weapons"]
+[ext_resource type="Script" path="res://addons/netfox/rewindable-action.gd" id="4_action"]
+[ext_resource type="Script" path="res://addons/netfox/rollback/rollback-synchronizer.gd" id="5_rbs"]
+[ext_resource type="Script" path="res://addons/netfox/tick-interpolator.gd" id="6_ti"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+radius = 0.4
+height = 1.8
+
+[node name="Player" type="CharacterBody3D"]
+collision_layer = 2
+collision_mask = 1
+floor_snap_length = 0.3
+script = ExtResource("1_player")
+
+[node name="Collision" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("CapsuleShape3D_body")
+
+[node name="Head" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.62, 0)
+
+[node name="Input" type="Node" parent="."]
+script = ExtResource("2_input")
+
+[node name="Weapons" type="Node" parent="."]
+script = ExtResource("3_weapons")
+
+[node name="FireAction" type="Node" parent="."]
+script = ExtResource("4_action")
+
+[node name="Visual" type="Node3D" parent="."]
+
+[node name="RollbackSynchronizer" type="Node" parent="." node_paths=PackedStringArray("root")]
+script = ExtResource("5_rbs")
+root = NodePath("..")
+enable_prediction = false
+state_properties = Array[String]([":transform", ":velocity", ":health", ":kills", ":deaths", ":protected_until_tick", ":respawn_count", ":jump_buffer", ":coyote", ":last_hit_by", ":last_hit_info", ":head_pitch", ":respawn_tick", "Weapons:slot", "Weapons:swap_until_tick", "Weapons:ads_since_tick", "Weapons:recoil_pitch", "Weapons:recoil_yaw", "Weapons:w0_ammo", "Weapons:w0_next_fire_tick", "Weapons:w0_reload_until_tick", "Weapons:w0_recoil_index", "Weapons:w0_last_shot_tick", "Weapons:w1_ammo", "Weapons:w1_next_fire_tick", "Weapons:w1_reload_until_tick", "Weapons:w1_recoil_index", "Weapons:w1_last_shot_tick", "Weapons:w2_ammo", "Weapons:w2_next_fire_tick", "Weapons:w2_reload_until_tick", "Weapons:w2_recoil_index", "Weapons:w2_last_shot_tick"])
+full_state_interval = 12
+diff_ack_interval = 6
+input_properties = Array[String](["Input:move", "Input:yaw", "Input:pitch", "Input:jump", "Input:fire", "Input:fire_pressed", "Input:ads", "Input:reload", "Input:weapon", "Input:view_tick"])
+enable_input_broadcast = false
+
+[node name="TickInterpolator" type="Node" parent="." node_paths=PackedStringArray("root")]
+script = ExtResource("6_ti")
+root = NodePath("..")
+properties = Array[String]([":transform"])
