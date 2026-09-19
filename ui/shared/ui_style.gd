@@ -91,7 +91,7 @@ static func swirl_background(field_key: String = "field", counter_key: String = 
 	return bg
 
 
-## An angled title: paper fill, thick accent outline, set at -6°.
+## A screen title: paper fill, thick accent outline, upright (Sean: no slanted lettering).
 static func title(text: String, size: int = 96, outline_colour: Color = Color(0, 0, 0, 0)) -> Label:
 	var t := Label.new()
 	t.text = text
@@ -99,19 +99,44 @@ static func title(text: String, size: int = 96, outline_colour: Color = Color(0,
 	t.add_theme_color_override("font_color", paper())
 	t.add_theme_color_override("font_outline_color", accent() if outline_colour.a == 0.0 else outline_colour)
 	t.add_theme_constant_override("outline_size", maxi(12, size / 6))
-	t.rotation = deg_to_rad(-6.0)
 	return t
 
 
-## Slam a control in: from 1.35× and a few degrees over, settling in 0.22 s.
+## The logo treatment: fill + ink outline over a white sticker border (STYLE.md §3 key-art
+## outlines). Colours come from palette.json menu.logo_fill / logo_ink / logo_sticker.
+static func logo(text: String, size: int = 132) -> Control:
+	var root := Control.new()
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var fill := Palette.map_colour("menu", "logo_fill")
+	var logo_ink := Palette.map_colour("menu", "logo_ink")
+	var sticker := Palette.map_colour("menu", "logo_sticker")
+	var ink_w := maxi(10, size / 9)
+	var sticker_w := ink_w + maxi(10, size / 9)
+	var back := Label.new()
+	back.text = text
+	back.add_theme_font_size_override("font_size", size)
+	back.add_theme_color_override("font_color", sticker)
+	back.add_theme_color_override("font_outline_color", sticker)
+	back.add_theme_constant_override("outline_size", sticker_w)
+	root.add_child(back)
+	var front := Label.new()
+	front.text = text
+	front.add_theme_font_size_override("font_size", size)
+	front.add_theme_color_override("font_color", fill)
+	front.add_theme_color_override("font_outline_color", logo_ink)
+	front.add_theme_constant_override("outline_size", ink_w)
+	root.add_child(front)
+	root.custom_minimum_size = front.get_minimum_size()
+	root.size = root.custom_minimum_size
+	return root
+
+
+## Slam a control in: from 1.35× settling in 0.22 s. No rotation: lettering stays upright.
 static func slam(c: Control, delay: float = 0.0) -> void:
 	c.pivot_offset = c.size * 0.5
-	var base_rot := c.rotation
 	c.scale = Vector2(1.35, 1.35)
-	c.rotation = base_rot + deg_to_rad(4.0)
 	c.modulate.a = 0.0
 	var tw := c.create_tween()
 	tw.set_parallel(true)
 	tw.tween_property(c, "scale", Vector2.ONE, 0.22).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_property(c, "rotation", base_rot, 0.22).set_delay(delay).set_ease(Tween.EASE_OUT)
 	tw.tween_property(c, "modulate:a", 1.0, 0.08).set_delay(delay)

@@ -39,18 +39,13 @@ func _ready() -> void:
 
 func _build() -> void:
 	add_child(UiStyle.swirl_background())
-	var title := UiStyle.title("BOMBA", 132)
-	title.position = Vector2(64, 40)
+	var title := UiStyle.logo("BOMBA", 140)
+	title.position = Vector2(72, 40)
 	add_child(title)
 	UiStyle.slam(title)
-	var sub := UiStyle.label("SIX FRIENDS. ONE BOARD. TOO MANY MINIGAMES.", 22)
-	sub.position = Vector2(90, 214)
-	sub.rotation = deg_to_rad(-6.0)
-	add_child(sub)
-	UiStyle.slam(sub, 0.08)
 
 	var col := VBoxContainer.new()
-	col.position = Vector2(80, 290)
+	col.position = Vector2(80, 270)
 	col.custom_minimum_size = Vector2(520, 0)
 	col.add_theme_constant_override("separation", 10)
 	add_child(col)
@@ -103,7 +98,7 @@ func _build() -> void:
 
 	# Lobby column
 	var lobby_col := VBoxContainer.new()
-	lobby_col.position = Vector2(760, 290)
+	lobby_col.position = Vector2(760, 270)
 	lobby_col.add_theme_constant_override("separation", 10)
 	add_child(lobby_col)
 	var lobby_head := HBoxContainer.new()
