@@ -32,6 +32,11 @@ func test_registry_finds_arena() -> void:
 	var sn := MinigameRegistry.get_manifest("snipers")
 	assert_eq(sn.weapons, PackedStringArray(["sniper"]))
 	assert_eq(sn.time_limit_seconds, 150)
+	assert_true(ids.has("last_stand"), "third minigame found by folder scan alone")
+	var ls := MinigameRegistry.get_manifest("last_stand")
+	assert_eq(ls.scoring, "survival")
+	assert_eq(ls.min_players, 2)
+	assert_eq(ls.time_limit_seconds, 60)
 	var m := MinigameRegistry.get_manifest("arena")
 	if m != null:
 		assert_eq(m.scene_path, "res://minigames/arena/minigame.tscn")

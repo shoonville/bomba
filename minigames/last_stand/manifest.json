@@ -1,0 +1,12 @@
+{
+  "id": "last_stand",
+  "display_name": "LAST STAND",
+  "min_players": 2,
+  "max_players": 6,
+  "camera": "first_person",
+  "scoring": "survival",
+  "time_limit_seconds": 60,
+  "weapons": ["sniper", "ar"],
+  "bot_profile": "fps",
+  "scene": "minigame.tscn"
+}

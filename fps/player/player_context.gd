@@ -6,6 +6,11 @@ extends RefCounted
 
 
 ## Authority-only: a player's health reached zero on this tick. The minigame scores and respawns.
+## False while the round has not started (warmup): weapons stay locked, movement is free.
+func can_fire_at(_tick: int) -> bool:
+	return true
+
+
 func on_player_died(_player: Node, _tick: int) -> void:
 	pass
 

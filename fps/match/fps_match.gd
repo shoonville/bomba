@@ -13,6 +13,9 @@ class MatchContext:
 	extends PlayerContext
 	var arena: FpsMatch
 
+	func can_fire_at(tick: int) -> bool:
+		return arena.round_start_tick < 0 or tick >= arena.round_start_tick
+
 	func on_player_died(player: Node, tick: int) -> void:
 		arena._on_player_died(player, tick)
 
@@ -56,6 +59,7 @@ var lag_comp_ticks: int = 15
 var kill_log: Array = []
 
 var _players: Dictionary = {}
+var _dead_since: Dictionary = {}  # peer → death tick, only used when _respawns() is false
 var _ctx: MatchContext
 var _pending_kills: Array = []
 var _kill_sent: Dictionary = {}
@@ -124,6 +128,29 @@ func _palette_map() -> String:
 
 func _score_for(pl: Player) -> int:
 	return pl.kills
+
+
+## What the results screen prints for this player instead of the score; "" prints the score.
+func _score_label(_pl: Player) -> String:
+	return ""
+
+
+## False for one-life minigames: the dead stay down and the round ends when one player is left.
+func _respawns() -> bool:
+	return true
+
+
+## Text the HUD puts in the centre for the local player instead of its own "DOWN"; "" for none.
+func centre_text() -> String:
+	return ""
+
+
+func alive_count() -> int:
+	var n := 0
+	for p in _players.values():
+		if (p as Player).is_alive():
+			n += 1
+	return n
 
 
 func _build_environment() -> void:
@@ -286,7 +313,7 @@ func remote_render_tick() -> float:
 func _targets_for(shooter: Node) -> Array:
 	var out := []
 	for p in _players.values():
-		if p == shooter:
+		if p == shooter or not (p as Player).is_alive():
 			continue
 		var t := HitscanResolver.Target.new()
 		t.id = (p as Player).peer_id
@@ -300,6 +327,13 @@ func _targets_for(shooter: Node) -> Array:
 
 func _on_player_died(node: Node, tick: int) -> void:
 	var victim := node as Player
+	if not _respawns():
+		# The body stays down, so this fires every tick from now on; count it at its death tick
+		# only (a rollback that re-simulates that tick counts again on the restored state).
+		var since: int = _dead_since.get(victim.peer_id, -1)
+		if since >= 0 and since < tick:
+			return
+		_dead_since[victim.peer_id] = tick
 	var killer_id := victim.last_hit_by
 	var info := victim.last_hit_info
 	victim.deaths += 1
@@ -307,13 +341,14 @@ func _on_player_died(node: Node, tick: int) -> void:
 		var killer: Player = _players[killer_id]
 		killer.kills += 1
 		NetworkRollback.mutate(killer)
-	var enemies := []
-	for p in _players.values():
-		if p != victim and (p as Player).is_alive():
-			enemies.append((p as Player).eye_position())
-	var sp := spawn_selector.pick(enemies, get_world_3d().direct_space_state, tick,
-		Rng.tick_stream("spawn", tick, victim.peer_id))
-	victim.respawn_at(sp["pos"], sp["yaw"], tick, int(arena_cfg.get("spawn_protection_ticks", 90)))
+	if _respawns():
+		var enemies := []
+		for p in _players.values():
+			if p != victim and (p as Player).is_alive():
+				enemies.append((p as Player).eye_position())
+		var sp := spawn_selector.pick(enemies, get_world_3d().direct_space_state, tick,
+			Rng.tick_stream("spawn", tick, victim.peer_id))
+		victim.respawn_at(sp["pos"], sp["yaw"], tick, int(arena_cfg.get("spawn_protection_ticks", 90)))
 	var key := "%d_%d" % [victim.peer_id, tick]
 	if not _kill_sent.has(key):
 		_kill_sent[key] = true
@@ -359,14 +394,32 @@ func _on_tick(_delta: float, tick: int) -> void:
 		return
 	if round_end_tick > 0 and tick >= round_end_tick:
 		_finish_round()
+	elif not _respawns() and round_start_tick >= 0 and tick > round_start_tick and _players.size() > 1 \
+			and alive_count() <= 1 and not _deaths_pending():
+		Log.info("arena", "Last one standing at tick %d" % tick)
+		_finish_round()
+
+
+## A hit that drops a player to 0 lands in the shooter's tick; the victim's own tick (where the
+## death is counted and the kill queued) can be one loop later. Do not end a round in between.
+func _deaths_pending() -> bool:
+	for p in _players.values():
+		var pl := p as Player
+		if not pl.is_alive() and not _dead_since.has(pl.peer_id):
+			return true
+	return false
+
+
+func _flush_kills() -> void:
+	for k in _pending_kills:
+		_rpc_kill.rpc(k[0], k[1], k[2], k[3], k[4])
+	_pending_kills.clear()
 
 
 func _after_tick_loop() -> void:
 	if not is_inside_tree() or not is_authority():
 		return
-	for k in _pending_kills:
-		_rpc_kill.rpc(k[0], k[1], k[2], k[3], k[4])
-	_pending_kills.clear()
+	_flush_kills()
 	for s in _pending_shots:
 		_rpc_shot_fx.rpc(s[0], s[1], s[2], s[3], s[4])
 		_apply_shot_fx(s[0], s[1], s[2], s[3], s[4])
@@ -375,10 +428,11 @@ func _after_tick_loop() -> void:
 
 func _finish_round() -> void:
 	_finished_sent = true
+	_flush_kills()  # a kill on the final tick must be in the log before scoring reads it
 	var result := MinigameResult.new()
 	for p in _players.values():
 		var pl := p as Player
-		result.add(pl.peer_id, _score_for(pl), pl.display_name)
+		result.add(pl.peer_id, _score_for(pl), pl.display_name, _score_label(pl))
 	result.finalize()
 	_rpc_finish.rpc(result.to_dict())
 

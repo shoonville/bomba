@@ -170,7 +170,8 @@ func _rollback_tick(delta: float, tick: int, _is_fresh: bool) -> void:
 
 	# Weapons. Inputs queued before the player learned of a death do not fire the fresh body.
 	var recoil_before := Vector2(weapons.recoil_yaw, weapons.recoil_pitch)
-	var can_use_weapons := alive and tick >= respawn_tick + respawn_fire_lockout_ticks
+	var can_use_weapons := alive and tick >= respawn_tick + respawn_fire_lockout_ticks \
+		and (ctx == null or ctx.can_fire_at(tick))
 	var out := weapons.step(tick, can_use_weapons, input)
 	var predicting := rollback_synchronizer.is_predicting()
 	if not predicting:

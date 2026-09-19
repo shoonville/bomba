@@ -94,7 +94,10 @@ func _draw() -> void:
 			name = "%s  ·  GET READY" % _arena.manifest.display_name
 		_draw_centre_text(size, name, 56, _score_col)
 	if _player.health <= 0:
-		_draw_centre_text(size, "DOWN", 64, _danger_col)
+		var txt := "DOWN"
+		if _arena != null and _arena.has_method("centre_text") and str(_arena.centre_text()) != "":
+			txt = str(_arena.centre_text())
+		_draw_centre_text(size, txt, 64, _danger_col)
 
 
 func _draw_crosshair(size: Vector2, progress: float) -> void:
@@ -184,7 +187,7 @@ func _draw_health(size: Vector2) -> void:
 		var col := _meter_col if frac > 0.35 else _danger_col
 		draw_colored_polygon(pts_fill, col)
 	var protected := NetworkTime.tick < _player.protected_until_tick
-	var label := "%d" % _player.health
+	var label := "%d" % maxi(0, _player.health)
 	_draw_outlined(Vector2(origin.x + 6, origin.y - 44), label, 30, _paper)
 	if protected:
 		_draw_outlined(Vector2(origin.x + 70, origin.y - 44), "SHIELDED", 18, _score_col)

@@ -33,7 +33,8 @@ Online from a shell: `-- --host_online --bots=1 --start --expect=1` prints `HOST
 
 A full match from a shell: `-- --host --bots=2 --start --board --autoplay --board_rounds=2
 --board_minigame_seconds=8 --soak=120` runs the board → minigame → board loop with bots (the
-minigame is drawn from `minigames/*/manifest.json` each round; `--minigame=snipers` pins it);
+minigame is drawn from `minigames/*/manifest.json` each round: ARENA, SNIPERS or LAST STAND;
+`--minigame=snipers` pins it);
 the lobby's START MATCH does the same for humans, QUICK ARENA skips the board.
 
 Useful flags after `--`: `--autoplay` (a bot drives your seat), `--seed=N`, `--soak=SECONDS`
@@ -61,8 +62,8 @@ One folder per subsystem (`DESIGN.md` §4): `core/` bootstrap and services, `boa
 board (graph, rules, director, view; `BOARDPLAN.md`), `net/` transport,
 conditioner, hitscan and history, `session/` lobby and registry, `fps/` player, weapons, view
 and `fps/match/` the shared first-person match (map, spawns, clock, kill log),
-`minigames/sdk/` the contract and `minigames/arena/`, `minigames/snipers/` (a manifest and a
-few lines each), `bots/`, `art/`
+`minigames/sdk/` the contract and `minigames/arena/`, `minigames/snipers/`,
+`minigames/last_stand/` (a manifest and a few lines each), `bots/`, `art/`
 shaders and palette, `ui/` HUD, menu, results, `tools/` harnesses and tests, `tuning/` every
 gameplay number as JSON. `addons/netfox` is vendored with two documented patches
 (`addons/netfox/PATCHES.md`).

@@ -30,6 +30,9 @@ var _shot_armed: bool = false
 
 func _ready() -> void:
 	args = Cli.parse(OS.get_cmdline_user_args())
+	if args.has("screenshot_event"):
+		Events.kill.connect(_arm_screenshot_on_kill)
+		Events.round_ended.connect(_arm_screenshot_on_round_end)
 	headless = DisplayServer.get_name() == "headless"
 	if args.has("log"):
 		Log.level = int(args["log"])
@@ -441,7 +444,22 @@ func _finish_soak() -> void:
 
 
 ## --screenshot_event=<board event kind>: start the screenshot timer when that board event is
-## shown (e.g. "minigame" for the intro card, "reward" for the reward card) instead of at load.
+## shown (e.g. "minigame" for the intro card, "reward" for the reward card) instead of at load;
+## "out" arms when the local player is killed (FPS).
+func _arm_screenshot_on_kill(_killer: int, victim: int, _weapon: String, _headshot: bool, _tick: int) -> void:
+	if _shot_armed or str(args.get("screenshot_event", "")) != "out":
+		return
+	if victim == multiplayer.get_unique_id():
+		_shot_armed = true
+		_shot_timer = 0.0
+
+
+func _arm_screenshot_on_round_end() -> void:
+	if not _shot_armed and str(args.get("screenshot_event", "")) == "results":
+		_shot_armed = true
+		_shot_timer = 0.0
+
+
 func _arm_screenshot_on(events: Array) -> void:
 	if _shot_armed or not args.has("screenshot_event"):
 		return

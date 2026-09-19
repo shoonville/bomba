@@ -201,9 +201,16 @@ func _process(delta: float) -> void:
 ## Pick the round's minigame from whatever folders the registry found, never the same twice
 ## in a row when there is a choice. Seeded so the host's pick is reproducible.
 func _pick_minigame() -> String:
-	var ids := MinigameRegistry.ids()
 	if Game.args.has("minigame"):
 		return str(Game.args["minigame"])
+	var n := state.players.size() if state != null else 0
+	var ids: Array = []
+	for id in MinigameRegistry.ids():
+		var m := MinigameRegistry.get_manifest(str(id))
+		if m == null or (n > 0 and (n < m.min_players or n > m.max_players)):
+			continue
+		ids.append(str(id))
+	ids.sort()
 	if ids.is_empty():
 		return "arena"
 	if ids.size() > 1 and _last_minigame != "":

@@ -3,11 +3,16 @@ extends RefCounted
 ## A ranked result. rankings[0] is the winner. Ties share a rank.
 
 var minigame_id: String = ""
-var rankings: Array[Dictionary] = []  # {peer_id, score, rank, display_name}
+var rankings: Array[Dictionary] = []  # {peer_id, score, rank, display_name[, label]}
 
 
-func add(peer_id: int, score: int, display_name: String = "") -> void:
-	rankings.append({"peer_id": peer_id, "score": score, "rank": 0, "display_name": display_name})
+## `label` is what the results screen prints instead of the raw score when it is not a plain
+## number (survival ticks, coins and Bombas); the score still decides the rank.
+func add(peer_id: int, score: int, display_name: String = "", label: String = "") -> void:
+	var row := {"peer_id": peer_id, "score": score, "rank": 0, "display_name": display_name}
+	if label != "":
+		row["label"] = label
+	rankings.append(row)
 
 
 ## Sort by score descending and assign ranks (ties share).

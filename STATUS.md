@@ -113,6 +113,10 @@ Cost: host tick loop 2.4–2.8 ms mean with three seats; client tick loop p95 4 
   respawns, kill log, `_score_for` hook). `minigames/arena/arena.gd` is 3 lines;
   `minigames/snipers/` (manifest `weapons: ["sniper"]`, 150 s, headshots score 2) was added
   without a change outside its folder. The registry finds it by folder scan (tested).
+- **LAST STAND** (`minigames/last_stand/`): one life, last one standing, `scoring: "survival"`
+  (rank by death tick, survivors tie first), ends early when one is left, "OUT · N LEFT" for the
+  eliminated. Needed two hooks in `FpsMatch` (`_respawns`, `centre_text`) and a dead-body guard;
+  nothing else outside its folder. The board's draw now honours `min_players`/`max_players`.
 - **Board rounds draw their minigame** (seeded, no immediate repeat; `--minigame=ID` pins it):
   intro card "NEXT UP: SNIPERS" on the board, "SNIPERS · GET READY" in the FPS HUD, and a
   reward card with the ranked coins when the board resumes; pacing reserves 2.4 s for each.
@@ -123,22 +127,33 @@ Cost: host tick loop 2.4–2.8 ms mean with three seats; client tick loop p95 4 
 - **Results after a board match** read "◆ Bombas · coins" instead of a composite score.
 - **Harness**: `--screenshot_event=minigame|reward|myturn|finished`.
 
-Numbers: `tools/test.sh` 66 tests, 5563 assertions, 84 scripts compiled, 0 failures. Headless
+Numbers: `tools/test.sh` 66 tests, 5567 assertions, 85 scripts compiled, 0 failures. Headless
 host + 2 bots, 2 rounds with 8 s minigames: round 1 ARENA (2 weapons), round 2 SNIPERS (1
 weapon, one headshot kill scored 2), board → minigame → rewards → board → minigame → finish, log
-24 lines, 0 warnings, 0 errors. Windowed 1-round loop with the HUD present: 0 script errors
-after the fix below.
+24 lines, 0 warnings, 0 errors. Headless LAST STAND with 4 seats: 2 kills at ticks 394 and 608,
+two survivors tied #1 at the 60 s clock, the dead ranked #3 (608) and #4 (394). Headless board,
+3 rounds of 20 s: LAST STAND (ended early at tick 1389, one left), ARENA, LAST STAND (early at
+6618), 0 errors. Windowed 1-round loop with the HUD present: 0 script errors after the fix
+below.
 
-Bugs found and fixed in this block: (1) the host never saw the reward card because Game
+Bugs found and fixed in this block: (0) weapons were never locked during the 3 s warmup, so
+bots killed under GET READY (the LAST STAND intro screenshot showed the kill in the feed; in
+the seed-9 headless run the first kill was at tick 51 with the round starting at 180); locked
+through `PlayerContext.can_fire_at`, first kill now at tick 190. (1) the host never saw the reward card because Game
 recreated the board HUD *after* emitting the ranking, and the director broadcasts the reward
 events synchronously inside that emit (clients were fine; the screenshot proved it). (2) At
 match end the HUD's process/draw called the director for three frames after it had left the
 tree: 3 "get_unique_id on null" script errors per finish; guarded in both. (3) The dice from
 the last roll showed through the intro card; cleared on the minigame event. (4) "ROUND 2 / 1"
-after the last round; display clamps.
+after the last round; display clamps. (5) LAST STAND ended a loop before the last death was
+processed (the victim's tick runs after the shooter's), so that player scored "FELL AT 0:00"
+and the results screen printed 1073741824 for the survivor: the end check now waits for
+pending deaths, and results carry labels (SURVIVED / FELL AT m:ss). (6) HUD health read "-24"
+on a body that stayed down; clamped.
 
 New screenshots: `board_intro_card.png`, `board_reward_card.png`, `board_roll_button.png`,
-`snipers_intro.png`, `snipers_hip.png`, `results_board.png`.
+`snipers_intro.png`, `snipers_hip.png`, `results_board.png`, `last_stand_intro.png`,
+`last_stand_out.png` (eliminated, "OUT · 4 LEFT"), `results_last_stand.png`.
 
 ### Bugs found and fixed today (all measured before and after)
 
@@ -216,8 +231,9 @@ on one machine with `tools/soak.sh`-style flags. Try, in this order:
 1. A human plays it (checklist above, plus one board turn with the mouse) and writes the
    verdict into this file.
 2. Bandwidth: quantise position, pack weapon ints, so six seats fit the public relay cap.
-3. A minigame that is not a kill count (a third-person or objective one exercises the SDK's
-   `camera` and `scoring` fields, which nothing reads yet).
+3. A third-person or objective minigame (the SDK's `camera` field is still read by nothing;
+   `scoring` now has kills and survival behind it). Eliminated players in LAST STAND should
+   spectate instead of staring at the floor.
 4. Real map pass on the gray-box (`fps/match/graybox_layout.gd` is a table) and first proper
    viewmodels; a second board.
 5. Choose the display face (OFL candidates: Bowlby One, Rubik Mono One, Titan One, Chango,
