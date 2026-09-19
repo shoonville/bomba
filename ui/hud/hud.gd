@@ -104,8 +104,8 @@ func _draw() -> void:
 			var dark := 1.0 - smoothstep(0.6, 0.9, progress)
 			if dark > 0.0:
 				draw_circle(size * 0.5, r, Color(_ink, dark))
-		else:
-			_draw_crosshair(size, progress)
+		elif not (def != null and not def.is_sniper() and progress > 0.9):
+			_draw_crosshair(size, progress)   # the AR's red dot replaces it at full ADS
 		_draw_hitmarker(size)
 		_draw_health(size)
 		_draw_score(size)

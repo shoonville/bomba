@@ -86,8 +86,10 @@ func _on_setup() -> void:
 	swap_ticks = int(wt.get("swap_ticks", 20))
 	lag_comp_ticks = int(round(Tuning.float_value("net.lag_comp_max_ms", 250.0) / 1000.0 * NetworkTime.tickrate))
 
+	var t0 := Time.get_ticks_usec()
 	layout = _layout()
 	MapBuilder.build(map_root, layout, _palette_map())
+	var t_map := Time.get_ticks_usec()
 	_build_environment()
 	spawn_selector.configure(layout["spawns"], arena_cfg, move_cfg.eye_height)
 	_ctx = MatchContext.new()
@@ -116,6 +118,7 @@ func _on_setup() -> void:
 		var start := NetworkTime.tick + warm
 		_rpc_round.rpc(start, start + secs * NetworkTime.tickrate)
 	Log.info("arena", "Setup %s: %d players, %d boxes, %d spawns, weapons %s" % [manifest.id if manifest != null else "?", _players.size(), layout["boxes"].size(), layout["spawns"].size(), weapon_defs.map(func(d): return d.id)])
+	Log.info("perf", "Match built: map %d ms, rest %d ms" % [(t_map - t0) / 1000, (Time.get_ticks_usec() - t_map) / 1000])
 
 
 ## Hooks for minigame folders.

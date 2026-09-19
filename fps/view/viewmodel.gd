@@ -24,7 +24,7 @@ var hip_rotations: Array[Vector3] = [
 # ADS: the sniper's scope tube sits 0.115 above the model origin, so the model goes to
 # y = -0.115 and the eyepiece (z = +0.105) ends 5 cm in front of the eye: the view goes
 # through the glass, not into the receiver (Sean's note 4).
-var ads_pos: Array[Vector3] = [Vector3(0.0, -0.115, -0.155), Vector3(0.0, -0.11, -0.36)]
+var ads_pos: Array[Vector3] = [Vector3(0.0, -0.115, -0.155), Vector3(0.0, -0.15 * 1.22, -0.34)]
 var muzzles: Array[Vector3] = [Vector3(0.0, 0.02, -1.03), Vector3(0.0, 0.015, -0.52)]
 var _kick: float = 0.0
 var _bolt: float = 0.0
@@ -94,8 +94,8 @@ func setup(p: Player) -> void:
 	_cyl(sniper, 0.032, 0.028, Vector3(0, 0.115, -0.22), scope_ring_mat)
 	_cyl(sniper, 0.032, 0.028, Vector3(0, 0.115, -0.02), scope_ring_mat)
 	_cyl(sniper, 0.034, 0.02, Vector3(0, 0.115, 0.095), scope_ring_mat)  # eyepiece ring
-	_cyl(sniper, 0.033, 0.016, Vector3(0, 0.115, -0.364), lens_mat)      # objective glass
-	_cyl(sniper, 0.026, 0.014, Vector3(0, 0.115, 0.108), lens_mat)       # eyepiece glass
+	_cyl(sniper, 0.033, 0.016, Vector3(0, 0.115, -0.364), scope_mat)     # far end: black, like the scope
+	_cyl(sniper, 0.026, 0.014, Vector3(0, 0.115, 0.108), lens_mat)       # eyepiece glass: the one we look through
 	var bolt := MeshInstance3D.new()
 	var bolt_mesh := CylinderMesh.new()
 	bolt_mesh.top_radius = 0.011
@@ -119,8 +119,25 @@ func setup(p: Player) -> void:
 	_box(ar, Vector3(0.05, 0.05, 0.28), Vector3(0, 0.015, -0.38), dark_mat)
 	_box(ar, Vector3(0.05, 0.16, 0.08), Vector3(0, -0.13, -0.02), accent_mat)
 	_box(ar, Vector3(0.04, 0.14, 0.07), Vector3(0, -0.11, 0.14), dark_mat)
-	_box(ar, Vector3(0.06, 0.05, 0.16), Vector3(0, 0.085, -0.02), dark_mat)
-	_box(ar, Vector3(0.05, 0.03, 0.06), Vector3(0, 0.09, 0.03), glow_mat)
+	# Red dot: a low rail, a ring standing on it, and a tiny emissive red dot at the ring's
+	# centre. At ADS the ring's centre sits on the camera axis so you look through it.
+	_box(ar, Vector3(0.06, 0.03, 0.16), Vector3(0, 0.075, -0.02), dark_mat)
+	_box(ar, Vector3(0.03, 0.03, 0.03), Vector3(0, 0.1, 0.0), dark_mat)
+	var ring := MeshInstance3D.new()
+	var rm := TorusMesh.new()
+	rm.inner_radius = 0.03
+	rm.outer_radius = 0.038
+	rm.rings = 24
+	rm.ring_segments = 8
+	ring.mesh = rm
+	ring.position = Vector3(0, 0.15, 0.0)
+	ring.rotation.x = PI * 0.5   # the ring's axis along the barrel
+	ring.material_override = dark_mat
+	ring.layers = 2
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	ar.add_child(ring)
+	var dot_mat := CelMaterial.for_colour(Palette.hud_colour("danger"), shadow, 2.0, true)
+	_sphere(ar, 0.006, Vector3(0, 0.15, 0.0), dot_mat)
 	_box(ar, Vector3(0.07, 0.07, 0.18), Vector3(0, -0.02, 0.22), body_mat)
 	_arm(ar, Vector3(0.0, -0.11, 0.14), accent_mat, dark_mat)
 	add_child(ar)

@@ -435,6 +435,14 @@ func _clear_hud() -> void:
 
 
 func _process(delta: float) -> void:
+	if delta > 0.15 and not headless:
+		# A frame this long is a freeze the player felt; name where we were so logs explain it.
+		var where := "menu"
+		if active_minigame != null:
+			where = "minigame:%s" % (active_minigame.manifest.id if active_minigame.manifest != null else "?")
+		elif board != null:
+			where = "board"
+		Log.info("perf", "Frame hitch %d ms (%s)" % [int(delta * 1000.0), where])
 	if args.has("open_pause") and active_minigame != null and _pause == null and not headless and _shot_timer > 1.5:
 		_open_pause()
 	if args.has("screenshot") and (active_minigame != null or board != null or args.has("screenshot_any")) and not _shot_done and (not args.has("screenshot_event") or _shot_armed):

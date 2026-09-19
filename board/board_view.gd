@@ -25,8 +25,12 @@ var _fork_focus: Array = []
 func setup(p_director: BoardDirector) -> void:
 	director = p_director
 	_hop = float(director.cfg.get("hop_seconds", 0.32))
+	var t0 := Time.get_ticks_usec()
 	_build_environment()
+	var t1 := Time.get_ticks_usec()
 	_build_tiles()
+	var t2 := Time.get_ticks_usec()
+	Log.info("perf", "Board view built: environment %d ms, tiles+markers %d ms" % [(t1 - t0) / 1000, (t2 - t1) / 1000])
 	director.state_changed.connect(_on_state)
 	director.events_received.connect(_on_events)
 	camera = Camera3D.new()
@@ -97,7 +101,7 @@ func highlight_space(sid: String) -> void:
 	var base: Color = _tone_for(director.graph.get_space(sid).type)
 	tile.material_override = CelMaterial.for_colour(base.lightened(0.25), shadow, 1.1)
 	tile.position.y += 0.12
-	Log.info("board", "Hover: space '%s' glows" % sid)
+	Log.debug("board", "Hover: space '%s' glows" % sid)
 
 
 func clear_highlight() -> void:
