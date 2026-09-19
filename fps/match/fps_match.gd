@@ -67,6 +67,7 @@ var _shot_sent: Dictionary = {}
 var _pending_shots: Array = []
 var _finished_sent: bool = false
 var _camera_rig: Node3D
+var _spectator: SpectatorRig
 
 @onready var players_root: Node3D = $Players
 @onready var map_root: Node3D = $Map
@@ -143,6 +144,52 @@ func _respawns() -> bool:
 ## Text the HUD puts in the centre for the local player instead of its own "DOWN"; "" for none.
 func centre_text() -> String:
 	return ""
+
+
+func warmup_seconds_left() -> float:
+	if not in_warmup():
+		return 0.0
+	return NetworkTime.seconds_between(NetworkTime.tick, round_start_tick)
+
+
+## Who an eliminated local player watches; "" when not spectating.
+func spectating_name() -> String:
+	return _spectator.target_name() if _spectator != null and is_instance_valid(_spectator) else ""
+
+
+func _next_living(current: Player, step: int) -> Player:
+	var living: Array = []
+	for id in _players.keys():
+		var pl: Player = _players[id]
+		if pl.is_alive() and not pl.is_local():
+			living.append(pl)
+	if living.is_empty():
+		return null
+	living.sort_custom(func(a, b): return a.peer_id < b.peer_id)
+	var i := living.find(current)
+	if i < 0:
+		return living[0]
+	return living[posmod(i + step, living.size())]
+
+
+## Eliminated in a one-life round: hand the view to a chase camera behind a living player.
+func _update_spectator() -> void:
+	if _respawns() or Game.headless or _camera_rig == null:
+		return
+	var local := get_local_player()
+	if local == null or local.is_alive():
+		return
+	if _spectator == null:
+		var first := _next_living(null, 1)
+		if first == null:
+			return
+		_spectator = SpectatorRig.new()
+		_spectator.name = "Spectator"
+		add_child(_spectator)
+		_spectator.setup(_next_living, first, _ctx.world_mask())
+		Log.info("arena", "Spectating %s" % first.display_name)
+	if Input.is_action_just_pressed("fire") and not Game.is_paused():
+		_spectator.cycle(1)
 
 
 func alive_count() -> int:
@@ -247,6 +294,7 @@ var _fx_test_timer: float = 0.0
 
 
 func _process(delta: float) -> void:
+	_update_spectator()
 	# --fx_test: keep spawning drawn bursts and tracers so a screenshot can catch them.
 	if not Game.args.has("fx_test") or Game.headless:
 		return

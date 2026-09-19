@@ -23,7 +23,8 @@ With no arguments the main menu opens: HOST LAN, HOST ONLINE (a friend code thro
 relay, default `tomfol.io:8890`, changeable in SETTINGS), JOIN (a friend code or address:port),
 LINE (conditioner profile for direct joins), SETTINGS (name, sensitivity, volumes), BOTS +/−,
 START MATCH (the board, a random minigame each round) or QUICK ARENA. FPS controls: WASD, Space
-jump, LMB fire, RMB scope, 1/2/Q weapons, R reload, Esc pauses (resume, settings, leave), F5
+jump, LMB fire, RMB scope, 1/2/Q weapons, R reload, LMB switches who you watch when you are
+out in LAST STAND, Esc pauses (resume, settings, leave), F5
 reloads `tuning/*.json` in debug builds. Board controls: click ROLL, a fork button, an item
 button and then a player row, or Space / A D / 1 2 / Enter. Sound is synthesised at startup;
 nothing is loaded from disk.

@@ -114,9 +114,11 @@ Cost: host tick loop 2.4–2.8 ms mean with three seats; client tick loop p95 4 
   `minigames/snipers/` (manifest `weapons: ["sniper"]`, 150 s, headshots score 2) was added
   without a change outside its folder. The registry finds it by folder scan (tested).
 - **LAST STAND** (`minigames/last_stand/`): one life, last one standing, `scoring: "survival"`
-  (rank by death tick, survivors tie first), ends early when one is left, "OUT · N LEFT" for the
-  eliminated. Needed two hooks in `FpsMatch` (`_respawns`, `centre_text`) and a dead-body guard;
-  nothing else outside its folder. The board's draw now honours `min_players`/`max_players`.
+  (rank by death tick, survivors tie first), ends early when one is left; the eliminated
+  spectate a living player from a chase camera (LMB cycles) under "OUT · N LEFT · WATCHING
+  <name>". Needed hooks in `FpsMatch` (`_respawns`, `_score_label`, `centre_text`) and a
+  dead-body guard; nothing else outside its folder. The board's draw now honours
+  `min_players`/`max_players`. Warmup shows a 3-2-1 under GET READY.
 - **Board rounds draw their minigame** (seeded, no immediate repeat; `--minigame=ID` pins it):
   intro card "NEXT UP: SNIPERS" on the board, "SNIPERS · GET READY" in the FPS HUD, and a
   reward card with the ranked coins when the board resumes; pacing reserves 2.4 s for each.
@@ -153,7 +155,8 @@ on a body that stayed down; clamped.
 
 New screenshots: `board_intro_card.png`, `board_reward_card.png`, `board_roll_button.png`,
 `snipers_intro.png`, `snipers_hip.png`, `results_board.png`, `last_stand_intro.png`,
-`last_stand_out.png` (eliminated, "OUT · 4 LEFT"), `results_last_stand.png`.
+`last_stand_out.png` (eliminated, "OUT · 4 LEFT"), `last_stand_spectate.png` (chase camera),
+`results_last_stand.png`.
 
 ### Bugs found and fixed today (all measured before and after)
 
@@ -232,8 +235,7 @@ on one machine with `tools/soak.sh`-style flags. Try, in this order:
    verdict into this file.
 2. Bandwidth: quantise position, pack weapon ints, so six seats fit the public relay cap.
 3. A third-person or objective minigame (the SDK's `camera` field is still read by nothing;
-   `scoring` now has kills and survival behind it). Eliminated players in LAST STAND should
-   spectate instead of staring at the floor.
+   `scoring` now has kills and survival behind it).
 4. Real map pass on the gray-box (`fps/match/graybox_layout.gd` is a table) and first proper
    viewmodels; a second board.
 5. Choose the display face (OFL candidates: Bowlby One, Rubik Mono One, Titan One, Chango,

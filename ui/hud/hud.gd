@@ -77,15 +77,21 @@ func _draw() -> void:
 	var scoped := _player.weapons.is_scoped(tick)
 	var progress := _player.weapons.ads_progress(tick)
 	var def := _player.weapons.current_def()
-	if def != null and def.is_sniper() and progress > 0.9:
-		_draw_scope(size, scoped)
+	var spectating := _arena != null and _arena.has_method("spectating_name") and str(_arena.spectating_name()) != ""
+	if spectating:
+		# Eliminated and watching someone else: only the round state stays on screen.
+		_draw_score(size)
+		_draw_feed()
 	else:
-		_draw_crosshair(size, progress)
-	_draw_hitmarker(size)
-	_draw_health(size)
-	_draw_score(size)
-	_draw_ammo(size, def)
-	_draw_feed()
+		if def != null and def.is_sniper() and progress > 0.9:
+			_draw_scope(size, scoped)
+		else:
+			_draw_crosshair(size, progress)
+		_draw_hitmarker(size)
+		_draw_health(size)
+		_draw_score(size)
+		_draw_ammo(size, def)
+		_draw_feed()
 	if _damage_flash > 0.0:
 		_draw_damage(size)
 	if _arena != null and _arena.has_method("in_warmup") and _arena.in_warmup():
@@ -93,11 +99,21 @@ func _draw() -> void:
 		if "manifest" in _arena and _arena.manifest != null:
 			name = "%s  ·  GET READY" % _arena.manifest.display_name
 		_draw_centre_text(size, name, 56, _score_col)
+		if _arena.has_method("warmup_seconds_left"):
+			var left := ceili(float(_arena.warmup_seconds_left()))
+			if left > 0:
+				var digit := "%d" % left
+				var dw := _font.get_string_size(digit, HORIZONTAL_ALIGNMENT_CENTER, -1, 120).x
+				_draw_outlined(Vector2((size.x - dw) * 0.5, size.y * 0.3 + 120.0), digit, 120, _score_col, 10.0, -0.22)
 	if _player.health <= 0:
 		var txt := "DOWN"
 		if _arena != null and _arena.has_method("centre_text") and str(_arena.centre_text()) != "":
 			txt = str(_arena.centre_text())
-		_draw_centre_text(size, txt, 64, _danger_col)
+		_draw_centre_text(size, txt, 64 if not spectating else 40, _danger_col)
+		if spectating:
+			var hint := "CLICK TO SWITCH"
+			var hw := _font.get_string_size(hint, HORIZONTAL_ALIGNMENT_CENTER, -1, 20).x
+			_draw_outlined(Vector2((size.x - hw) * 0.5, size.y * 0.3 + 34.0), hint, 20, _paper)
 
 
 func _draw_crosshair(size: Vector2, progress: float) -> void:

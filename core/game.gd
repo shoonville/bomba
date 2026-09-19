@@ -207,6 +207,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+func is_paused() -> bool:
+	return _pause != null and is_instance_valid(_pause)
+
+
 func _open_pause() -> void:
 	_pause = PauseMenu.new()
 	ui_layer.add_child(_pause)

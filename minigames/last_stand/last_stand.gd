@@ -17,6 +17,9 @@ func centre_text() -> String:
 	var lp := get_local_player()
 	if lp == null or lp.is_alive() or in_warmup():
 		return ""
+	var watching := spectating_name()
+	if watching != "":
+		return "OUT  ·  %d LEFT  ·  WATCHING %s" % [alive_count(), watching.to_upper()]
 	return "OUT  ·  %d LEFT" % alive_count()
 
 
