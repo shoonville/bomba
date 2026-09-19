@@ -21,7 +21,7 @@ Open the folder in Godot 4.7 and press play, or from a shell (`GODOT` defaults t
 
 With no arguments the main menu opens: HOST LAN, HOST ONLINE (a friend code through the noray
 relay, default `tomfol.io:8890`, changeable in SETTINGS), JOIN (a friend code or address:port),
-LINE (conditioner profile for direct joins), SETTINGS (name, sensitivity, volumes), BOTS +/−,
+LINE (conditioner profile for direct joins), SETTINGS (name, sensitivity, volumes, render scale), BOTS +/−,
 START MATCH (the board, a random minigame each round) or QUICK ARENA. As host, click a bot's
 card to set it EASY, NORMAL or HARD. FPS controls: WASD, Space
 jump, LMB fire, RMB scope, 1/2/Q weapons, R reload (the sniper loads one round at a time; the
@@ -52,6 +52,8 @@ Useful flags after `--`: `--autoplay` (a bot drives your seat), `--seed=N`, `--s
 `--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results` to start the timer on
 an event; `--give_item=bomb` and `--board_auto_roll` exercise the board UI from a fresh match),
 `--ads_progress=0..1` (pins the scope-in for a frame), `--board_overview` (whole board),
+`--board_cam=x,y,z:tx,ty,tz` (camera anywhere on the board), `--render_scale=N` (3D render
+scale; the SETTINGS slider is the player's version, default 1.5 supersampling),
 `--spectate` (fixed showcase camera,
 no local player), `--rounds=N` (host rematches N times), `--scripted` (seeded per-tick inputs for
 every seat this peer owns; the determinism harness uses it).

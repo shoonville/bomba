@@ -49,6 +49,10 @@ func _ready() -> void:
 		Audio.play("hitmarker", -4.0)
 	))
 	col.add_child(_slider("INTERFACE", 0.0, 1.0, Settings.volume_ui, 0.01, func(v: float): Settings.set_value("volume_ui", v)))
+	col.add_child(_slider("RENDER SCALE", 0.5, 2.0, Settings.render_scale, 0.25, func(v: float):
+		Settings.set_value("render_scale", v)
+		Game.apply_render_scale()
+	))
 
 	var noray_row := HBoxContainer.new()
 	noray_row.add_child(UiStyle.label("RELAY", 20))

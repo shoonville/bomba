@@ -309,7 +309,8 @@ past the cap not measured). Moon theme: the board on a floating slab of grey moo
 craters, boulders, posts under every tile, a rocket on a landing pad, a satellite dish, a
 buggy, a buried probe, a crew member and flag; asteroids, a ringed planet, a small moon and a
 UFO doing laps; pink sky kept. `board_turn.png`, `board_map.png`, `board_overview.png`,
-`arena_hip_sniper.png`.
+`arena_hip_sniper.png`, `board_planet.png`. RENDER SCALE is a setting (default 1.5) for weaker
+GPUs; `--render_scale`, `--board_cam` harness flags.
 
 ### Bugs found and fixed today (all measured before and after)
 

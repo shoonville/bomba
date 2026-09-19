@@ -42,6 +42,7 @@ func _ready() -> void:
 		NetfoxLogger.module_log_level.clear()
 	if args.has("seed"):
 		Rng.set_match_seed(int(args["seed"]))
+	apply_render_scale()
 	if args.has("soak"):
 		soak_seconds = float(args["soak"])
 	rounds_left = int(args.get("rounds", 1))
@@ -211,6 +212,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		else:
 			_close_pause()
 		get_viewport().set_input_as_handled()
+
+
+## The 3D render scale from settings (or --render_scale=N for the harness). Above 1 the frame
+## is supersampled, which is what keeps the ink lines clean; 1 or below for weak GPUs.
+func apply_render_scale() -> void:
+	if headless:
+		return
+	var scale := clampf(float(args.get("render_scale", Settings.render_scale)), 0.5, 2.0)
+	get_viewport().scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
+	get_viewport().scaling_3d_scale = scale
+	Log.info("perf", "Render scale %.2f" % scale)
 
 
 ## --ads_progress=0..1 pins the scope-in animation for screenshots (presentation only).
@@ -473,7 +485,7 @@ func _finish_soak() -> void:
 	_quitting = true
 	if not headless:
 		Log.info("perf", "FPS at soak end: %d (window %dx%d, render scale %.2f)" % [Engine.get_frames_per_second(),
-			get_viewport().size.x, get_viewport().size.y, float(ProjectSettings.get_setting("rendering/scaling_3d/scale", 1.0))])
+			get_viewport().size.x, get_viewport().size.y, get_viewport().scaling_3d_scale])
 	soak_seconds = 0.0
 	var recorder := get_node_or_null("/root/SoakRecorder")
 	if recorder != null and recorder.has_method("write_report"):

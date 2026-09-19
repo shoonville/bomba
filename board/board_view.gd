@@ -1219,6 +1219,16 @@ func _process(delta: float) -> void:
 		desired_pos = Vector3(0.0, 64.0, 46.0)
 		_cam_look = Vector3.ZERO
 		look = _cam_look
+	if Game.args.has("board_cam"):
+		# Harness: --board_cam=x,y,z:tx,ty,tz puts the camera anywhere, looking at a point.
+		var parts := str(Game.args["board_cam"]).split(":")
+		if parts.size() == 2:
+			var a := parts[0].split(",")
+			var b := parts[1].split(",")
+			if a.size() == 3 and b.size() == 3:
+				desired_pos = Vector3(float(a[0]), float(a[1]), float(a[2]))
+				_cam_look = Vector3(float(b[0]), float(b[1]), float(b[2]))
+				look = _cam_look
 	# Hold Tab (the scoreboard action) for the whole board; blends in and out over ~0.6 s.
 	var want_map := (Input.is_action_pressed("scoreboard") and not Game.is_paused()) or Game.args.has("board_map")
 	_map_blend = move_toward(_map_blend, 1.0 if want_map else 0.0, delta * 1.8)

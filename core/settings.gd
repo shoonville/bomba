@@ -16,6 +16,7 @@ var volume_sfx: float = 1.0
 var volume_ui: float = 0.9
 var noray_host: String = "tomfol.io:8890"
 var conditioner_profile: String = "lan"
+var render_scale: float = 1.5   # 3D render scale; above 1 supersamples (cleaner ink lines), 1 for weak GPUs
 
 
 func _ready() -> void:
@@ -45,6 +46,7 @@ func load_file() -> void:
 	volume_ui = float(d.get("volume_ui", volume_ui))
 	noray_host = str(d.get("noray_host", noray_host))
 	conditioner_profile = str(d.get("conditioner_profile", conditioner_profile))
+	render_scale = clampf(float(d.get("render_scale", render_scale)), 0.5, 2.0)
 	Log.info("settings", "Loaded %s" % PATH)
 
 
@@ -54,6 +56,7 @@ func to_dict() -> Dictionary:
 		"ads_sensitivity_multiplier": ads_sensitivity_multiplier, "invert_y": invert_y,
 		"volume_master": volume_master, "volume_music": volume_music, "volume_sfx": volume_sfx,
 		"volume_ui": volume_ui, "noray_host": noray_host, "conditioner_profile": conditioner_profile,
+		"render_scale": render_scale,
 	}
 
 
