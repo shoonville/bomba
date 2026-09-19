@@ -138,6 +138,11 @@ Cost: host tick loop 2.4–2.8 ms mean with three seats; client tick loop p95 4 
   headless match on it with 4 seats (SNIPERS then LAST STAND, one Bomba claimed), 0 errors.
 - **Harness**: `--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results|shield`,
   `--give_item=ID`, `--give_bots_item=ID`, `--board_auto_roll`, `--minigame=ID`.
+- **Netcode soak after the refactor** (`tools/soak.sh bad 45 1 1`, 3 seats): client RTT 128.0 ms
+  mean, misprediction 0.5 mm mean (0.217 m including the ±12 ticks around 3 deaths), 19 of 25
+  predicted hits confirmed (0.76), death→client lag 5 / 1 / 13 ticks, no outages, host upload
+  40.4 KB/s. Session-2 numbers were 126.6 ms, 1.7 mm, 11 of 14, ≤13 ticks, 37 KB/s: same
+  behaviour.
 - **Network regression** after the refactor: host + client through `bad` on FIGURE EIGHT, 2
   rounds (SNIPERS then ARENA): identical minigame rankings and final standings on both peers
   (BOT TANGERINE 1 Bomba 14 coins, client 20, bot 15, host 11), 0 errors either side. Six

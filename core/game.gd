@@ -306,6 +306,13 @@ func _on_board_finished(final_state: BoardState) -> void:
 			results.show_result(result)
 		if wipe != null:
 			wipe.slam()
+	rounds_left -= 1
+	if rounds_left > 0 and Session.is_authority():
+		# Harness: --rounds=N plays N board matches back to back (the lobby → board → lobby loop).
+		Log.info("game", "Board rematch in 1 s (%d left)" % rounds_left)
+		await get_tree().create_timer(1.0).timeout
+		Session.start_board(final_state.board_id)
+		return
 	if soak_seconds > 0.0:
 		_finish_soak()
 
