@@ -310,7 +310,8 @@ func _ensure_pawn(p: BoardState.PlayerState) -> BoardPawn:
 	var pawn := BoardPawn.new()
 	pawn.name = "Pawn_%d" % p.peer_id
 	add_child(pawn)
-	pawn.setup(p.peer_id, Palette.player_colour(p.colour_index), p.display_name)
+	var seat := director.state.players.find(p) if director.state != null else 0
+	pawn.setup(p.peer_id, Palette.player_colour(p.colour_index), p.display_name, 0.42 * maxi(seat, 0))
 	pawns[p.peer_id] = pawn
 	pawn.snap_to(_slot_position(p.space, p.peer_id))
 	return pawn

@@ -310,8 +310,8 @@ func _draw() -> void:
 		var s := 120 + int(24.0 * clampf(_dice_t - 1.3, 0.0, 0.3) / 0.3)
 		var txt := "%d" % _dice_value if _dice_bonus <= 0 else "%d +%d" % [_dice_value - _dice_bonus, _dice_bonus]
 		var tw := _font.get_string_size(txt, HORIZONTAL_ALIGNMENT_CENTER, -1, s).x
-		# High enough to clear the centred pawn's name tag now that the camera is close.
-		_text(Vector2((size.x - tw) * 0.5, size.y * 0.24), txt, s, Color(Palette.hud_colour("score"), clampf(_dice_t * 2.0, 0.0, 1.0)), 10.0, -0.22)
+		# Over the die, which lands to the camera's right of the pawn, clear of the name tags.
+		_text(Vector2(size.x * 0.61 - tw * 0.5, size.y * 0.36), txt, s, Color(Palette.hud_colour("score"), clampf(_dice_t * 2.0, 0.0, 1.0)), 10.0, -0.22)
 	if _intro_t > 0.0:
 		var a := clampf(_intro_t * 1.5, 0.0, 1.0)
 		var tw := _font.get_string_size(_intro, HORIZONTAL_ALIGNMENT_CENTER, -1, 54).x

@@ -23,7 +23,8 @@ func _process(delta: float) -> void:
 	_figure.animate(_speed, absf(_vspeed) < 1.0, 0.0, true, delta)
 
 
-func setup(p_peer_id: int, p_colour: Color, p_name: String) -> void:
+## `label_lift` staggers the name tag by seat so pawns sharing a tile do not overprint.
+func setup(p_peer_id: int, p_colour: Color, p_name: String, label_lift: float = 0.0) -> void:
 	peer_id = p_peer_id
 	colour = Palette.under_ceiling(p_colour)
 	var shadow := Palette.map_colour("board", "shadow_tint")
@@ -46,14 +47,14 @@ func setup(p_peer_id: int, p_colour: Color, p_name: String) -> void:
 	add_child(ring)
 	var label := Label3D.new()
 	label.text = p_name.to_upper()
-	label.font_size = 48
+	label.font_size = 40
 	label.pixel_size = 0.006
 	label.outline_size = 14
 	label.modulate = Palette.hud_colour("paper")
 	label.outline_modulate = ink
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.alpha_cut = Label3D.ALPHA_CUT_DISCARD
-	label.position.y = 2.25
+	label.position.y = 2.25 + label_lift
 	label.no_depth_test = false   # depth-test-disabled materials go to the transparent pass, under the post quad
 	add_child(label)
 
