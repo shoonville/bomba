@@ -5,6 +5,7 @@ extends Node
 signal registry_changed()
 signal minigame_start_requested(id: String, seed_value: int, players: Array, config: Dictionary)
 signal board_start_requested(board_id: String, seed_value: int, players: Array, config: Dictionary)
+signal rejected(reason: String)
 signal result_received(result: MinigameResult)
 
 var players: Dictionary = {}
@@ -179,12 +180,25 @@ func _rpc_register(name: String) -> void:
 	if not is_authority():
 		return
 	var id := multiplayer.get_remote_sender_id()
+	if Game.active_minigame != null or Game.board != null:
+		Log.warn("session", "Peer %d rejected: match in progress" % id)
+		_rpc_rejected.rpc_id(id, "MATCH IN PROGRESS")
+		return
 	if players.size() >= config.max_players:
 		Log.warn("session", "Peer %d rejected: lobby full" % id)
+		_rpc_rejected.rpc_id(id, "LOBBY FULL")
 		return
 	_add(PlayerSlot.make_human(id, name, _free_colour()))
 	Log.info("session", "Peer %d registered as '%s'" % [id, name])
 	_broadcast_registry()
+
+
+## Host → one joiner: no seat for you (a match is running, or the lobby is full). The joiner
+## leaves; joining mid-match is not supported yet (a late seat needs a mid-match spawn).
+@rpc("authority", "call_remote", "reliable")
+func _rpc_rejected(reason: String) -> void:
+	Log.warn("session", "Join rejected: %s" % reason)
+	rejected.emit(reason)
 
 
 @rpc("authority", "call_remote", "reliable")

@@ -160,6 +160,11 @@ func _boot_join() -> void:
 		_quit_if_headless(1)
 		return
 	Session.join_session(Session.local_name)
+	Session.rejected.connect(func(reason: String):
+		Log.error("game", "No seat: %s" % reason)
+		Net.leave()
+		_quit_if_headless(2)
+	)
 	Net.join_failed.connect(func(reason: String):
 		Log.error("game", "Join failed: %s" % reason)
 		_quit_if_headless(1)

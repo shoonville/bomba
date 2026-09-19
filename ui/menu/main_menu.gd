@@ -34,6 +34,10 @@ func _ready() -> void:
 	Net.hosted.connect(func(_p): _refresh())
 	Net.joined.connect(_refresh)
 	Net.join_failed.connect(func(r: String): _set_status("JOIN FAILED: " + r.to_upper()))
+	Session.rejected.connect(func(r: String):
+		_on_leave()
+		_set_status("NO SEAT: " + r.to_upper())
+	)
 	Net.left.connect(_refresh)
 	Net.progress.connect(func(t: String): _set_status(t.to_upper()))
 	Audio.music("music_menu")

@@ -220,8 +220,8 @@ shadows, no bloom. Not yet: a display face, a sky beyond flat colour, any real m
 - noray NAT punchthrough itself: only the relay fallback could be exercised from one machine.
 - Steam sockets: interface only.
 - Windows export: no preset; nothing platform-specific was written.
-- Late join / reconnect: a client joining after the start gets no player (the six-seat run
-  showed it before `--expect` was fixed).
+- Late join / reconnect: a client joining after the start is now refused with a reason (menu:
+  "NO SEAT: MATCH IN PROGRESS"; headless exit code 2), but cannot be seated mid-match.
 - Player-vs-player collision: off by decision.
 - The `_rpc_shot_fx` tracers for other players' shots are unreliable RPCs; not visually checked.
 
