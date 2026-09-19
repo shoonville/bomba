@@ -272,6 +272,13 @@ Board icons went flat onto the tile faces for one build and came straight back a
 floating, spinning markers on Sean's word ("it looks ugly on the spot"). Die numbers are bold
 (96 px with a 16 px same-colour outline). `board_turn.png`, `board_dice_landed.png`.
 
+Sean's notes on the sights: the sniper scope's far end is black like the scope (the eyepiece
+keeps its glass); the AR keeps its old boxy sight with a red dot floating above it, aligned to
+the aim point at ADS, and the HUD crosshair hides there (`ar_ads.png`, `arena_hip_ar.png`,
+`arena_hip_sniper.png`). His log's 2.3 s / 1.6 s stalls at board and arena start did not
+reproduce (build times 4–31 ms; cold shader cache: one 208 ms hitch at arena start); frames
+over 150 ms wall-clock are now logged with the phase so the next occurrence names itself.
+
 ### Bugs found and fixed today (all measured before and after)
 
 1. Client's view of remote players lagged whole tick loops → 25 % hit confirmation. netfox

@@ -26,6 +26,7 @@ var _quitting: bool = false
 var _shot_timer: float = 0.0
 var _shot_done: bool = false
 var _shot_armed: bool = false
+var _last_frame_ms: int = 0
 
 
 func _ready() -> void:
@@ -435,14 +436,19 @@ func _clear_hud() -> void:
 
 
 func _process(delta: float) -> void:
-	if delta > 0.15 and not headless:
+	# Wall clock between frames: Godot caps the delta it hands _process at a few physics steps
+	# (max_physics_steps_per_frame), so a 2 s freeze arrives here as ~0.13 s and would hide.
+	var now := Time.get_ticks_msec()
+	var gap := now - _last_frame_ms
+	_last_frame_ms = now
+	if gap > 150 and not headless and _last_frame_ms > 0:
 		# A frame this long is a freeze the player felt; name where we were so logs explain it.
 		var where := "menu"
 		if active_minigame != null:
 			where = "minigame:%s" % (active_minigame.manifest.id if active_minigame.manifest != null else "?")
 		elif board != null:
 			where = "board"
-		Log.info("perf", "Frame hitch %d ms (%s)" % [int(delta * 1000.0), where])
+		Log.info("perf", "Frame hitch %d ms (%s)" % [gap, where])
 	if args.has("open_pause") and active_minigame != null and _pause == null and not headless and _shot_timer > 1.5:
 		_open_pause()
 	if args.has("screenshot") and (active_minigame != null or board != null or args.has("screenshot_any")) and not _shot_done and (not args.has("screenshot_event") or _shot_armed):
