@@ -541,8 +541,11 @@ func _take_screenshot(path: String) -> void:
 		get_tree().quit(0)
 
 
+## Harness runs (headless, or windowed with --screenshot / --soak) quit on a boot failure. A
+## windowed harness run that could not host used to sit at the menu forever, holding the shell
+## that launched it (a --screenshot run stuck behind a port held by another instance).
 func _quit_if_headless(code: int) -> void:
-	if headless:
+	if headless or args.has("screenshot") or args.has("soak") or args.has("soak_ticks"):
 		Log.flush()
 		get_tree().quit(code)
 
