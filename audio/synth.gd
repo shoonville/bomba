@@ -308,6 +308,75 @@ static func build(name: String) -> PackedFloat32Array:
 	return mul(noise(n, 1), env_exp(n, 0.01))
 
 
+## The match loop: eight bars at 128 BPM in A minor for the minigames. Four-on-the-floor kick
+## with a pushed extra, clap-layered snare, sixteenth hats with opens, an octave-jumping saw
+## bass over a sub, off-beat chord stabs walking Am–Dm–F–G, and a triangle lead riff with
+## vibrato every other pair of bars. Same seamless-loop contract as the menu loop.
+static func build_music_match() -> PackedFloat32Array:
+	var bpm := 128.0
+	var beat := 60.0 / bpm
+	var bars := 8
+	var n := samples(beat * 4.0 * bars)
+	var out := silence(n)
+	var step := beat / 4.0
+	var kick_s := samples(0.22)
+	var kick := mul(tone(kick_s, 160.0, 46.0, "sine"), env_exp(kick_s, 0.08))
+	var snare_s := samples(0.18)
+	var snare := mix(mul(lowpass(noise(snare_s, 301), 3600.0), env_exp(snare_s, 0.06)), mul(tone(snare_s, 190.0, 150.0, "tri"), env_exp(snare_s, 0.04)), 0.5)
+	snare = mix(snare, mul(lowpass(noise(snare_s, 302), 2600.0), env_exp(snare_s, 0.03)), 0.6, samples(0.011))
+	var hat_s := samples(0.05)
+	var hat := mul(highpass(noise(hat_s, 303), 6500.0), env_exp(hat_s, 0.012))
+	var open_s := samples(0.16)
+	var open_hat := mul(highpass(noise(open_s, 304), 5500.0), env_exp(open_s, 0.06))
+	# bass: [step, hz, length in steps]; octave jumps on the marked steps every other bar
+	var bass := [[0, 110.0, 1.5], [2, 110.0, 1.0], [4, 110.0, 1.5], [6, 130.81, 1.5], [8, 110.0, 1.5], [10, 146.83, 1.0], [12, 110.0, 1.5], [14, 98.0, 1.5]]
+	var chords := [
+		[220.0, 261.63, 329.63], [220.0, 261.63, 329.63], [293.66, 349.23, 440.0], [293.66, 349.23, 440.0],
+		[349.23, 440.0, 523.25], [392.0, 493.88, 587.33], [220.0, 261.63, 329.63], [329.63, 415.3, 493.88],
+	]
+	var lead := [[0, 329.63, 2.5], [3, 392.0, 2.5], [6, 440.0, 1.5], [8, 523.25, 2.5], [11, 493.88, 1.5], [13, 440.0, 2.5]]
+	for bar in bars:
+		for st in 16:
+			var at := samples((bar * 16 + st) * step)
+			if st % 4 == 0 or (bar % 2 == 1 and st == 10):
+				out = mix(out, kick, 0.95, at)
+			if st == 4 or st == 12 or (bar == 7 and st == 14):
+				out = mix(out, snare, 0.6, at)
+			if st == 2 or st == 10:
+				out = mix(out, open_hat, 0.16, at)
+			else:
+				out = mix(out, hat, 0.2 if st % 4 == 0 else 0.12, at)
+		for b in bass:
+			var f: float = b[1]
+			if bar % 2 == 1 and (b[0] == 6 or b[0] == 14):
+				f *= 2.0
+			if bar >= 4 and bar < 6:
+				f *= 1.3348  # up a fourth under the F and G bars
+			var m := samples(step * float(b[2]) * 0.92)
+			var v := mul(lowpass(tone(m, f, f * 0.996, "saw"), 700.0), env_adsr(m, 0.003, 0.05, 0.75, 0.03))
+			v = mix(v, mul(tone(m, f * 0.5, f * 0.5, "sine"), env_adsr(m, 0.003, 0.05, 0.8, 0.03)), 0.6)
+			out = mix(out, v, 0.48, samples((bar * 16 + b[0]) * step))
+		for st in [3, 11]:
+			var m := samples(step * 1.4)
+			var stab := silence(m)
+			for f in chords[bar]:
+				stab = mix(stab, tone(m, f * 1.004, f * 0.996, "saw"), 0.3)
+				stab = mix(stab, tone(m, f * 0.996, f * 1.004, "square"), 0.2)
+			stab = mul(lowpass(stab, 2200.0), env_adsr(m, 0.004, 0.07, 0.35, 0.05))
+			out = mix(out, stab, 0.3, samples((bar * 16 + st) * step))
+		if bar % 4 == 2 or bar % 4 == 3:
+			for l in lead:
+				var m := samples(step * float(l[2]))
+				var f: float = l[1] * (1.0 if bar % 4 == 2 else 1.1225)
+				var v := mul(lowpass(tone(m, f, f * 1.006, "tri"), 3200.0), env_adsr(m, 0.01, 0.08, 0.6, 0.06))
+				out = mix(out, v, 0.28, samples((bar * 16 + l[0]) * step))
+	if out.size() > n:
+		for i in range(n, out.size()):
+			out[i - n] += out[i]
+		out.resize(n)
+	return softclip(out, 1.5)
+
+
 ## The menu loop: four bars of funk at 105 BPM in A minor. Kick, snare, hats, a low-passed saw
 ## bass and detuned chord stabs on the off-beats. Returns float samples for a seamless loop.
 static func build_music_menu() -> PackedFloat32Array:

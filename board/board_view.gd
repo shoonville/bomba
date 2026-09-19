@@ -9,6 +9,8 @@ var tiles: Dictionary = {}
 var pawns: Dictionary = {}
 var goal_ring: MeshInstance3D
 var camera: Camera3D
+var markers: Array = []
+var _marker_t: float = 0.0
 var _cam_target: Vector3 = Vector3.ZERO
 var _cam_look: Vector3 = Vector3.ZERO
 var _queue: Array = []
@@ -73,6 +75,112 @@ func _build_environment() -> void:
 	add_child(sun)
 
 
+## A marker over every special space so the board reads without a legend: a spinning coin,
+## a crate for items, a spiked ball for LOSE, a "?" sign for events, a flag for the start.
+func _build_marker(space: BoardGraph.Space, shadow: Color) -> void:
+	var ink := Palette.map_colour("board", "line")
+	var ink_mat := CelMaterial.for_colour(Color.from_hsv(ink.h, 0.45, 0.24), shadow)
+	var root := Node3D.new()
+	root.position = space.position + Vector3(0, 0.55, 0)
+	match space.type:
+		"coin":
+			var coin := MeshInstance3D.new()
+			var cm := CylinderMesh.new()
+			cm.top_radius = 0.28
+			cm.bottom_radius = 0.28
+			cm.height = 0.08
+			cm.radial_segments = 16
+			coin.mesh = cm
+			coin.rotation.x = PI * 0.5
+			coin.material_override = CelMaterial.for_colour(_tone_for("coin"), shadow, 0.35)
+			root.add_child(coin)
+			var rim := MeshInstance3D.new()
+			var rm := TorusMesh.new()
+			rm.inner_radius = 0.26
+			rm.outer_radius = 0.31
+			rm.rings = 16
+			rm.ring_segments = 6
+			rim.mesh = rm
+			rim.rotation.x = PI * 0.5
+			rim.material_override = ink_mat
+			root.add_child(rim)
+		"item":
+			var crate := MeshInstance3D.new()
+			var bm := BoxMesh.new()
+			bm.size = Vector3(0.42, 0.42, 0.42)
+			crate.mesh = bm
+			crate.material_override = CelMaterial.for_colour(_tone_for("item"), shadow, 0.2)
+			root.add_child(crate)
+			for axis in [Vector3(1, 0, 0), Vector3(0, 0, 1)]:
+				var strap := MeshInstance3D.new()
+				var sb := BoxMesh.new()
+				sb.size = Vector3(0.46, 0.46, 0.46) - axis * 0.36
+				strap.mesh = sb
+				strap.material_override = ink_mat
+				root.add_child(strap)
+		"lose":
+			var ball := MeshInstance3D.new()
+			var sm := SphereMesh.new()
+			sm.radius = 0.24
+			sm.height = 0.48
+			ball.mesh = sm
+			ball.material_override = CelMaterial.for_colour(_tone_for("lose"), shadow, 0.2)
+			root.add_child(ball)
+			for k in 6:
+				var spike := MeshInstance3D.new()
+				var cm := CylinderMesh.new()
+				cm.top_radius = 0.0
+				cm.bottom_radius = 0.07
+				cm.height = 0.22
+				cm.radial_segments = 6
+				spike.mesh = cm
+				var dir := [Vector3.UP, Vector3.DOWN, Vector3.LEFT, Vector3.RIGHT, Vector3.FORWARD, Vector3.BACK][k] as Vector3
+				spike.position = dir * 0.3
+				if dir.is_equal_approx(Vector3.UP):
+					pass
+				elif dir.is_equal_approx(Vector3.DOWN):
+					spike.rotation.x = PI
+				else:
+					spike.basis = Basis(Quaternion(Vector3.UP, dir))
+				spike.material_override = ink_mat
+				root.add_child(spike)
+		"event":
+			var sign := Label3D.new()
+			sign.text = "?"
+			sign.font_size = 96
+			sign.pixel_size = 0.008
+			sign.outline_size = 22
+			sign.modulate = Palette.hud_colour("paper")
+			sign.outline_modulate = ink
+			sign.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			sign.position.y = 0.2
+			root.add_child(sign)
+		"start":
+			var pole := MeshInstance3D.new()
+			var pm := CylinderMesh.new()
+			pm.top_radius = 0.04
+			pm.bottom_radius = 0.04
+			pm.height = 1.3
+			pole.mesh = pm
+			pole.position = Vector3(0.7, 0.1, -0.7)
+			pole.material_override = ink_mat
+			root.add_child(pole)
+			var flag := MeshInstance3D.new()
+			var fm := PrismMesh.new()
+			fm.size = Vector3(0.5, 0.34, 0.04)
+			flag.mesh = fm
+			flag.position = Vector3(0.7 + 0.27, 0.58, -0.7)
+			flag.rotation.z = -PI * 0.5
+			flag.material_override = CelMaterial.for_colour(Palette.map_colour("board", "accent"), shadow, 0.3)
+			root.add_child(flag)
+		_:
+			root.queue_free()
+			return
+	add_child(root)
+	root.set_meta("base_y", root.position.y)
+	markers.append(root)
+
+
 func _tone_for(type: String) -> Color:
 	match type:
 		"coin": return Palette.player_colour(3)
@@ -126,6 +234,8 @@ func _build_tiles() -> void:
 			plank.global_position = mid
 			if (b - a).length() > 0.01:
 				plank.look_at(b, Vector3.UP)
+	for sid in g.ids():
+		_build_marker(g.get_space(sid), shadow)
 	goal_ring = MeshInstance3D.new()
 	var tm := TorusMesh.new()
 	tm.inner_radius = 1.2
@@ -342,3 +452,9 @@ func _process(delta: float) -> void:
 	camera.look_at(_cam_target + Vector3(0, 0.8, 0), Vector3.UP)
 	if goal_ring != null:
 		goal_ring.rotation.y += delta * 0.8
+	_marker_t += delta
+	for i in markers.size():
+		var n := markers[i] as Node3D
+		if n != null and is_instance_valid(n):
+			n.rotation.y = _marker_t * 1.1 + float(i)
+			n.position.y = float(n.get_meta("base_y", n.position.y)) + sin(_marker_t * 2.2 + float(i)) * 0.06

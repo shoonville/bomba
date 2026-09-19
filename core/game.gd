@@ -361,7 +361,7 @@ func _on_minigame_start(id: String, seed_value: int, players_data: Array, config
 	active_minigame.finished.connect(_on_minigame_finished.bind(id))
 	active_minigame.setup(players, seed_value, config)
 	Events.minigame_started.emit(id)
-	Audio.music("")
+	Audio.music("music_match")
 	if wipe != null:
 		wipe.slam()
 	_clear_hud()

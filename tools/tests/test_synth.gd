@@ -51,3 +51,14 @@ func test_filters_and_envelopes() -> void:
 	assert_lt(env[n - 1], 0.01)
 	var adsr := SoundSynth.env_adsr(n, 0.01, 0.02, 0.5, 0.02)
 	assert_near(adsr[n - 1], 0.0, 0.02)
+
+
+func test_match_music_loop_length_and_seam() -> void:
+	var buf := SoundSynth.build_music_match()
+	var expected := SoundSynth.samples(60.0 / 128.0 * 4.0 * 8)
+	assert_eq(buf.size(), expected, "eight bars at 128 BPM")
+	assert_true(SoundSynth.peak(buf) <= 1.0)
+	# loop seam: the last and first samples should not jump more than a drum transient would
+	assert_true(absf(buf[buf.size() - 1] - buf[0]) < 0.6, "seam %.3f → %.3f" % [buf[buf.size() - 1], buf[0]])
+	var b2 := SoundSynth.build_music_match()
+	assert_eq(b2, buf, "deterministic")

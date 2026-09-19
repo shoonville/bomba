@@ -157,6 +157,8 @@ func _synth_music(name: String) -> void:
 	match name:
 		"music_menu":
 			buf = SoundSynth.build_music_menu()
+		"music_match":
+			buf = SoundSynth.build_music_match()
 		_:
 			buf = SoundSynth.build_music_menu()
 	var wav := SoundSynth.to_wav(buf, true, 0.8)

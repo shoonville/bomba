@@ -10,9 +10,11 @@ var models: Array[Node3D] = []
 # the upper-left at ~20°, arm from the bottom-right corner.
 # Per weapon: the sniper keeps a small yaw so its length still reads (STYLE.md §6), the AR sits
 # more across the frame like the Roboquest guns.
-var hip_positions: Array[Vector3] = [Vector3(0.20, -0.18, -0.27), Vector3(0.25, -0.20, -0.38)]
+# Sniper: held low and across, seen from the rear quarter so the scope's length reads and the
+# barrel runs toward the crosshair (Sean: lower, whole scope visible).
+var hip_positions: Array[Vector3] = [Vector3(0.30, -0.25, -0.50), Vector3(0.25, -0.20, -0.38)]
 var hip_rotations: Array[Vector3] = [
-	Vector3(deg_to_rad(5.0), deg_to_rad(-20.0), deg_to_rad(-8.0)),
+	Vector3(deg_to_rad(-4.0), deg_to_rad(-33.0), deg_to_rad(-12.0)),
 	Vector3(deg_to_rad(4.0), deg_to_rad(-19.0), deg_to_rad(-7.0)),
 ]
 # ADS: the sniper's scope tube sits 0.115 above the model origin, so the model goes to
@@ -37,6 +39,7 @@ func setup(p: Player) -> void:
 	var dark_mat := CelMaterial.for_colour(Color.from_hsv(ink.h, 0.35, 0.28), shadow, 0.0, true)
 	var accent_mat := CelMaterial.for_colour(colour, shadow, 0.0, true)
 	var glow_mat := CelMaterial.for_colour(Palette.hud_colour("meter"), shadow, 1.2, true)
+	var glass_mat := CelMaterial.for_colour(Color.from_hsv(ink.h, 0.5, 0.34), shadow, 0.15, true)
 	# Sniper: long and thin. Barrel, receiver, scope, stock, bolt handle.
 	var sniper := Node3D.new()
 	sniper.name = "Sniper"
@@ -62,7 +65,7 @@ func setup(p: Player) -> void:
 	_cyl(sniper, 0.032, 0.028, Vector3(0, 0.115, -0.22), accent_mat)
 	_cyl(sniper, 0.032, 0.028, Vector3(0, 0.115, -0.02), accent_mat)
 	_cyl(sniper, 0.031, 0.012, Vector3(0, 0.115, -0.362), glow_mat)
-	_cyl(sniper, 0.026, 0.012, Vector3(0, 0.115, 0.107), glow_mat)   # rear lens: what you look into
+	_cyl(sniper, 0.024, 0.012, Vector3(0, 0.115, 0.107), glass_mat)  # rear lens: what you look into
 	_cyl(sniper, 0.034, 0.02, Vector3(0, 0.115, 0.095), accent_mat)  # eyepiece ring
 	var bolt := MeshInstance3D.new()
 	var bolt_mesh := CylinderMesh.new()
