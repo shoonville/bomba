@@ -1,56 +1,27 @@
 class_name PlayerVisual
 extends Node3D
-## What other players see: a capsule body in the player's identity colour, a dark head, a visor
-## strip for facing. Remote players are placed by the SnapshotBuffer (100 ms behind, NETPLAN §7);
+## What other players see: the Figure (a chunky humanoid) in the player's identity colour,
+## walking, jumping, aiming its gun and tipping over when dead. Remote players are placed by the SnapshotBuffer (100 ms behind, NETPLAN §7);
 ## players simulated locally follow their body node.
 
 var player: Player
 var cfg: MovementConfig
 var head_node: Node3D
+var figure: Figure
 var _remote_mode: bool = false
+var _last_pos: Vector3 = Vector3.ZERO
+var _speed: float = 0.0
+var _vspeed: float = 0.0
 
 
 func setup(p: Player, p_cfg: MovementConfig) -> void:
 	player = p
 	cfg = p_cfg
-	var colour := Palette.under_ceiling(player.colour)
-	var shadow := Palette.map_colour("arena", "shadow_tint")
-	var ink := Palette.map_colour("arena", "line")
-	var body_mat := CelMaterial.for_colour(colour, shadow)
-	var dark_mat := CelMaterial.for_colour(Color.from_hsv(ink.h, 0.45, 0.24), shadow)
-	var visor_mat := CelMaterial.for_colour(Palette.hud_colour("meter"), shadow, 0.9)
-	var body := MeshInstance3D.new()
-	var cap := CapsuleMesh.new()
-	cap.radius = cfg.body_capsule_radius
-	cap.height = (cfg.body_capsule_top - cfg.body_capsule_bottom) + 2.0 * cfg.body_capsule_radius
-	body.mesh = cap
-	body.position.y = (cfg.body_capsule_top + cfg.body_capsule_bottom) * 0.5
-	body.material_override = body_mat
-	add_child(body)
-	head_node = Node3D.new()
-	head_node.position.y = cfg.head_center_height
-	add_child(head_node)
-	var head := MeshInstance3D.new()
-	var sph := SphereMesh.new()
-	sph.radius = cfg.head_radius
-	sph.height = cfg.head_radius * 2.0
-	head.mesh = sph
-	head.material_override = dark_mat
-	head_node.add_child(head)
-	var visor := MeshInstance3D.new()
-	var vb := BoxMesh.new()
-	vb.size = Vector3(0.2, 0.05, 0.06)
-	visor.mesh = vb
-	visor.position = Vector3(0, 0.02, -cfg.head_radius + 0.01)
-	visor.material_override = visor_mat
-	head_node.add_child(visor)
-	var legs := MeshInstance3D.new()
-	var lb := BoxMesh.new()
-	lb.size = Vector3(0.36, cfg.body_capsule_bottom, 0.26)
-	legs.mesh = lb
-	legs.position.y = cfg.body_capsule_bottom * 0.5
-	legs.material_override = dark_mat
-	add_child(legs)
+	figure = Figure.new()
+	figure.name = "Figure"
+	add_child(figure)
+	figure.build(player.colour, "arena", cfg.head_center_height, true)
+	head_node = figure.head
 
 
 func _process(delta: float) -> void:
@@ -60,6 +31,8 @@ func _process(delta: float) -> void:
 	if remote != _remote_mode:
 		_remote_mode = remote
 		top_level = remote
+	var pitch := 0.0
+	var on_floor := true
 	if remote:
 		var sb := player.snapshot_buffer
 		sb.advance(delta * NetworkTime.tickrate)
@@ -67,6 +40,18 @@ func _process(delta: float) -> void:
 		if s.valid:
 			global_position = s.origin
 			global_rotation = Vector3(0.0, s.yaw, 0.0)
-			head_node.rotation.x = s.pitch
+			pitch = s.pitch
+		# Speed from the played-back positions (smoothed): the walk cycle for remote players.
+		if delta > 0.0:
+			var d := global_position - _last_pos
+			var horizontal := Vector2(d.x, d.z).length() / delta
+			_speed = lerpf(_speed, minf(horizontal, 12.0), 0.3)
+			_vspeed = lerpf(_vspeed, d.y / delta, 0.3)
+		on_floor = absf(_vspeed) < 1.2
+		_last_pos = global_position
 	else:
-		head_node.rotation.x = player.head_pitch
+		pitch = player.head_pitch
+		_speed = Vector2(player.velocity.x, player.velocity.z).length()
+		on_floor = player.is_on_floor()
+	if figure != null:
+		figure.animate(_speed, on_floor, pitch, player.health > 0, delta)

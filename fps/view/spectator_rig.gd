@@ -22,6 +22,7 @@ func setup(picker: Callable, first: Player, p_world_mask: int = 1) -> void:
 	camera.fov = 58.0
 	camera.near = 0.05
 	camera.far = 400.0
+	camera.cull_mask = 0xFFFFF & ~2   # not the viewmodel layer: the dead player's rifle stays with the body
 	add_child(camera)
 	post = PostStack.new()
 	post.name = "Post"

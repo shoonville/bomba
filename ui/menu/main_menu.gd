@@ -271,6 +271,18 @@ func _refresh() -> void:
 		var card := PlayerCard.new()
 		_lobby.add_child(card)
 		card.setup(slot.display_name, Palette.player_colour(slot.colour_index), Palette.player_name(slot.colour_index), tags)
-	_bots_label.text = "%d BOTS" % bots
+		if slot.is_bot and host:
+			# Click a bot's card to cycle its difficulty.
+			card.mouse_filter = Control.MOUSE_FILTER_STOP
+			var bot_id := slot.peer_id
+			var current := slot.bot_difficulty
+			card.gui_input.connect(func(ev: InputEvent):
+				if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+					var order := ["easy", "normal", "hard"]
+					var next: String = order[(order.find(current) + 1) % order.size()]
+					Session.set_bot_difficulty(bot_id, next)
+					Events.ui_sound.emit("ui_click")
+			)
+	_bots_label.text = "%d BOTS" % bots + ("   ·   CLICK A BOT TO SET EASY / NORMAL / HARD" if bots > 0 and host else "")
 	if online and not host and Net.is_online() and _status.text == "":
 		_set_status("CONNECTED. WAITING FOR THE HOST.")

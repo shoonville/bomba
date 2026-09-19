@@ -236,6 +236,13 @@ made heavy (peak 79 Hz), the sniper painted cream, the AR shot made crisp (centr
 scoring and the HUD now read the kill log, and a warning logs any state/log disagreement.
 Not reproduced with bot or scripted seats.
 
+Seventh round: the sniper is cream with a black scope and translucent, reflective glass on
+both lenses; characters are humanoid now (a procedural `Figure`: cap, hoodie, pack, gloves,
+big sneakers; walks, tucks, aims, tips over when dead) in the arena and on the board; the host
+can click a bot's lobby card to set EASY / NORMAL / HARD. Frames: `arena_hip_sniper.png`,
+`sniper_ads_45.png`, `arena_spectator_sky.png`, `board_turn.png`, `last_stand_spectate.png`,
+`lobby.png`.
+
 ### Bugs found and fixed today (all measured before and after)
 
 1. Client's view of remote players lagged whole tick loops → 25 % hit confirmation. netfox

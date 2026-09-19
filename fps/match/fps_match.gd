@@ -312,8 +312,37 @@ func _attach_camera() -> void:
 var _fx_test_timer: float = 0.0
 
 
+var _figure_test: Array = []
+
+
+## --figure_test: three figures in front of the showcase camera (walking, aiming, down) so the
+## humanoid can be judged from a screenshot without hunting bots.
+func _update_figure_test(delta: float) -> void:
+	if not Game.args.has("figure_test") or Game.headless:
+		return
+	if _figure_test.is_empty():
+		var cam := get_viewport().get_camera_3d()
+		if cam == null:
+			return
+		# Park the showcase camera 4.5 m from three figures on the south spawn lane.
+		var base := Vector3(14.0, 0.0, 2.5)
+		cam.global_position = base + Vector3(0.0, 1.7, 4.6)
+		cam.look_at(base + Vector3(0.0, 1.0, 0.0), Vector3.UP)
+		for i in 3:
+			var f := Figure.new()
+			add_child(f)
+			f.build(Palette.player_colour(i), _palette_map(), 1.62, i == 1)
+			f.global_position = base + Vector3((float(i) - 1.0) * 1.7, 0.0, 0.0)
+			f.rotation.y = PI if i != 2 else PI * 0.5   # face the camera (+Z), the third side-on
+			_figure_test.append(f)
+	(_figure_test[0] as Figure).animate(4.0, true, 0.0, true, delta)
+	(_figure_test[1] as Figure).animate(0.0, true, 0.1, true, delta)
+	(_figure_test[2] as Figure).animate(0.0, true, 0.0, false, delta)
+
+
 func _process(delta: float) -> void:
 	_update_spectator()
+	_update_figure_test(delta)
 	# --fx_test: keep spawning drawn bursts and tracers so a screenshot can catch them.
 	if not Game.args.has("fx_test") or Game.headless:
 		return

@@ -22,7 +22,8 @@ Open the folder in Godot 4.7 and press play, or from a shell (`GODOT` defaults t
 With no arguments the main menu opens: HOST LAN, HOST ONLINE (a friend code through the noray
 relay, default `tomfol.io:8890`, changeable in SETTINGS), JOIN (a friend code or address:port),
 LINE (conditioner profile for direct joins), SETTINGS (name, sensitivity, volumes), BOTS +/−,
-START MATCH (the board, a random minigame each round) or QUICK ARENA. FPS controls: WASD, Space
+START MATCH (the board, a random minigame each round) or QUICK ARENA. As host, click a bot's
+card to set it EASY, NORMAL or HARD. FPS controls: WASD, Space
 jump, LMB fire, RMB scope, 1/2/Q weapons, R reload (the sniper loads one round at a time; the
 trigger interrupts it), LMB switches who you watch when you are
 out in LAST STAND, Esc pauses (resume, settings, leave), F5

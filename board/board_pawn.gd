@@ -1,12 +1,26 @@
 class_name BoardPawn
 extends Node3D
-## A player on the board: the arena silhouette (capsule, dark head, visor) in the identity
-## colour on a coloured base ring, hopping between spaces.
+## A player on the board: the same humanoid Figure as in the arena, in the identity colour on
+## a coloured base ring, hopping between spaces.
 
 var peer_id: int = 0
 var colour: Color = Color.WHITE
 var _hop_tween: Tween
 var _body: Node3D
+var _figure: Figure
+var _last_pos: Vector3 = Vector3.ZERO
+var _speed: float = 0.0
+var _vspeed: float = 0.0
+
+
+func _process(delta: float) -> void:
+	if _figure == null or delta <= 0.0:
+		return
+	var d := global_position - _last_pos
+	_speed = lerpf(_speed, minf(Vector2(d.x, d.z).length() / delta, 12.0), 0.35)
+	_vspeed = lerpf(_vspeed, d.y / delta, 0.35)
+	_last_pos = global_position
+	_figure.animate(_speed, absf(_vspeed) < 1.0, 0.0, true, delta)
 
 
 func setup(p_peer_id: int, p_colour: Color, p_name: String) -> void:
@@ -14,41 +28,12 @@ func setup(p_peer_id: int, p_colour: Color, p_name: String) -> void:
 	colour = Palette.under_ceiling(p_colour)
 	var shadow := Palette.map_colour("board", "shadow_tint")
 	var ink := Palette.map_colour("board", "line")
-	var body_mat := CelMaterial.for_colour(colour, shadow)
-	var dark_mat := CelMaterial.for_colour(Color.from_hsv(ink.h, 0.45, 0.24), shadow)
-	var visor_mat := CelMaterial.for_colour(Palette.hud_colour("meter"), shadow, 0.9)
 	_body = Node3D.new()
 	add_child(_body)
-	var cap := MeshInstance3D.new()
-	var cm := CapsuleMesh.new()
-	cm.radius = 0.34
-	cm.height = 1.44
-	cap.mesh = cm
-	cap.position.y = 0.42 + 0.72
-	cap.material_override = body_mat
-	_body.add_child(cap)
-	var head := MeshInstance3D.new()
-	var sm := SphereMesh.new()
-	sm.radius = 0.2
-	sm.height = 0.4
-	head.mesh = sm
-	head.position.y = 1.72
-	head.material_override = dark_mat
-	_body.add_child(head)
-	var visor := MeshInstance3D.new()
-	var vb := BoxMesh.new()
-	vb.size = Vector3(0.24, 0.06, 0.06)
-	visor.mesh = vb
-	visor.position = Vector3(0, 1.74, -0.18)
-	visor.material_override = visor_mat
-	_body.add_child(visor)
-	var legs := MeshInstance3D.new()
-	var lb := BoxMesh.new()
-	lb.size = Vector3(0.36, 0.42, 0.26)
-	legs.mesh = lb
-	legs.position.y = 0.21
-	legs.material_override = dark_mat
-	_body.add_child(legs)
+	_figure = Figure.new()
+	_figure.name = "Figure"
+	_body.add_child(_figure)
+	_figure.build(colour, "board", 1.62, false)
 	var ring := MeshInstance3D.new()
 	var tm := TorusMesh.new()
 	tm.inner_radius = 0.48

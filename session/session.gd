@@ -67,6 +67,17 @@ func add_bot(difficulty: String = "normal") -> int:
 	return id
 
 
+## Host only: cycle a bot's difficulty (easy → normal → hard) and tell everyone.
+func set_bot_difficulty(peer_id: int, difficulty: String) -> void:
+	if not is_authority() or not players.has(peer_id):
+		return
+	var slot: PlayerSlot = players[peer_id]
+	if not slot.is_bot:
+		return
+	slot.bot_difficulty = difficulty
+	_broadcast_registry()
+
+
 func remove_bot() -> void:
 	if not is_authority():
 		return
