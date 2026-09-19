@@ -24,7 +24,7 @@ var hip_rotations: Array[Vector3] = [
 # ADS: the sniper's scope tube sits 0.115 above the model origin, so the model goes to
 # y = -0.115 and the eyepiece (z = +0.105) ends 5 cm in front of the eye: the view goes
 # through the glass, not into the receiver (Sean's note 4).
-var ads_pos: Array[Vector3] = [Vector3(0.0, -0.115, -0.155), Vector3(0.0, -0.128 * 1.22, -0.34)]
+var ads_pos: Array[Vector3] = [Vector3(0.0, -0.115, -0.155), Vector3(0.0, -0.14 * 1.22, -0.34)]
 var muzzles: Array[Vector3] = [Vector3(0.0, 0.02, -1.03), Vector3(0.0, 0.015, -0.52)]
 var _kick: float = 0.0
 var _bolt: float = 0.0
@@ -119,12 +119,48 @@ func setup(p: Player) -> void:
 	_box(ar, Vector3(0.05, 0.05, 0.28), Vector3(0, 0.015, -0.38), dark_mat)
 	_box(ar, Vector3(0.05, 0.16, 0.08), Vector3(0, -0.13, -0.02), accent_mat)
 	_box(ar, Vector3(0.04, 0.14, 0.07), Vector3(0, -0.11, 0.14), dark_mat)
-	# The sight as it was (Sean liked it), with a red dot floating just above it: at ADS the
-	# dot sits on the camera axis and the sight housing shows under it, so nothing blocks the view.
+	# The sight as it was, but its screen is a translucent pane with the red dot drawn in the
+	# middle of it (Sean: "on the screen of the AR, in the middle"). At ADS the screen's centre
+	# sits on the camera axis, so you aim through the tinted glass with the dot at the point.
 	_box(ar, Vector3(0.06, 0.05, 0.16), Vector3(0, 0.085, -0.02), dark_mat)
-	_box(ar, Vector3(0.05, 0.03, 0.06), Vector3(0, 0.09, 0.03), glow_mat)
-	var dot_mat := CelMaterial.for_colour(Palette.hud_colour("danger"), shadow, 2.0, true)
-	_sphere(ar, 0.006, Vector3(0, 0.128, 0.03), dot_mat)
+	_box(ar, Vector3(0.058, 0.008, 0.02), Vector3(0, 0.114, 0.03), dark_mat)   # screen base
+	for sx: float in [-0.028, 0.028]:
+		_box(ar, Vector3(0.006, 0.05, 0.02), Vector3(sx, 0.14, 0.03), dark_mat)   # screen posts
+	var screen_mat := StandardMaterial3D.new()
+	screen_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	screen_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	var tint := Palette.hud_colour("meter")
+	screen_mat.albedo_color = Color(tint.r, tint.g, tint.b, 0.32)
+	screen_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	screen_mat.no_depth_test = true
+	screen_mat.render_priority = 2
+	var screen := MeshInstance3D.new()
+	var sm := BoxMesh.new()
+	sm.size = Vector3(0.05, 0.044, 0.003)
+	screen.mesh = sm
+	screen.position = Vector3(0, 0.14, 0.03)
+	screen.material_override = screen_mat
+	screen.layers = 2
+	screen.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	ar.add_child(screen)
+	var dot_mat := StandardMaterial3D.new()
+	dot_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	dot_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	dot_mat.albedo_color = Palette.hud_colour("danger")
+	dot_mat.no_depth_test = true
+	dot_mat.render_priority = 3
+	var dot := MeshInstance3D.new()
+	var dm := SphereMesh.new()
+	dm.radius = 0.0035
+	dm.height = 0.007
+	dm.radial_segments = 10
+	dm.rings = 5
+	dot.mesh = dm
+	dot.position = Vector3(0, 0.14, 0.03)
+	dot.material_override = dot_mat
+	dot.layers = 2
+	dot.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	ar.add_child(dot)
 	_box(ar, Vector3(0.07, 0.07, 0.18), Vector3(0, -0.02, 0.22), body_mat)
 	_arm(ar, Vector3(0.0, -0.11, 0.14), accent_mat, dark_mat)
 	add_child(ar)
