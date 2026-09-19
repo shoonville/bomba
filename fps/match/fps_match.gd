@@ -384,6 +384,7 @@ func _on_player_died(node: Node, tick: int) -> void:
 		_dead_since[victim.peer_id] = tick
 	var killer_id := victim.last_hit_by
 	var info := victim.last_hit_info
+	var life := victim.respawn_count  # before the respawn below bumps it
 	victim.deaths += 1
 	if killer_id != 0 and killer_id != victim.peer_id and _players.has(killer_id):
 		var killer: Player = _players[killer_id]
@@ -397,7 +398,9 @@ func _on_player_died(node: Node, tick: int) -> void:
 		var sp := spawn_selector.pick(enemies, get_world_3d().direct_space_state, tick,
 			Rng.tick_stream("spawn", tick, victim.peer_id))
 		victim.respawn_at(sp["pos"], sp["yaw"], tick, int(arena_cfg.get("spawn_protection_ticks", 90)))
-	var key := "%d_%d" % [victim.peer_id, tick]
+	# One kill message per life: a rollback can report the same death again a tick later (the
+	# victim's tick runs after the shooter's), which doubled kills in the feed and in SNIPERS.
+	var key := "%d_%d" % [victim.peer_id, life]
 	if not _kill_sent.has(key):
 		_kill_sent[key] = true
 		var weapon_slot := info % 10

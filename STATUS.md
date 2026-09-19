@@ -204,6 +204,12 @@ seeds two bots. Then six notes, all done:
    removed (the small one is now the rules-test fixture); the lobby BOARD button is gone.
    `board_overview.png`, `board_turn.png`.
 
+Then from his first full match log: kills counted twice a tick apart (fixed, deduped per life,
+0 doubles in a 17-kill bot round) and a bot that headshot him 0.28 s into LAST STAND and won
+SNIPERS 9–2 and 14–3 ("normal" retuned: 550 ms reaction, chest aim, 5.5° settling error,
+260°/s turn, no head start in the countdown; bots now first kill 1.1–5.6 s after the start,
+headshots 12 % of kills).
+
 ### Bugs found and fixed today (all measured before and after)
 
 1. Client's view of remote players lagged whole tick loops → 25 % hit confirmation. netfox

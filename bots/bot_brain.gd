@@ -41,6 +41,8 @@ var jump_chance: float = 0.25
 var strafe_change_ticks: int = 60
 var scope_hold_ticks: int = 22
 var aim_error_deg: float = 3.0
+var aim_settle_ticks: int = 42
+var aim_height: float = 0.45
 var stuck_limit_ticks: int = 90
 
 
@@ -62,6 +64,8 @@ func setup(p_player: Player, p_ctx: PlayerContext, difficulty: String) -> void:
 	strafe_change_ticks = int(float(diff.get("strafe_change_s", 1.0)) * tr)
 	scope_hold_ticks = int(diff.get("scope_hold_ticks", 22))
 	aim_error_deg = float(diff.get("aim_error_deg", 3.0))
+	aim_settle_ticks = maxi(1, int(float(diff.get("aim_settle_s", 0.7)) * tr))
+	aim_height = float(diff.get("aim_height_m", 0.45))
 	reach_m = float(bots.get("waypoint_reach_m", 1.2))
 	stuck_limit_ticks = int(float(bots.get("stuck_seconds", 1.5)) * tr)
 	waypoints = ctx.waypoints()
@@ -87,6 +91,9 @@ func gather_into(input: PlayerInput) -> void:
 	var pos := player.global_position
 	var eye := player.eye_position()
 	_update_enemy(tick, eye)
+	if not ctx.can_fire_at(tick):
+		# Weapons are locked (warmup): no head start, the reaction clock runs from the unlock.
+		enemy_since_tick = tick
 	_update_nav(tick, pos)
 
 	var move_dir := Vector3.ZERO
@@ -100,10 +107,13 @@ func gather_into(input: PlayerInput) -> void:
 	var desired_pitch := 0.0
 	var dist := 0.0
 	if enemy != null:
-		var to_e := (enemy.eye_position() - Vector3.UP * 0.08) - eye
+		var to_e := (enemy.eye_position() - Vector3.UP * aim_height) - eye
 		dist = to_e.length()
-		desired_yaw = atan2(-to_e.x, -to_e.z) + aim_err.x
-		desired_pitch = atan2(to_e.y, Vector2(to_e.x, to_e.z).length()) + aim_err.y
+		# Fresh targets get double the error, settling to the base error over aim_settle_ticks.
+		var settle := clampf(float(tick - enemy_since_tick) / float(aim_settle_ticks), 0.0, 1.0)
+		var err_scale := 2.0 - settle
+		desired_yaw = atan2(-to_e.x, -to_e.z) + aim_err.x * err_scale
+		desired_pitch = atan2(to_e.y, Vector2(to_e.x, to_e.z).length()) + aim_err.y * err_scale
 	elif move_dir != Vector3.ZERO:
 		desired_yaw = atan2(-move_dir.x, -move_dir.z)
 	var max_step := turn_speed * dt
