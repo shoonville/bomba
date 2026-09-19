@@ -19,6 +19,9 @@ var _reward_lines: Array = []
 var _reward_t: float = 0.0
 var _row_rects: Array = []
 var _row_flash: Dictionary = {}
+var _row_delta: Dictionary = {}   # peer → {delta, t}: the minigame reward beside the row
+var _social_test_stage: int = 0
+var _social_test_t: float = 0.0
 var _last_round: int = 0
 var _roll_btn: Button
 var _fork_left: Button
@@ -54,6 +57,7 @@ func attach(p_director: BoardDirector) -> void:
 	director = p_director
 	director.state_changed.connect(func(_s): _rebuild_items())
 	director.events_received.connect(_on_events)
+	director.social.connect(_on_social)
 	Events.board_dice_landed.connect(func(v: int):
 		_dice_value = v
 		_dice_t = 1.3
@@ -94,6 +98,7 @@ func _on_events(events: Array) -> void:
 				_row_flash[int(e["peer"])] = 1.0
 				if e.has("rank"):
 					rewards.append(e)
+					_row_delta[int(e["peer"])] = {"delta": int(e["delta"]), "t": 3.2}
 			"finished":
 				_intro = "MATCH OVER"
 				_intro_small = false
@@ -118,6 +123,22 @@ func _ordinal(n: int) -> String:
 func _process(delta: float) -> void:
 	for k in _row_flash.keys():
 		_row_flash[k] = maxf(0.0, float(_row_flash[k]) - delta * 1.6)
+	for k in _row_delta.keys():
+		_row_delta[k]["t"] = float(_row_delta[k]["t"]) - delta
+	if Game.args.has("social_test") and _social_test_stage < 2 and director != null and director.state != null and director.view != null and director.local_player() != null:
+		# Harness: ping two spaces ahead, then emote half a second later (the rate limit allows
+		# one social per 0.4 s), so a screenshot can catch both.
+		_social_test_t += delta
+		if _social_test_stage == 0 and _social_test_t > 0.3:
+			_social_test_stage = 1
+			# Through the real picker: the tile nearest the lower middle of the screen.
+			var sid: String = director.view.tile_at_screen(get_viewport().get_visible_rect().size * Vector2(0.5, 0.82), 600.0)
+			Log.info("board", "Social test: ping %s" % sid)
+			if sid != "":
+				director.send_ping(sid)
+		elif _social_test_stage == 1 and _social_test_t > 0.9:
+			_social_test_stage = 2
+			director.send_emote("GG")
 	_dice_t = maxf(0.0, _dice_t - delta)
 	_flash = maxf(0.0, _flash - delta * 2.0)
 	_intro_t = maxf(0.0, _intro_t - delta)
@@ -264,8 +285,35 @@ func _confirm_target() -> void:
 	_item_target_mode = ""
 
 
+func _on_social(peer_id: int, kind: String, payload: String) -> void:
+	Log.info("board", "Social: peer %d %s %s" % [peer_id, kind, payload])
+	if director.view == null:
+		return
+	if kind == "ping":
+		director.view.show_ping(peer_id, payload)
+		Audio.play("ping", -6.0)
+	elif kind == "emote":
+		director.view.show_emote(peer_id, payload)
+		Audio.play("emote", -6.0)
+
+
 func _unhandled_input(event: InputEvent) -> void:
-	if director == null or not is_instance_valid(director) or not director.is_inside_tree() or director.state == null or not director.is_local_turn():
+	if director == null or not is_instance_valid(director) or not director.is_inside_tree() or director.state == null:
+		return
+	# Pings and emotes work on anyone's turn.
+	if event.is_action_pressed("ping"):
+		if director.view != null and director.view.has_method("tile_at_screen"):
+			var sid: String = director.view.tile_at_screen(get_viewport().get_mouse_position())
+			if sid != "":
+				director.send_ping(sid)
+		get_viewport().set_input_as_handled()
+		return
+	for k in BoardDirector.EMOTES.size():
+		if event.is_action_pressed("emote_%d" % (k + 1)):
+			director.send_emote(BoardDirector.EMOTES[k])
+			get_viewport().set_input_as_handled()
+			return
+	if not director.is_local_turn():
 		return
 	var st := director.state
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT and _item_target_mode != "":
@@ -341,11 +389,18 @@ func _draw() -> void:
 			_text(Vector2(x + 396, y + 29), chips.strip_edges(), 14, Palette.player_colour(5))
 		if not active and st.players.size() > 1 and i == (st.active + 1) % st.players.size() and st.phase != BoardState.PHASE_FINISHED:
 			_text(Vector2(x + w - 62, y + 27), "NEXT", 13, Color(accent, 0.9))
+		if _row_delta.has(p.peer_id) and float(_row_delta[p.peer_id]["t"]) > 0.0:
+			# The minigame reward, beside the row, drifting up and fading with the reward card.
+			var rt: float = _row_delta[p.peer_id]["t"]
+			var rd: int = _row_delta[p.peer_id]["delta"]
+			var ra := clampf(rt * 1.5, 0.0, 1.0)
+			_text(Vector2(x + w + 14, y + 31 - (3.2 - rt) * 4.0), ("+%d" if rd >= 0 else "%d") % rd, 26, Color(Palette.player_colour(3), ra), 6.0)
 		y += h + 8.0
 	_draw_name_tags(st)
 	_text(Vector2(size.x - 250, 52), "ROUND %d / %d" % [mini(st.round, st.rounds), st.rounds], 26, paper)
 	_text(Vector2(size.x - 250, 84), "GOAL COSTS %d" % int(director.cfg.get("goal_cost", 10)), 18, Palette.hud_colour("score"))
 	_text(Vector2(size.x - 250, 112), "HOLD TAB · MAP", 14, Color(paper, 0.7))
+	_text(Vector2(size.x - 250, 134), "E · PING    F1-F4 · EMOTE", 14, Color(paper, 0.7))
 	if _dice_t > 0.0:
 		var s := 120 + int(24.0 * clampf(_dice_t - 1.3, 0.0, 0.3) / 0.3)
 		var txt := "%d" % _dice_value if _dice_bonus <= 0 else "%d +%d" % [_dice_value - _dice_bonus, _dice_bonus]

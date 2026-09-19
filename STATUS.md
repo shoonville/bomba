@@ -295,6 +295,13 @@ beacon over the goal, eight floating islands with props drifting in the void, a 
 under the active pawn. `board_fork.png`, `board_map.png`, `board_turn.png`,
 `arena_scoreboard.png`. Harness: `--board_map`, `--show_scoreboard`.
 
+Sean picked two from the QOL list: minigame rewards now show as "+N" beside each player row
+while the reward card plays (`board_reward_card.png`), and the board has a social layer: E or
+middle-click pings the tile under the cursor (a bouncing pin in your colour with your name,
+3 s, a chirp) and F1–F4 send GG / NICE! / OH NO / HURRY UP as a speech bubble over your pawn
+(2.4 s, a pop). One any_peer RPC on the director, cosmetic, rate-limited to one per 0.4 s per
+peer, payloads validated; works on anyone's turn. `board_ping.png`; `--social_test` harness.
+
 ### Bugs found and fixed today (all measured before and after)
 
 1. Client's view of remote players lagged whole tick loops → 25 % hit confirmation. netfox

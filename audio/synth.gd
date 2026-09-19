@@ -170,7 +170,8 @@ static func to_wav(buf: PackedFloat32Array, loop: bool = false, normalize_to: fl
 static func names() -> PackedStringArray:
 	return PackedStringArray(["sniper_fire", "ar_fire", "hitmarker", "headshot", "kill", "death", "hurt",
 		"bolt", "reload_start", "reload_end", "dry", "swap", "jump", "land", "footstep", "respawn",
-		"ui_hover", "ui_click", "ui_back", "round_start", "round_end", "dice", "coin", "shell_in"])
+		"ui_hover", "ui_click", "ui_back", "round_start", "round_end", "dice", "coin", "shell_in",
+		"ping", "emote"])
 
 
 ## Build a named sound as float samples. Unknown names return a short click so a typo is audible.
@@ -321,6 +322,16 @@ static func build(name: String) -> PackedFloat32Array:
 			out = mix(out, mul(lowpass(noise(samples(0.035), 172), 1300.0), env_exp(samples(0.035), 0.009)), 0.9, samples(0.085))
 			out = mix(out, mul(tone(samples(0.1), 95.0, 55.0, "sine"), env_exp(samples(0.1), 0.04)), 0.7, samples(0.09))
 			return softclip(out, 1.8)
+		"ping":
+			# A two-note chirp, low then high, soft: a marker dropped on the board.
+			var out := silence(samples(0.26))
+			out = mix(out, mul(tone(samples(0.1), 520.0, 540.0, "tri"), env_adsr(samples(0.1), 0.005, 0.03, 0.6, 0.04)), 0.6)
+			return mix(out, mul(tone(samples(0.14), 780.0, 800.0, "tri"), env_adsr(samples(0.14), 0.005, 0.04, 0.6, 0.06)), 0.6, samples(0.11))
+		"emote":
+			# A pop: a short low-passed burst with a quick downward blip.
+			var n := samples(0.12)
+			var out := mul(lowpass(noise(n, 181), 1800.0), env_exp(n, 0.012))
+			return mix(out, mul(tone(n, 620.0, 380.0, "sine"), env_exp(n, 0.04)), 0.7)
 		"coin":
 			var n := samples(0.22)
 			var out := mul(tone(n, 1318.5, 1318.5, "square"), env_exp(n, 0.08))

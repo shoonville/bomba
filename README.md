@@ -29,7 +29,8 @@ trigger interrupts it), LMB switches who you watch when you are
 out in LAST STAND, Esc pauses (resume, settings, leave), F5
 reloads `tuning/*.json` in debug builds. Board controls: click ROLL, a fork button, an item
 button and then a player row, or Space / A D / 1 2 / Enter. Hover LEFT or RIGHT at a fork to
-see where the move lands; hold Tab for the whole board, and in a minigame for the scoreboard. Sound is synthesised at startup;
+see where the move lands; hold Tab for the whole board, and in a minigame for the scoreboard.
+E (or middle-click) pings the tile under the cursor for everyone; F1–F4 send an emote. Sound is synthesised at startup;
 nothing is loaded from disk.
 
 Online from a shell: `-- --host_online --bots=1 --start --expect=1` prints `HOST_CODE=…`;

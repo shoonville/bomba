@@ -7,6 +7,10 @@ extends Node
 signal state_changed(state: BoardState)
 signal events_received(events: Array)
 signal match_finished(state: BoardState)
+signal social(peer_id: int, kind: String, payload: String)   # a ping on a space or an emote
+
+const EMOTES := ["GG", "NICE!", "OH NO", "HURRY UP"]
+var _social_last: Dictionary = {}
 
 const VIEW_SCRIPT := preload("res://board/board_view.gd")
 
@@ -98,6 +102,34 @@ func local_player() -> BoardState.PlayerState:
 func is_local_turn() -> bool:
 	var lp := local_player()
 	return lp != null and not lp.is_bot and state.active_player() == lp
+
+
+# --- social (any peer → everyone, cosmetic, rate-limited) --------------------------------
+
+func send_ping(space_id: String) -> void:
+	if is_inside_tree():
+		_rpc_social.rpc("ping", space_id)
+
+
+func send_emote(text: String) -> void:
+	if is_inside_tree():
+		_rpc_social.rpc("emote", text)
+
+
+@rpc("any_peer", "call_local", "reliable")
+func _rpc_social(kind: String, payload: String) -> void:
+	var sender := multiplayer.get_remote_sender_id()
+	if sender == 0:
+		sender = multiplayer.get_unique_id()
+	var now := Time.get_ticks_msec()
+	if now - int(_social_last.get(sender, -100000)) < 400:
+		return
+	_social_last[sender] = now
+	if kind == "ping" and (graph == null or graph.get_space(payload) == null):
+		return
+	if kind == "emote" and not EMOTES.has(payload):
+		return
+	social.emit(sender, kind, payload)
 
 
 # --- intents (any peer → server) ---------------------------------------------------------

@@ -253,6 +253,114 @@ func _build_marker(space: BoardGraph.Space, shadow: Color) -> void:
 	markers.append(root)
 
 
+## The tile whose centre projects nearest the screen point, within `max_px`; "" if none.
+func tile_at_screen(pos: Vector2, max_px: float = 70.0) -> String:
+	if camera == null:
+		return ""
+	var best := ""
+	var best_d := max_px
+	for sid in tiles:
+		var world := director.space_position(str(sid))
+		if camera.is_position_behind(world):
+			continue
+		var d := camera.unproject_position(world).distance_to(pos)
+		if d < best_d:
+			best_d = d
+			best = str(sid)
+	return best
+
+
+var _socials: Array = []   # [{node, t, life, base_y, kind}]
+
+
+## A pin in the pinger's colour bouncing over a space, with their name, for three seconds.
+func show_ping(peer_id: int, space_id: String) -> void:
+	if Game.headless or not tiles.has(space_id):
+		return
+	var p := director.state.player(peer_id) if director.state != null else null
+	var col := Palette.player_colour(p.colour_index) if p != null else Palette.hud_colour("paper")
+	var shadow := Palette.map_colour("board", "shadow_tint")
+	var ink := Palette.map_colour("board", "line")
+	var root := Node3D.new()
+	var base := director.space_position(space_id) + Vector3(0, 1.3, 0)
+	root.position = base
+	add_child(root)
+	var pin := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = 0.34
+	cm.bottom_radius = 0.0
+	cm.height = 0.7
+	cm.radial_segments = 10
+	pin.mesh = cm
+	pin.material_override = CelMaterial.for_colour(col, shadow, 0.6)
+	root.add_child(pin)
+	var ball := MeshInstance3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = 0.32
+	sm.height = 0.64
+	sm.radial_segments = 12
+	sm.rings = 6
+	ball.mesh = sm
+	ball.position.y = 0.55
+	ball.material_override = CelMaterial.for_colour(col, shadow, 0.6)
+	root.add_child(ball)
+	var dot := MeshInstance3D.new()
+	var dm := SphereMesh.new()
+	dm.radius = 0.12
+	dm.height = 0.24
+	dot.mesh = dm
+	dot.position = Vector3(0, 0.55, -0.26)
+	dot.material_override = CelMaterial.for_colour(Color.from_hsv(ink.h, 0.45, 0.24), shadow)
+	root.add_child(dot)
+	var label := Label3D.new()
+	label.text = (p.display_name if p != null else "?").to_upper()
+	label.font_size = 40
+	label.pixel_size = 0.006
+	label.outline_size = 12
+	label.modulate = Palette.hud_colour("paper")
+	label.outline_modulate = ink
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.alpha_cut = Label3D.ALPHA_CUT_DISCARD
+	label.position.y = 1.15
+	root.add_child(label)
+	_socials.append({"node": root, "t": 0.0, "life": 3.0, "base_y": base.y, "kind": "ping"})
+	Log.debug("board", "Ping pin at %s (space %s)" % [str(base), space_id])
+
+
+## A speech bubble over the player's pawn for a couple of seconds.
+func show_emote(peer_id: int, text: String) -> void:
+	if Game.headless or not pawns.has(peer_id):
+		return
+	var pawn: BoardPawn = pawns[peer_id]
+	var ink := Palette.map_colour("board", "line")
+	var root := Node3D.new()
+	root.position = Vector3(0, 2.7, 0)
+	pawn.add_child(root)
+	var bubble := MeshInstance3D.new()
+	var qm := QuadMesh.new()
+	qm.size = Vector2(0.34 * text.length() + 0.5, 0.62)
+	bubble.mesh = qm
+	var bm := StandardMaterial3D.new()
+	bm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	bm.albedo_color = Palette.hud_colour("paper")
+	bm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	bubble.material_override = bm
+	root.add_child(bubble)
+	var label := Label3D.new()
+	label.text = text
+	label.font_size = 56
+	label.pixel_size = 0.006
+	label.outline_size = 0
+	label.modulate = Color.from_hsv(ink.h, 0.45, 0.24)
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.alpha_cut = Label3D.ALPHA_CUT_DISCARD
+	label.position.z = 0.02
+	label.render_priority = 1
+	root.add_child(label)
+	root.scale = Vector3.ONE * 0.2
+	_socials.append({"node": root, "t": 0.0, "life": 2.4, "base_y": 2.7, "kind": "emote"})
+
+
 func _place_goal(pos: Vector3) -> void:
 	goal_ring.global_position = pos + Vector3(0, 0.08, 0)
 	if goal_beacon != null:
@@ -761,6 +869,26 @@ func _process(delta: float) -> void:
 	for isl in _islands:
 		var n: Node3D = isl["node"]
 		n.position.y = float(isl["base_y"]) + sin(_anim_t * 0.35 + float(isl["phase"])) * 0.35
+	for i in range(_socials.size() - 1, -1, -1):
+		var so: Dictionary = _socials[i]
+		var n: Node3D = so["node"]
+		if not is_instance_valid(n):
+			_socials.remove_at(i)
+			continue
+		so["t"] = float(so["t"]) + delta
+		var t: float = so["t"]
+		if t >= float(so["life"]):
+			n.queue_free()
+			_socials.remove_at(i)
+			continue
+		if str(so["kind"]) == "ping":
+			n.position.y = float(so["base_y"]) + absf(sin(t * 5.0)) * 0.45 * maxf(0.0, 1.0 - t / 3.0)
+			n.rotation.y += delta * 2.5
+		else:
+			var pop := minf(1.0, t / 0.15)
+			var out := clampf((float(so["life"]) - t) / 0.2, 0.0, 1.0)
+			n.scale = Vector3.ONE * (0.2 + 0.8 * pop) * out
+			n.position.y = float(so["base_y"]) + pop * 0.15
 	if active_pulse != null and director.state != null:
 		var ap := director.state.active_player()
 		var pawn: BoardPawn = pawns.get(ap.peer_id, null) if ap != null else null
