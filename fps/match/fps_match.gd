@@ -198,7 +198,9 @@ func _update_spectator() -> void:
 	var local := get_local_player()
 	if local == null or local.is_alive():
 		return
-	if _spectator == null:
+	if _finished_sent:
+		return
+	if _spectator == null or not is_instance_valid(_spectator):
 		var first := _next_living(null, 1)
 		if first == null:
 			return

@@ -13,6 +13,8 @@ var _r_arm: Node3D
 var _l_leg: Node3D
 var _r_leg: Node3D
 var _gun: Node3D
+var _gun_long: Node3D
+var _gun_short: Node3D
 var _phase: float = 0.0
 var _tilt: float = 0.0
 var _flinch: float = 0.0
@@ -63,8 +65,24 @@ func build(colour: Color, map_id: String, head_y: float = 1.62, with_gun: bool =
 		_gun = Node3D.new()
 		_gun.position = Vector3(0, -0.5, 0)
 		_r_arm.add_child(_gun)
-		_box(_gun, Vector3(0.06, 0.62, 0.09), Vector3(-0.1, -0.2, 0.0), dark_mat)
-		_box(_gun, Vector3(0.05, 0.16, 0.05), Vector3(-0.1, -0.3, 0.06), dark_mat)
+		# Two guns, one shown at a time: the long rifle with a scope, the short carbine.
+		_gun_long = Node3D.new()
+		_gun.add_child(_gun_long)
+		_box(_gun_long, Vector3(0.06, 0.95, 0.08), Vector3(-0.1, -0.3, 0.0), cream_mat)
+		_box(_gun_long, Vector3(0.05, 0.28, 0.05), Vector3(-0.1, -0.35, 0.075), dark_mat)
+		_box(_gun_long, Vector3(0.05, 0.14, 0.05), Vector3(-0.1, 0.02, 0.0), dark_mat)
+		_gun_short = Node3D.new()
+		_gun.add_child(_gun_short)
+		_box(_gun_short, Vector3(0.06, 0.5, 0.1), Vector3(-0.1, -0.12, 0.0), body_mat)
+		_box(_gun_short, Vector3(0.05, 0.12, 0.05), Vector3(-0.1, -0.2, -0.08), dark_mat)
+		_gun_short.visible = false
+
+
+## Which held gun shows: 0 the long rifle, anything else the short one.
+func set_weapon_slot(slot: int) -> void:
+	if _gun_long != null:
+		_gun_long.visible = slot == 0
+		_gun_short.visible = slot != 0
 
 
 ## A hit: the torso and head jerk back for a quarter second.
