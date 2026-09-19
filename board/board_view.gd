@@ -242,6 +242,15 @@ func _play_next() -> void:
 			if goal_ring != null:
 				goal_ring.global_position = director.space_position(str(e["new_goal"])) + Vector3(0, 0.08, 0)
 			wait = 1.0
+		"shield":
+			var pawn: BoardPawn = pawns.get(int(e["peer"]), null)
+			if pawn != null:
+				if not Game.headless:
+					Burst.spawn(self, pawn.global_position + Vector3(0, 0.8, 0), Palette.player_colour(5), 1.1, 0.45, 12)
+				_focus(pawn.global_position)
+			_float_label(int(e["peer"]), "SHIELDED!", Palette.player_colour(5))
+			Audio.play("land", 0.0)
+			wait = 0.8
 		"teleport":
 			var pawn: BoardPawn = pawns.get(int(e["peer"]), null)
 			if pawn != null:

@@ -131,8 +131,12 @@ Cost: host tick loop 2.4–2.8 ms mean with three seats; client tick loop p95 4 
   3 forks, 6 goal candidates). Lobby button cycles boards; `--board_id=eight`. Tests: every
   board validates, loops to its start and reaches every goal from every space; 2-round
   headless match on it with 4 seats (SNIPERS then LAST STAND, one Bomba claimed), 0 errors.
-- **Harness**: `--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results`,
-  `--give_item=ID`, `--board_auto_roll`, `--minigame=ID`.
+- **Harness**: `--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results|shield`,
+  `--give_item=ID`, `--give_bots_item=ID`, `--board_auto_roll`, `--minigame=ID`.
+- **Network regression** after the refactor: host + client through `bad` on FIGURE EIGHT, 2
+  rounds (SNIPERS then ARENA): identical minigame rankings and final standings on both peers
+  (BOT TANGERINE 1 Bomba 14 coins, client 20, bot 15, host 11), 0 errors either side. Six
+  seats headless, 3 rounds on FIGURE EIGHT (LAST STAND ×2 with 6 seats, SNIPERS): 0 errors.
 
 Numbers: `tools/test.sh` 68 tests, 6304 assertions, 86 scripts compiled, 0 failures. Headless
 host + 2 bots, 2 rounds with 8 s minigames: round 1 ARENA (2 weapons), round 2 SNIPERS (1
@@ -162,7 +166,7 @@ New screenshots: `board_intro_card.png`, `board_reward_card.png`, `board_roll_bu
 `snipers_intro.png`, `snipers_hip.png`, `results_board.png`, `last_stand_intro.png`,
 `last_stand_out.png` (eliminated, "OUT · 4 LEFT"), `last_stand_spectate.png` (chase camera),
 `results_last_stand.png`, `board_items.png` (item strip + ROLL), `board_fork.png` (LEFT/RIGHT),
-`board_eight.png`.
+`board_eight.png`, `board_shield.png` (a bomb eaten by a shield), `lobby.png` (board selector).
 
 ### Bugs found and fixed today (all measured before and after)
 

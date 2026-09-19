@@ -57,6 +57,10 @@ func start(players_data: Array, seed_value: int, p_board_id: String) -> void:
 			var me := state.player(multiplayer.get_unique_id())
 			if me != null:
 				me.items.append(str(Game.args["give_item"]))
+		if Game.args.has("give_bots_item"):
+			for p in state.players:
+				if p.is_bot:
+					p.items.append(str(Game.args["give_bots_item"]))
 		_broadcast(events)
 	else:
 		state = null

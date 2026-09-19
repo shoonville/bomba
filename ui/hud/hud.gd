@@ -5,6 +5,7 @@ extends Control
 
 var _player: Player
 var _arena: Node
+var _last_count: int = -1
 var _hit_flash: float = 0.0
 var _hit_kind: int = 0
 var _damage_flash: float = 0.0
@@ -61,6 +62,13 @@ func _process(delta: float) -> void:
 	_arena = Game.active_minigame
 	if _arena != null and _arena.has_method("get_local_player"):
 		_player = _arena.get_local_player()
+	if _arena != null and _arena.has_method("warmup_seconds_left"):
+		# One tick per countdown digit; the round-start sting covers the zero.
+		var left := ceili(float(_arena.warmup_seconds_left()))
+		if left != _last_count:
+			if left > 0 and _last_count > 0:
+				Audio.play("ui_click", -4.0, 1.0 if left > 1 else 1.25, "UI")
+			_last_count = left
 	_hit_flash = maxf(0.0, _hit_flash - delta * 5.0)
 	_damage_flash = maxf(0.0, _damage_flash - delta * 2.5)
 	for f in _feed:
