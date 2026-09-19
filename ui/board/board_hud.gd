@@ -121,7 +121,8 @@ func _layout_buttons() -> void:
 		_item_box.visible = false
 		return
 	var st := director.state
-	var mine := st != null and director.is_local_turn()
+	var settled: bool = director.view == null or not director.view.has_method("is_animating") or not bool(director.view.is_animating())
+	var mine: bool = st != null and director.is_local_turn() and settled
 	var can_roll := mine and st.phase == BoardState.PHASE_TURNS and _item_target_mode == "" and director.local_player() != null and not director.local_player().is_bot
 	_roll_btn.visible = can_roll
 	_roll_btn.position = Vector2((size.x - _roll_btn.size.x) * 0.5, size.y - 160)

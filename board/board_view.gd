@@ -349,6 +349,12 @@ func _snap_all() -> void:
 			(pawns[p.peer_id] as BoardPawn).snap_to(_slot_position(p.space, p.peer_id))
 
 
+## True while the view is still playing events (hops, dice, cards); the HUD holds its buttons
+## until the pawn has actually arrived where the state says it is.
+func is_animating() -> bool:
+	return _playing or not _queue.is_empty()
+
+
 func _on_events(events: Array) -> void:
 	_queue.append_array(events)
 	if not _playing:
