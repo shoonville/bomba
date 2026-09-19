@@ -8,6 +8,14 @@ var director: BoardDirector
 var tiles: Dictionary = {}
 var pawns: Dictionary = {}
 var goal_ring: MeshInstance3D
+var goal_beacon: Node3D
+var active_pulse: MeshInstance3D
+var _spark: MeshInstance3D
+var _islands: Array = []   # [{node, base_y, phase}]
+var _bounds_centre: Vector3 = Vector3.ZERO
+var _bounds_radius: float = 20.0
+var _map_blend: float = 0.0
+var _anim_t: float = 0.0
 var camera: Camera3D
 var markers: Array = []
 var _marker_t: float = 0.0
@@ -82,36 +90,40 @@ func _build_environment() -> void:
 	add_child(sun)
 
 
-## Hover on LEFT / RIGHT: the tile you would take glows (a brighter, emissive copy of its
-## material, lifted 12 cm) until the pointer leaves.
-var _highlight_id: String = ""
-var _highlight_mat: Material
+## Hover on LEFT / RIGHT: every tile of the move down that branch lifts and glows, the landing
+## tile in the accent colour, until the pointer leaves.
+var _highlighted: Array = []   # [{tile, mat}]
+
+
+func highlight_path(ids: Array) -> void:
+	clear_highlight()
+	var shadow := Palette.map_colour("board", "shadow_tint")
+	for k in ids.size():
+		var sid := str(ids[k])
+		if not tiles.has(sid):
+			continue
+		var tile: MeshInstance3D = tiles[sid]
+		var base: Color = _tone_for(director.graph.get_space(sid).type)
+		var landing := k == ids.size() - 1
+		# Landing tile in glowing cream: distinct on every tile colour (the accent is coin yellow).
+		var mat := CelMaterial.for_colour(Palette.hud_colour("paper") if landing else base.lightened(0.3), shadow, 1.4 if landing else 0.9)
+		_highlighted.append({"tile": tile, "mat": tile.material_override})
+		tile.material_override = mat
+		tile.position.y += 0.12 if landing else 0.07
+	Log.debug("board", "Hover: path %s glows" % str(ids))
 
 
 func highlight_space(sid: String) -> void:
-	if sid == _highlight_id:
-		return
-	clear_highlight()
-	if not tiles.has(sid):
-		return
-	var tile: MeshInstance3D = tiles[sid]
-	_highlight_id = sid
-	_highlight_mat = tile.material_override
-	var shadow := Palette.map_colour("board", "shadow_tint")
-	var base: Color = _tone_for(director.graph.get_space(sid).type)
-	tile.material_override = CelMaterial.for_colour(base.lightened(0.25), shadow, 1.1)
-	tile.position.y += 0.12
-	Log.debug("board", "Hover: space '%s' glows" % sid)
+	highlight_path([sid])
 
 
 func clear_highlight() -> void:
-	if _highlight_id == "" or not tiles.has(_highlight_id):
-		_highlight_id = ""
-		return
-	var tile: MeshInstance3D = tiles[_highlight_id]
-	tile.material_override = _highlight_mat
-	tile.position.y -= 0.12
-	_highlight_id = ""
+	for h in _highlighted:
+		var tile: MeshInstance3D = h["tile"]
+		if is_instance_valid(tile):
+			tile.material_override = h["mat"]
+			tile.position.y = director.space_position(tile.get_meta("space_id", "")).y - 0.21 if tile.has_meta("space_id") else tile.position.y
+	_highlighted.clear()
 
 
 ## A marker over every special space so the board reads without a legend: a spinning coin,
@@ -241,6 +253,101 @@ func _build_marker(space: BoardGraph.Space, shadow: Color) -> void:
 	markers.append(root)
 
 
+func _place_goal(pos: Vector3) -> void:
+	goal_ring.global_position = pos + Vector3(0, 0.08, 0)
+	if goal_beacon != null:
+		goal_beacon.global_position = pos + Vector3(0, 2.1, 0)
+		goal_beacon.set_meta("base_y", pos.y + 2.1)
+
+
+## Floating islands in the void around and below the board, each with one prop (a lamp, a
+## billboard, a crate stack or a sign), seeded by the board id. Detail without a ground plane.
+func _build_islands(g: BoardGraph, shadow: Color) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(g.id) + 17
+	var field_mat := CelMaterial.for_colour(Palette.map_colour("board", "field_dark"), shadow)
+	var under_mat := CelMaterial.for_colour(Palette.map_colour("board", "counter_dark"), shadow)
+	var counter_mat := CelMaterial.for_colour(Palette.map_colour("board", "counter"), shadow)
+	var accent_mat := CelMaterial.for_colour(Palette.map_colour("board", "accent"), shadow, 0.3)
+	var paper_mat := CelMaterial.for_colour(Palette.hud_colour("paper"), shadow)
+	var ink_mat := CelMaterial.for_colour(Color.from_hsv(Palette.map_colour("board", "line").h, 0.45, 0.24), shadow)
+	var glow_mat := CelMaterial.for_colour(Palette.hud_colour("meter"), shadow, 1.2)
+	var print_mat := CelMaterial.for_colour(Palette.player_colour(2), shadow, 0.2)
+	for i in 8:
+		var a := float(i) / 8.0 * TAU + rng.randf_range(-0.3, 0.3)
+		var r := _bounds_radius * rng.randf_range(1.12, 1.55)
+		var pos := _bounds_centre + Vector3(cos(a) * r, -rng.randf_range(4.0, 12.0), sin(a) * r * 0.85)
+		var island := Node3D.new()
+		island.position = pos
+		island.rotation.y = rng.randf_range(0.0, TAU)
+		add_child(island)
+		var top_r := rng.randf_range(2.4, 4.4)
+		var top := MeshInstance3D.new()
+		var tm := CylinderMesh.new()
+		tm.top_radius = top_r
+		tm.bottom_radius = top_r * 0.85
+		tm.height = 1.1
+		tm.radial_segments = 6
+		top.mesh = tm
+		top.material_override = field_mat
+		island.add_child(top)
+		var under := MeshInstance3D.new()
+		var um := CylinderMesh.new()
+		um.top_radius = top_r * 0.8
+		um.bottom_radius = top_r * 0.15
+		um.height = top_r * 0.9
+		um.radial_segments = 6
+		under.mesh = um
+		under.position.y = -0.55 - top_r * 0.45
+		under.material_override = under_mat
+		island.add_child(under)
+		var prop := Node3D.new()
+		prop.position = Vector3(rng.randf_range(-0.6, 0.6), 0.55, rng.randf_range(-0.6, 0.6))
+		island.add_child(prop)
+		match i % 4:
+			0:   # lamp post
+				_prop_cyl(prop, 0.1, 3.4, Vector3(0, 1.7, 0), ink_mat)
+				_prop_box(prop, Vector3(0.7, 0.3, 0.7), Vector3(0, 3.45, 0), ink_mat)
+				_prop_box(prop, Vector3(0.5, 0.08, 0.5), Vector3(0, 3.26, 0), glow_mat)
+			1:   # billboard
+				_prop_cyl(prop, 0.08, 2.4, Vector3(0, 1.2, 0), ink_mat)
+				_prop_box(prop, Vector3(3.0, 1.8, 0.1), Vector3(0, 3.2, 0), paper_mat)
+				_prop_box(prop, Vector3(2.4, 1.1, 0.12), Vector3(0, 3.35, 0), print_mat)
+				_prop_box(prop, Vector3(2.4, 0.2, 0.12), Vector3(0, 2.55, 0), accent_mat)
+			2:   # crate stack
+				_prop_box(prop, Vector3(1.2, 1.2, 1.2), Vector3(-0.5, 0.6, 0), counter_mat)
+				_prop_box(prop, Vector3(1.2, 1.2, 1.2), Vector3(0.75, 0.6, 0.2), counter_mat)
+				_prop_box(prop, Vector3(1.2, 1.2, 1.2), Vector3(0.1, 1.8, 0.1), accent_mat)
+			_:   # sign
+				_prop_cyl(prop, 0.08, 3.0, Vector3(0, 1.5, 0), ink_mat)
+				_prop_cyl(prop, 0.9, 0.12, Vector3(0, 3.1, 0), accent_mat)
+				_prop_cyl(prop, 0.55, 0.14, Vector3(0, 3.1, 0), ink_mat)
+		_islands.append({"node": island, "base_y": pos.y, "phase": rng.randf_range(0.0, TAU)})
+
+
+func _prop_box(parent: Node3D, size: Vector3, pos: Vector3, mat: Material) -> void:
+	var mi := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = size
+	mi.mesh = bm
+	mi.position = pos
+	mi.material_override = mat
+	parent.add_child(mi)
+
+
+func _prop_cyl(parent: Node3D, radius: float, height: float, pos: Vector3, mat: Material) -> void:
+	var mi := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = radius
+	cm.bottom_radius = radius
+	cm.height = height
+	cm.radial_segments = 8
+	mi.mesh = cm
+	mi.position = pos
+	mi.material_override = mat
+	parent.add_child(mi)
+
+
 func _tone_for(type: String) -> Color:
 	match type:
 		"coin": return Palette.player_colour(3)
@@ -268,6 +375,7 @@ func _build_tiles() -> void:
 		tile.position = s.position - Vector3(0, 0.21, 0)
 		tile.rotation.y = deg_to_rad(30.0)
 		tile.material_override = CelMaterial.for_colour(_tone_for(s.type), shadow)
+		tile.set_meta("space_id", sid)
 		add_child(tile)
 		tiles[sid] = tile
 		var under := MeshInstance3D.new()
@@ -306,6 +414,79 @@ func _build_tiles() -> void:
 	goal_ring.mesh = tm
 	goal_ring.material_override = CelMaterial.for_colour(Palette.hud_colour("paper"), shadow, 1.0)
 	add_child(goal_ring)
+	# The Bomba beacon: a bomb with a lit fuse floating over the goal, visible from anywhere.
+	goal_beacon = Node3D.new()
+	var bomb := MeshInstance3D.new()
+	var bsm := SphereMesh.new()
+	bsm.radius = 0.42
+	bsm.height = 0.84
+	bsm.radial_segments = 16
+	bsm.rings = 8
+	bomb.mesh = bsm
+	bomb.material_override = CelMaterial.for_colour(Color.from_hsv(Palette.map_colour("board", "line").h, 0.45, 0.2), shadow)
+	goal_beacon.add_child(bomb)
+	var cap := MeshInstance3D.new()
+	var cpm := CylinderMesh.new()
+	cpm.top_radius = 0.12
+	cpm.bottom_radius = 0.14
+	cpm.height = 0.14
+	cap.mesh = cpm
+	cap.position = Vector3(0, 0.44, 0)
+	cap.material_override = CelMaterial.for_colour(Palette.map_colour("board", "counter"), shadow)
+	goal_beacon.add_child(cap)
+	var fuse := MeshInstance3D.new()
+	var fm := CylinderMesh.new()
+	fm.top_radius = 0.03
+	fm.bottom_radius = 0.03
+	fm.height = 0.34
+	fuse.mesh = fm
+	fuse.position = Vector3(0.08, 0.64, 0)
+	fuse.rotation.z = -0.5
+	fuse.material_override = CelMaterial.for_colour(Palette.hud_colour("paper"), shadow)
+	goal_beacon.add_child(fuse)
+	_spark = MeshInstance3D.new()
+	var spm := SphereMesh.new()
+	spm.radius = 0.11
+	spm.height = 0.22
+	spm.radial_segments = 8
+	spm.rings = 4
+	_spark.mesh = spm
+	_spark.position = Vector3(0.17, 0.79, 0)
+	_spark.material_override = CelMaterial.for_colour(Palette.hud_colour("score"), shadow, 1.6)
+	goal_beacon.add_child(_spark)
+	var badge := Label3D.new()
+	badge.text = "◆"
+	badge.font_size = 96
+	badge.pixel_size = 0.006
+	badge.outline_size = 0
+	badge.modulate = Palette.hud_colour("score")
+	badge.alpha_cut = Label3D.ALPHA_CUT_DISCARD
+	badge.position = Vector3(0, 0.0, -0.43)
+	goal_beacon.add_child(badge)
+	add_child(goal_beacon)
+	# Pulse under whoever's turn it is.
+	active_pulse = MeshInstance3D.new()
+	var apm := TorusMesh.new()
+	apm.inner_radius = 0.7
+	apm.outer_radius = 0.82
+	apm.rings = 32
+	apm.ring_segments = 6
+	active_pulse.mesh = apm
+	active_pulse.material_override = CelMaterial.for_colour(Palette.map_colour("board", "accent"), shadow, 1.0)
+	active_pulse.visible = false
+	add_child(active_pulse)
+	# Board bounds, for the Tab map view and the islands.
+	var lo := Vector3(1e9, 0, 1e9)
+	var hi := Vector3(-1e9, 0, -1e9)
+	for sid in g.ids():
+		var sp := g.get_space(sid).position
+		lo.x = minf(lo.x, sp.x)
+		lo.z = minf(lo.z, sp.z)
+		hi.x = maxf(hi.x, sp.x)
+		hi.z = maxf(hi.z, sp.z)
+	_bounds_centre = (lo + hi) * 0.5
+	_bounds_radius = maxf(hi.x - lo.x, hi.z - lo.z) * 0.5
+	_build_islands(g, shadow)
 
 
 func _ensure_pawn(p: BoardState.PlayerState) -> BoardPawn:
@@ -351,7 +532,7 @@ func _on_state(state: BoardState) -> void:
 	# every pawn at its destination for a frame before the hop (Sean's note 2); the queue's
 	# end-of-events snap reconciles instead.
 	if goal_ring != null and state.goal != "" and (first or not _playing):
-		goal_ring.global_position = director.space_position(state.goal) + Vector3(0, 0.08, 0)
+		_place_goal(director.space_position(state.goal))
 	var ap := state.active_player()
 	if ap != null and first:
 		_focus(director.space_position(ap.space))
@@ -456,7 +637,7 @@ func _play_next() -> void:
 			_float_label(int(e["peer"]), "BOMBA!", Palette.hud_colour("score"))
 			Audio.play("kill", 0.0)
 			if goal_ring != null:
-				goal_ring.global_position = director.space_position(str(e["new_goal"])) + Vector3(0, 0.08, 0)
+				_place_goal(director.space_position(str(e["new_goal"])))
 			wait = 1.0
 		"shield":
 			var pawn: BoardPawn = pawns.get(int(e["peer"]), null)
@@ -550,14 +731,45 @@ func _process(delta: float) -> void:
 	# at most ~100°/s so corners swing, never snap.
 	_cam_yaw = _rotate_toward_angle(_cam_yaw, _cam_yaw_target, delta * 1.8)
 	var desired_pos := _cam_look + Vector3(sin(_cam_yaw) * 6.8, 6.2, cos(_cam_yaw) * 6.8)
+	var look := _cam_look
 	if Game.args.has("board_overview"):
 		# Harness: the whole board from above, for layout screenshots.
 		desired_pos = Vector3(0.0, 64.0, 46.0)
 		_cam_look = Vector3.ZERO
-	var k := 1.0 - pow(0.004 if _cam_fast else 0.02, delta)
+		look = _cam_look
+	# Hold Tab (the scoreboard action) for the whole board; blends in and out over ~0.6 s.
+	var want_map := (Input.is_action_pressed("scoreboard") and not Game.is_paused()) or Game.args.has("board_map")
+	_map_blend = move_toward(_map_blend, 1.0 if want_map else 0.0, delta * 1.8)
+	if _map_blend > 0.0:
+		var e := smoothstep(0.0, 1.0, _map_blend)
+		var map_pos := _bounds_centre + Vector3(0.0, _bounds_radius * 1.5 + 10.0, _bounds_radius * 0.95)
+		desired_pos = desired_pos.lerp(map_pos, e)
+		look = look.lerp(_bounds_centre, e)
+	var k := 1.0 - pow(0.004 if (_cam_fast or _map_blend > 0.0) else 0.02, delta)
 	camera.global_position = camera.global_position.lerp(desired_pos, k)
-	_cam_target = _cam_target.lerp(_cam_look, k)
+	_cam_target = _cam_target.lerp(look, k)
 	camera.look_at(_cam_target + Vector3(0, 1.0, 0), Vector3.UP)
+	# Board life: the beacon turns and bobs with a flickering spark, islands drift, the active
+	# pawn's ring pulses.
+	_anim_t += delta
+	if goal_beacon != null:
+		goal_beacon.rotation.y += delta * 0.7
+		goal_beacon.global_position.y = float(goal_beacon.get_meta("base_y", goal_beacon.global_position.y)) + sin(_anim_t * 1.6) * 0.12
+	if _spark != null:
+		var f := 0.75 + 0.45 * absf(sin(_anim_t * 9.0)) * (0.6 + 0.4 * sin(_anim_t * 23.0))
+		_spark.scale = Vector3.ONE * f
+	for isl in _islands:
+		var n: Node3D = isl["node"]
+		n.position.y = float(isl["base_y"]) + sin(_anim_t * 0.35 + float(isl["phase"])) * 0.35
+	if active_pulse != null and director.state != null:
+		var ap := director.state.active_player()
+		var pawn: BoardPawn = pawns.get(ap.peer_id, null) if ap != null else null
+		var show := pawn != null and director.state.phase in [BoardState.PHASE_TURNS, BoardState.PHASE_CHOOSING]
+		active_pulse.visible = show
+		if show:
+			active_pulse.global_position = pawn.global_position + Vector3(0, 0.05, 0)
+			var pulse := 1.0 + 0.18 * (0.5 + 0.5 * sin(_anim_t * 4.0))
+			active_pulse.scale = Vector3(pulse, 1.0, pulse)
 	if goal_ring != null:
 		goal_ring.rotation.y += delta * 0.8
 	_marker_t += delta

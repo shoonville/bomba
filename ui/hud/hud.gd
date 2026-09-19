@@ -128,6 +128,8 @@ func _draw() -> void:
 				var digit := "%d" % left
 				var dw := _font.get_string_size(digit, HORIZONTAL_ALIGNMENT_CENTER, -1, 120).x
 				_draw_outlined(Vector2((size.x - dw) * 0.5, size.y * 0.3 + 165.0), digit, 120, _score_col, 10.0, -0.22)
+	if (Input.is_action_pressed("scoreboard") or Game.args.has("show_scoreboard")) and _arena != null and _arena.has_method("all_player_nodes"):
+		_draw_scoreboard(size)
 	if _player.health <= 0:
 		var txt := "DOWN"
 		if _arena != null and _arena.has_method("centre_text") and str(_arena.centre_text()) != "":
@@ -247,6 +249,7 @@ func _draw_score(size: Vector2) -> void:
 	var timer := "%d:%02d" % [mins, secs]
 	var tw := _font.get_string_size(timer, HORIZONTAL_ALIGNMENT_RIGHT, -1, 26).x
 	_draw_outlined(Vector2(size.x - 40.0 - tw, 128.0), timer, 26, _paper)
+	_draw_outlined(Vector2(size.x - 40.0 - _font.get_string_size("TAB · SCORES", HORIZONTAL_ALIGNMENT_RIGHT, -1, 13).x, 172.0), "TAB · SCORES", 13, Color(_paper, 0.6))
 	var deaths := "%d DOWN" % (_arena.deaths_for(_player.peer_id) if _arena != null and _arena.has_method("deaths_for") else _player.deaths)
 	var dw := _font.get_string_size(deaths, HORIZONTAL_ALIGNMENT_RIGHT, -1, 18).x
 	_draw_outlined(Vector2(size.x - 40.0 - dw, 152.0), deaths, 18, _paper)
@@ -296,6 +299,42 @@ func _draw_damage(size: Vector2) -> void:
 	draw_rect(Rect2(0, size.y - t, size.x, t), col)
 	draw_rect(Rect2(0, 0, t, size.y), col)
 	draw_rect(Rect2(size.x - t, 0, t, size.y), col)
+
+
+## Hold Tab: everyone's kills and deaths, best first, you in the accent colour.
+func _draw_scoreboard(size: Vector2) -> void:
+	var rows: Array = []
+	for n in _arena.all_player_nodes():
+		var pl := n as Player
+		if pl == null:
+			continue
+		var k: int = _arena.kills_for(pl.peer_id) if _arena.has_method("kills_for") else pl.kills
+		var d: int = _arena.deaths_for(pl.peer_id) if _arena.has_method("deaths_for") else pl.deaths
+		rows.append({"name": pl.display_name.to_upper(), "k": k, "d": d, "col": pl.colour, "me": pl == _player, "alive": pl.is_alive()})
+	rows.sort_custom(func(a, b): return a["k"] > b["k"] if a["k"] != b["k"] else a["d"] < b["d"])
+	var w := 520.0
+	var row_h := 38.0
+	var h := 74.0 + row_h * rows.size()
+	var x := (size.x - w) * 0.5
+	var y := size.y * 0.5 - h * 0.5
+	var skew := 20.0
+	draw_colored_polygon(PackedVector2Array([Vector2(x + skew, y), Vector2(x + w, y), Vector2(x + w - skew, y + h), Vector2(x, y + h)]), Color(_ink, 0.9))
+	var title := "SCOREBOARD"
+	if "manifest" in _arena and _arena.manifest != null:
+		title = "%s  ·  SCOREBOARD" % _arena.manifest.display_name
+	_draw_outlined(Vector2(x + 34, y + 36), title, 24, _score_col, 5.0)
+	_draw_outlined(Vector2(x + w - 150, y + 36), "K", 18, _paper, 4.0)
+	_draw_outlined(Vector2(x + w - 90, y + 36), "D", 18, _paper, 4.0)
+	for i in rows.size():
+		var r: Dictionary = rows[i]
+		var ry := y + 66.0 + row_h * i
+		draw_rect(Rect2(x + 32, ry + 8, 14, 22), Color(r["col"]))
+		var col: Color = _score_col if bool(r["me"]) else _paper
+		if not bool(r["alive"]):
+			col = Color(col, 0.55)
+		_draw_outlined(Vector2(x + 58, ry + 26), "%d   %s" % [i + 1, str(r["name"])], 20, col, 4.0)
+		_draw_outlined(Vector2(x + w - 150, ry + 26), "%d" % int(r["k"]), 20, col, 4.0)
+		_draw_outlined(Vector2(x + w - 90, ry + 26), "%d" % int(r["d"]), 20, col, 4.0)
 
 
 func _draw_centre_text(size: Vector2, text: String, font_size: int, col: Color) -> void:

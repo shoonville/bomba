@@ -287,6 +287,14 @@ red soles. Same rig, so arena, board and podium changed together. The AR's sight
 dot on the screen itself (a translucent pane you aim through at ADS). `figures.png`,
 `board_turn.png`, `last_stand_spectate.png`, `ar_ads.png`.
 
+Quality-of-life pass (Sean asked for QOL and more board detail): fork hover previews the whole
+move down that branch with a cream landing tile; hold Tab for the whole board (blends in and
+out); rows show steps to the goal, a NEXT tag and flash on coin changes; a ROUND N / M banner;
+Tab scoreboard in the minigames (kills, deaths, best first). Board detail: a bomb-with-fuse
+beacon over the goal, eight floating islands with props drifting in the void, a pulsing ring
+under the active pawn. `board_fork.png`, `board_map.png`, `board_turn.png`,
+`arena_scoreboard.png`. Harness: `--board_map`, `--show_scoreboard`.
+
 ### Bugs found and fixed today (all measured before and after)
 
 1. Client's view of remote players lagged whole tick loops → 25 % hit confirmation. netfox

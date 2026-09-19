@@ -13,10 +13,13 @@ var _item_target_mode: String = ""
 var _target_index: int = 0
 var _flash: float = 0.0
 var _intro: String = ""
+var _intro_small: bool = false   # the round banner sits high and small, clear of the die number
 var _intro_t: float = 0.0
 var _reward_lines: Array = []
 var _reward_t: float = 0.0
 var _row_rects: Array = []
+var _row_flash: Dictionary = {}
+var _last_round: int = 0
 var _roll_btn: Button
 var _fork_left: Button
 var _fork_right: Button
@@ -72,20 +75,28 @@ func _on_events(events: Array) -> void:
 				_fork_options.clear()
 				_item_target_mode = ""
 				_unhover()
+				if director.state != null and director.state.round != _last_round:
+					_last_round = director.state.round
+					_intro = "ROUND %d / %d" % [director.state.round, director.state.rounds]
+					_intro_small = true
+					_intro_t = 1.3
 				var lp := director.local_player()
 				if lp != null and int(e["peer"]) == lp.peer_id:
 					Audio.play("round_start", -8.0)
 					_flash = 1.0
 			"minigame":
 				_intro = "NEXT UP:  %s" % str(e.get("display_name", "MINIGAME"))
+				_intro_small = false
 				_intro_t = 2.6
 				_dice_t = 0.0
 				Audio.play("round_end", -6.0)
 			"coins":
+				_row_flash[int(e["peer"])] = 1.0
 				if e.has("rank"):
 					rewards.append(e)
 			"finished":
 				_intro = "MATCH OVER"
+				_intro_small = false
 				_intro_t = 2.0
 	if not rewards.is_empty():
 		_reward_lines.clear()
@@ -105,6 +116,8 @@ func _ordinal(n: int) -> String:
 
 
 func _process(delta: float) -> void:
+	for k in _row_flash.keys():
+		_row_flash[k] = maxf(0.0, float(_row_flash[k]) - delta * 1.6)
 	_dice_t = maxf(0.0, _dice_t - delta)
 	_flash = maxf(0.0, _flash - delta * 2.0)
 	_intro_t = maxf(0.0, _intro_t - delta)
@@ -174,8 +187,25 @@ func _hover_side(left: bool) -> void:
 	if director == null or director.view == null or _fork_options.size() < 2:
 		return
 	var idx := _side_index(left)
-	if director.view.has_method("highlight_space"):
-		director.view.highlight_space(str(_fork_options[idx]))
+	if director.view.has_method("highlight_path"):
+		director.view.highlight_path(_preview_path(idx))
+
+
+## The tiles the rest of this move would cover down option `idx` (steps_left counts the step
+## onto the option itself). Later forks follow their first branch for the preview.
+func _preview_path(idx: int) -> Array:
+	var ids: Array = []
+	if director.state == null or director.graph == null:
+		return ids
+	var cur := str(_fork_options[idx])
+	ids.append(cur)
+	for _k in range(1, maxi(director.state.steps_left, 1)):
+		var nx := director.graph.next_of(cur)
+		if nx.is_empty():
+			break
+		cur = str(nx[0])
+		ids.append(cur)
+	return ids
 
 
 func _unhover() -> void:
@@ -286,27 +316,36 @@ func _draw() -> void:
 		var col := Palette.player_colour(p.colour_index)
 		var active := i == st.active
 		var targeted := _item_target_mode != "" and i == _target_index
-		var w := 400.0
+		var w := 480.0
 		var h := 44.0
 		var x := 24.0 + (14.0 if active else 0.0)
 		var skew := 12.0
 		_row_rects.append(Rect2(x, y, w, h))
-		draw_colored_polygon(PackedVector2Array([Vector2(x + skew, y), Vector2(x + w, y), Vector2(x + w - skew, y + h), Vector2(x, y + h)]), Color(ink, 0.9 if active else 0.7))
+		var flash: float = float(_row_flash.get(p.peer_id, 0.0))
+		draw_colored_polygon(PackedVector2Array([Vector2(x + skew, y), Vector2(x + w, y), Vector2(x + w - skew, y + h), Vector2(x, y + h)]), Color(ink, 0.9 if active else 0.7).lerp(Color(paper, 0.9), flash * 0.6))
 		draw_colored_polygon(PackedVector2Array([Vector2(x + skew, y), Vector2(x + skew + 34, y), Vector2(x + 34, y + h), Vector2(x, y + h)]), col)
 		if active or targeted:
 			draw_polyline(PackedVector2Array([Vector2(x + skew, y), Vector2(x + w, y), Vector2(x + w - skew, y + h), Vector2(x, y + h), Vector2(x + skew, y)]), Palette.hud_colour("danger") if targeted else accent, 3.0)
 		_text(Vector2(x + 48, y + 29), p.display_name.to_upper(), 20, paper if p != lp else accent)
 		_text(Vector2(x + 220, y + 29), "%d" % p.coins, 20, Palette.player_colour(3))
 		_text(Vector2(x + 268, y + 29), "◆ %d" % p.bombas, 20, Palette.hud_colour("score"))
+		# Steps to the goal, so everyone can plan; the leader's distance is what matters.
+		if st.goal != "" and director.graph != null:
+			var d := director.graph.distance(p.space, st.goal)
+			if d >= 0:
+				_text(Vector2(x + 325, y + 29), "%d TO ◆" % d, 14, Color(paper, 0.85))
 		var chips := ""
 		for it in p.items:
 			chips += str(it).substr(0, 2).to_upper() + " "
 		if chips != "":
-			_text(Vector2(x + 330, y + 29), chips.strip_edges(), 14, Palette.player_colour(5))
+			_text(Vector2(x + 396, y + 29), chips.strip_edges(), 14, Palette.player_colour(5))
+		if not active and st.players.size() > 1 and i == (st.active + 1) % st.players.size() and st.phase != BoardState.PHASE_FINISHED:
+			_text(Vector2(x + w - 62, y + 27), "NEXT", 13, Color(accent, 0.9))
 		y += h + 8.0
 	_draw_name_tags(st)
 	_text(Vector2(size.x - 250, 52), "ROUND %d / %d" % [mini(st.round, st.rounds), st.rounds], 26, paper)
 	_text(Vector2(size.x - 250, 84), "GOAL COSTS %d" % int(director.cfg.get("goal_cost", 10)), 18, Palette.hud_colour("score"))
+	_text(Vector2(size.x - 250, 112), "HOLD TAB · MAP", 14, Color(paper, 0.7))
 	if _dice_t > 0.0:
 		var s := 120 + int(24.0 * clampf(_dice_t - 1.3, 0.0, 0.3) / 0.3)
 		var txt := "%d" % _dice_value if _dice_bonus <= 0 else "%d +%d" % [_dice_value - _dice_bonus, _dice_bonus]
@@ -315,9 +354,11 @@ func _draw() -> void:
 		_text(Vector2(size.x * 0.61 - tw * 0.5, size.y * 0.36), txt, s, Color(Palette.hud_colour("score"), clampf(_dice_t * 2.0, 0.0, 1.0)), 10.0, -0.22)
 	if _intro_t > 0.0:
 		var a := clampf(_intro_t * 1.5, 0.0, 1.0)
-		var tw := _font.get_string_size(_intro, HORIZONTAL_ALIGNMENT_CENTER, -1, 54).x
-		_card(Vector2((size.x - tw) * 0.5 - 40, size.y * 0.30 - 50), Vector2(tw + 80, 90), a)
-		_text(Vector2((size.x - tw) * 0.5, size.y * 0.30 + 16), _intro, 54, Color(accent, a), 8.0)
+		var fs := 38 if _intro_small else 54
+		var cy := size.y * (0.16 if _intro_small else 0.30)
+		var tw := _font.get_string_size(_intro, HORIZONTAL_ALIGNMENT_CENTER, -1, fs).x
+		_card(Vector2((size.x - tw) * 0.5 - 40, cy - fs * 0.95), Vector2(tw + 80, fs * 1.7), a)
+		_text(Vector2((size.x - tw) * 0.5, cy + fs * 0.3), _intro, fs, Color(accent, a), 8.0)
 	if _reward_t > 0.0 and not _reward_lines.is_empty():
 		var a := clampf(_reward_t * 1.5, 0.0, 1.0)
 		var cw := 520.0
