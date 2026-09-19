@@ -12,9 +12,11 @@ var models: Array[Node3D] = []
 # more across the frame like the Roboquest guns.
 # Sniper: held low and across, seen from the rear quarter so the scope's length reads and the
 # barrel runs toward the crosshair (Sean: lower, whole scope visible).
-var hip_positions: Array[Vector3] = [Vector3(0.30, -0.25, -0.50), Vector3(0.25, -0.20, -0.38)]
+# Positive yaw turns the muzzle left and swings the stock away to the right, so the scope is
+# seen along its side from the rear-left-top instead of straight into the eyepiece.
+var hip_positions: Array[Vector3] = [Vector3(0.26, -0.24, -0.50), Vector3(0.25, -0.20, -0.38)]
 var hip_rotations: Array[Vector3] = [
-	Vector3(deg_to_rad(-4.0), deg_to_rad(-33.0), deg_to_rad(-12.0)),
+	Vector3(deg_to_rad(-3.0), deg_to_rad(25.0), deg_to_rad(-8.0)),
 	Vector3(deg_to_rad(4.0), deg_to_rad(-19.0), deg_to_rad(-7.0)),
 ]
 # ADS: the sniper's scope tube sits 0.115 above the model origin, so the model goes to
