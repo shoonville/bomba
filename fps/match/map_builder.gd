@@ -1,6 +1,6 @@
 class_name MapBuilder
 extends RefCounted
-## Turns an ArenaLayout dictionary into StaticBody3D geometry with cel materials. No assets.
+## Turns a layout dictionary (GrayboxLayout or any minigame's own) into StaticBody3D geometry with cel materials. No assets.
 
 
 static func build(parent: Node3D, layout: Dictionary, map_id: String) -> void:

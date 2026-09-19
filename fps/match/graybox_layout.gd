@@ -1,4 +1,4 @@
-class_name ArenaLayout
+class_name GrayboxLayout
 extends RefCounted
 ## The gray-box arena as data: boxes, spawns, bot waypoints. Built to Rust's principles
 ## (DESIGN.md §5) at ~125 % footprint with added vertical: one central tower everyone orbits,

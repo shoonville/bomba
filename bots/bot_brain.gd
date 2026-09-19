@@ -123,11 +123,12 @@ func gather_into(input: PlayerInput) -> void:
 	var want_slot := player.weapons.slot
 	if enemy != null:
 		want_slot = 0 if dist >= sniper_min_range else 1
+	want_slot = clampi(want_slot, 0, maxi(0, player.weapons.defs.size() - 1))
 	var fire := false
 	var fire_pressed := false
 	var ads := false
 	if enemy != null and tick - enemy_since_tick >= reaction_ticks and player.weapons.slot == want_slot:
-		if want_slot == 0:
+		if want_slot == 0 and player.weapons.defs.size() > 0 and player.weapons.defs[0].is_sniper():
 			ads = true
 			scope_hold += 1
 			if scope_hold >= scope_hold_ticks:

@@ -1,0 +1,12 @@
+{
+  "id": "snipers",
+  "display_name": "SNIPERS",
+  "min_players": 1,
+  "max_players": 6,
+  "camera": "first_person",
+  "scoring": "kills",
+  "time_limit_seconds": 150,
+  "weapons": ["sniper"],
+  "bot_profile": "fps",
+  "scene": "minigame.tscn"
+}

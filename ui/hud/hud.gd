@@ -89,7 +89,10 @@ func _draw() -> void:
 	if _damage_flash > 0.0:
 		_draw_damage(size)
 	if _arena != null and _arena.has_method("in_warmup") and _arena.in_warmup():
-		_draw_centre_text(size, "GET READY", 64, _score_col)
+		var name := "GET READY"
+		if "manifest" in _arena and _arena.manifest != null:
+			name = "%s  ·  GET READY" % _arena.manifest.display_name
+		_draw_centre_text(size, name, 56, _score_col)
 	if _player.health <= 0:
 		_draw_centre_text(size, "DOWN", 64, _danger_col)
 

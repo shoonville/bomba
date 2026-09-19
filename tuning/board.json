@@ -33,6 +33,12 @@
     "turbo": {
       "display_name": "TURBO",
       "roll_bonus": 3
+    },
+    "swap": {
+      "display_name": "SWAP"
+    },
+    "shield": {
+      "display_name": "SHIELD"
     }
   },
   "default_board": "first"

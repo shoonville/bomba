@@ -1,15 +1,17 @@
-class_name Arena
+class_name FpsMatch
 extends Minigame
-## The first minigame: first-person free-for-all, timed, most kills wins, instant respawn with
-## spawn protection. Self-contained: it builds its own map, spawns players from the SDK's
-## player list, drives bots through PlayerContext, and returns a ranked result.
+## Shared base for first-person free-for-all minigames: builds a gray-box map from a layout
+## table, spawns players from the SDK's player list, drives bots through PlayerContext, runs a
+## timed round with instant respawn and spawn protection, and returns a ranked result.
+## A minigame folder subclasses this with a manifest (weapons, time limit) and, if it wants,
+## overrides _layout(), _palette_map() and _score_for(). Nothing outside the folder changes.
 
 const PLAYER_SCENE := preload("res://fps/player/player.tscn")
 
 
-class ArenaContext:
+class MatchContext:
 	extends PlayerContext
-	var arena: Arena
+	var arena: FpsMatch
 
 	func on_player_died(player: Node, tick: int) -> void:
 		arena._on_player_died(player, tick)
@@ -54,7 +56,7 @@ var lag_comp_ticks: int = 15
 var kill_log: Array = []
 
 var _players: Dictionary = {}
-var _ctx: ArenaContext
+var _ctx: MatchContext
 var _pending_kills: Array = []
 var _kill_sent: Dictionary = {}
 var _shot_sent: Dictionary = {}
@@ -71,15 +73,19 @@ func _on_setup() -> void:
 	arena_cfg = Tuning.table("arena")
 	move_cfg = MovementConfig.from_dict(Tuning.table("movement"))
 	var wt := Tuning.table("weapons")
-	weapon_defs = WeaponDef.load_all(wt)
+	var ids: Array = []
+	if manifest != null:
+		for w in manifest.weapons:
+			ids.append(str(w))
+	weapon_defs = WeaponDef.load_ids(wt, ids) if not ids.is_empty() else WeaponDef.load_all(wt)
 	swap_ticks = int(wt.get("swap_ticks", 20))
 	lag_comp_ticks = int(round(Tuning.float_value("net.lag_comp_max_ms", 250.0) / 1000.0 * NetworkTime.tickrate))
 
-	layout = ArenaLayout.build()
-	MapBuilder.build(map_root, layout, "arena")
+	layout = _layout()
+	MapBuilder.build(map_root, layout, _palette_map())
 	_build_environment()
 	spawn_selector.configure(layout["spawns"], arena_cfg, move_cfg.eye_height)
-	_ctx = ArenaContext.new()
+	_ctx = MatchContext.new()
 	_ctx.arena = self
 
 	var sorted := players.duplicate()
@@ -98,11 +104,26 @@ func _on_setup() -> void:
 			NetworkTime.start()
 		var warm := int(float(arena_cfg.get("warmup_seconds", 3)) * NetworkTime.tickrate)
 		var secs := int(config.get("round_seconds", 0))
+		if secs <= 0 and manifest != null and manifest.time_limit_seconds > 0:
+			secs = manifest.time_limit_seconds
 		if secs <= 0:
 			secs = int(arena_cfg.get("round_seconds", 180))
 		var start := NetworkTime.tick + warm
 		_rpc_round.rpc(start, start + secs * NetworkTime.tickrate)
-	Log.info("arena", "Setup: %d players, %d boxes, %d spawns" % [_players.size(), layout["boxes"].size(), layout["spawns"].size()])
+	Log.info("arena", "Setup %s: %d players, %d boxes, %d spawns, weapons %s" % [manifest.id if manifest != null else "?", _players.size(), layout["boxes"].size(), layout["spawns"].size(), weapon_defs.map(func(d): return d.id)])
+
+
+## Hooks for minigame folders.
+func _layout() -> Dictionary:
+	return GrayboxLayout.build()
+
+
+func _palette_map() -> String:
+	return "arena"
+
+
+func _score_for(pl: Player) -> int:
+	return pl.kills
 
 
 func _build_environment() -> void:
@@ -112,7 +133,7 @@ func _build_environment() -> void:
 	var sky_mat := ShaderMaterial.new()
 	sky_mat.shader = load("res://art/shaders/sky_clouds.gdshader")
 	sky_mat.set_shader_parameter("sky_top", Palette.map_colour("arena", "sky_top"))
-	sky_mat.set_shader_parameter("sky_horizon", Palette.map_colour("arena", "sky_bottom"))
+	sky_mat.set_shader_parameter("sky_horizon", Palette.map_colour(_palette_map(), "sky_bottom"))
 	sky_mat.set_shader_parameter("cloud_lit", Palette.map_colour("arena", "cloud_lit"))
 	sky_mat.set_shader_parameter("cloud_shadow", Palette.map_colour("arena", "cloud_shadow"))
 	sky_mat.set_shader_parameter("ink", Palette.map_colour("arena", "line"))
@@ -121,7 +142,7 @@ func _build_environment() -> void:
 	sky.radiance_size = Sky.RADIANCE_SIZE_32
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Palette.map_colour("arena", "counter")
+	env.ambient_light_color = Palette.map_colour(_palette_map(), "counter")
 	env.ambient_light_energy = 0.5
 	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 	var we := WorldEnvironment.new()
@@ -357,7 +378,7 @@ func _finish_round() -> void:
 	var result := MinigameResult.new()
 	for p in _players.values():
 		var pl := p as Player
-		result.add(pl.peer_id, pl.kills, pl.display_name)
+		result.add(pl.peer_id, _score_for(pl), pl.display_name)
 	result.finalize()
 	_rpc_finish.rpc(result.to_dict())
 

@@ -232,3 +232,48 @@ func test_bots_pick_toward_goal_and_items() -> void:
 	assert_eq(pick.size(), 2)
 	assert_eq(str(pick[0]), "bomb")
 	assert_eq(int(pick[1]), s.players[1].peer_id)
+
+
+func test_swap_and_shield() -> void:
+	var s := _fresh(6)
+	var user := s.players[0]
+	var other := s.players[1]
+	user.space = "2"
+	other.space = "9"
+	user.items = ["swap"]
+	var ev := BoardRules.use_item(s, graph, cfg, 1, "swap", other.peer_id)
+	assert_eq(user.space, "9")
+	assert_eq(other.space, "2")
+	assert_eq(ev.filter(func(e): return e["kind"] == "teleport").size(), 2)
+	# shield eats a bomb
+	var t := _fresh(6)
+	var attacker := t.players[0]
+	var victim := t.players[1]
+	attacker.items = ["bomb"]
+	victim.items = ["shield"]
+	victim.coins = 9
+	victim.space = "6"
+	var ev2 := BoardRules.use_item(t, graph, cfg, 1, "bomb", victim.peer_id)
+	assert_eq(victim.coins, 9, "no coin loss behind a shield")
+	assert_eq(victim.space, "6", "no knockback behind a shield")
+	assert_false(victim.items.has("shield"), "shield spent")
+	assert_false(attacker.items.has("bomb"), "bomb spent")
+	assert_true(ev2.any(func(e): return e["kind"] == "shield"))
+	# item draws can produce all four kinds
+	var names := (cfg["items"] as Dictionary).keys()
+	assert_eq(names.size(), 4)
+
+
+func test_bot_swaps_only_for_a_real_gain() -> void:
+	var s := _fresh(1)
+	var me := s.active_player()
+	me.items = ["swap"]
+	s.goal = "13"
+	me.space = "1"
+	s.players[1].space = "12"
+	var pick := BoardRules.bot_item(s, graph)
+	assert_eq(pick.size(), 2, "swap with the player sitting next to the goal")
+	assert_eq(str(pick[0]), "swap")
+	assert_eq(int(pick[1]), s.players[1].peer_id)
+	s.players[1].space = "1"
+	assert_eq(BoardRules.bot_item(s, graph).size(), 0, "no gain, no swap")

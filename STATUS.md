@@ -103,6 +103,43 @@ Cost: host tick loop 2.4–2.8 ms mean with three seats; client tick loop p95 4 
   arena → finish, 0 errors; and host + client through `bad` with the same final standings on
   both peers. Not yet: a human has not played a board turn; 2 items only; one board.
 
+### Session 3 additions (evening; Sean's menu notes applied first)
+
+- **Menu**: no tagline, upright lettering everywhere, logo colours from `palette.json`
+  `menu.logo_*` (tangerine fill, ink outline, white sticker border; provisional until Sean
+  reacts). `docs/screenshots/main_menu.png` is current.
+- **Minigame SDK proven with a second minigame**: the match logic left `minigames/arena` for
+  `fps/match/fps_match.gd` (`FpsMatch`: layout → map, spawns, round clock from the manifest,
+  respawns, kill log, `_score_for` hook). `minigames/arena/arena.gd` is 3 lines;
+  `minigames/snipers/` (manifest `weapons: ["sniper"]`, 150 s, headshots score 2) was added
+  without a change outside its folder. The registry finds it by folder scan (tested).
+- **Board rounds draw their minigame** (seeded, no immediate repeat; `--minigame=ID` pins it):
+  intro card "NEXT UP: SNIPERS" on the board, "SNIPERS · GET READY" in the FPS HUD, and a
+  reward card with the ranked coins when the board resumes; pacing reserves 2.4 s for each.
+- **Items**: SWAP (trade spaces) and SHIELD (passive, eats a BOMB) join BOMB and TURBO; 4 kinds
+  can be drawn. Bots use SWAP only for a gain of ≥ 3 steps. 2 new tests (13 board tests).
+- **Mouse on the board**: ROLL, fork (LEFT/RIGHT by the tiles' screen positions) and item
+  buttons, click a player row as the target; keys unchanged.
+- **Results after a board match** read "◆ Bombas · coins" instead of a composite score.
+- **Harness**: `--screenshot_event=minigame|reward|myturn|finished`.
+
+Numbers: `tools/test.sh` 66 tests, 5563 assertions, 84 scripts compiled, 0 failures. Headless
+host + 2 bots, 2 rounds with 8 s minigames: round 1 ARENA (2 weapons), round 2 SNIPERS (1
+weapon, one headshot kill scored 2), board → minigame → rewards → board → minigame → finish, log
+24 lines, 0 warnings, 0 errors. Windowed 1-round loop with the HUD present: 0 script errors
+after the fix below.
+
+Bugs found and fixed in this block: (1) the host never saw the reward card because Game
+recreated the board HUD *after* emitting the ranking, and the director broadcasts the reward
+events synchronously inside that emit (clients were fine; the screenshot proved it). (2) At
+match end the HUD's process/draw called the director for three frames after it had left the
+tree: 3 "get_unique_id on null" script errors per finish; guarded in both. (3) The dice from
+the last roll showed through the intro card; cleared on the minigame event. (4) "ROUND 2 / 1"
+after the last round; display clamps.
+
+New screenshots: `board_intro_card.png`, `board_reward_card.png`, `board_roll_button.png`,
+`snipers_intro.png`, `snipers_hip.png`, `results_board.png`.
+
 ### Bugs found and fixed today (all measured before and after)
 
 1. Client's view of remote players lagged whole tick loops → 25 % hit confirmation. netfox
@@ -176,9 +213,12 @@ on one machine with `tools/soak.sh`-style flags. Try, in this order:
 
 ### Next
 
-1. A human plays it (checklist above) and writes the verdict into this file.
-2. Bandwidth: quantise transform, pack weapon ints, 20 Hz for non-predicted fields.
-3. Real map pass on the arena layout (it is a table in `layout.gd`) and first proper viewmodels.
-4. Choose the display face (OFL candidates: Bowlby One, Rubik Mono One, Titan One, Chango,
+1. A human plays it (checklist above, plus one board turn with the mouse) and writes the
+   verdict into this file.
+2. Bandwidth: quantise position, pack weapon ints, so six seats fit the public relay cap.
+3. A minigame that is not a kill count (a third-person or objective one exercises the SDK's
+   `camera` and `scoring` fields, which nothing reads yet).
+4. Real map pass on the gray-box (`fps/match/graybox_layout.gd` is a table) and first proper
+   viewmodels; a second board.
+5. Choose the display face (OFL candidates: Bowlby One, Rubik Mono One, Titan One, Chango,
    Bungee) and build the type styles once.
-5. noray transport, then the shell (`DESIGN.md` §7 step 3).

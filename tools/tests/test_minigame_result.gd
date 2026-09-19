@@ -28,6 +28,10 @@ func test_round_trip() -> void:
 func test_registry_finds_arena() -> void:
 	var ids := MinigameRegistry.scan(true).keys()
 	assert_true(ids.has("arena"), "arena manifest present: %s" % str(ids))
+	assert_true(ids.has("snipers"), "second minigame found by folder scan alone")
+	var sn := MinigameRegistry.get_manifest("snipers")
+	assert_eq(sn.weapons, PackedStringArray(["sniper"]))
+	assert_eq(sn.time_limit_seconds, 150)
 	var m := MinigameRegistry.get_manifest("arena")
 	if m != null:
 		assert_eq(m.scene_path, "res://minigames/arena/minigame.tscn")

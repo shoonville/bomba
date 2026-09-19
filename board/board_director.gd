@@ -25,6 +25,8 @@ var _clock: float = 0.0
 var _minigame_started: bool = false
 var _finished_emitted: bool = false
 var _last_serial_seen: int = -1
+var _next_minigame: String = "arena"
+var _last_minigame: String = ""
 
 
 func is_server() -> bool:
@@ -79,7 +81,7 @@ func _hide_board() -> void:
 
 
 func local_player() -> BoardState.PlayerState:
-	if state == null:
+	if state == null or not is_inside_tree():
 		return null
 	return state.player(multiplayer.get_unique_id())
 
@@ -167,7 +169,7 @@ func _process(delta: float) -> void:
 			var ap := state.active_player()
 			if ap.is_bot or Game.args.has("autoplay"):
 				if _timer >= float(cfg.get("bot_think_seconds", 1.2)):
-					var pick := BoardRules.bot_item(state)
+					var pick := BoardRules.bot_item(state, graph)
 					if not pick.is_empty():
 						_broadcast(BoardRules.use_item(state, graph, cfg, ap.peer_id, str(pick[0]), int(pick[1])))
 						_timer = 0.0
@@ -196,13 +198,28 @@ func _process(delta: float) -> void:
 				match_finished.emit(state)
 
 
+## Pick the round's minigame from whatever folders the registry found, never the same twice
+## in a row when there is a choice. Seeded so the host's pick is reproducible.
+func _pick_minigame() -> String:
+	var ids := MinigameRegistry.ids()
+	if Game.args.has("minigame"):
+		return str(Game.args["minigame"])
+	if ids.is_empty():
+		return "arena"
+	if ids.size() > 1 and _last_minigame != "":
+		ids.erase(_last_minigame)
+	var r := Rng.stream("board_minigames")
+	return str(ids[r.randi_range(0, ids.size() - 1)])
+
+
 func _start_minigame() -> void:
 	var secs := int(cfg.get("minigame_round_seconds", 90))
 	if Game.args.has("board_minigame_seconds"):
 		secs = int(Game.args["board_minigame_seconds"])
 	Session.config.round_seconds = secs
-	Log.info("board", "Round %d minigame: arena for %d s" % [state.round, secs])
-	Session.start_minigame("arena")
+	_last_minigame = _next_minigame
+	Log.info("board", "Round %d minigame: %s for %d s" % [state.round, _next_minigame, secs])
+	Session.start_minigame(_next_minigame)
 
 
 func _on_minigame_finished(result: MinigameResult) -> void:
@@ -224,6 +241,12 @@ func _on_minigame_finished(result: MinigameResult) -> void:
 # --- replication ----------------------------------------------------------------------------
 
 func _broadcast(events: Array) -> void:
+	for e in events:
+		if str(e.get("kind", "")) == "minigame":
+			_next_minigame = _pick_minigame()
+			var m := MinigameRegistry.get_manifest(_next_minigame)
+			e["id"] = _next_minigame
+			e["display_name"] = m.display_name if m != null else _next_minigame.to_upper()
 	var pause := _estimate_pause(events)
 	_busy_until = _clock + pause
 	_rpc_state.rpc(state.to_dict())
@@ -241,8 +264,10 @@ func _estimate_pause(events: Array) -> float:
 			"coins", "item", "item_used": t += 0.55
 			"goal", "teleport": t += 1.1
 			"turn": t += 0.35
-			"minigame": t += 1.2
+			"minigame": t += 2.4
 			"finished": t += 1.0
+	if events.any(func(e): return e.get("kind") == "coins" and e.has("rank")):
+		t += 2.4  # the reward card
 	return t + float(cfg.get("land_pause_seconds", 0.9)) * 0.3
 
 

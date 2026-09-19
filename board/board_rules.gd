@@ -4,6 +4,9 @@ extends RefCounted
 ## mutates the state and returns the events presentation animates. Randomness comes from the
 ## state's seed and counter, so the same match replays identically on every peer.
 
+## A bot only swaps when the target is at least this many steps nearer the goal.
+const BOT_SWAP_MIN_GAIN := 3
+
 
 static func rng(state: BoardState) -> RandomNumberGenerator:
 	var r := SeededRng.make_tick(state.seed_value, "board", state.rng_counter)
@@ -70,6 +73,12 @@ static func use_item(state: BoardState, graph: BoardGraph, cfg: Dictionary, peer
 			if target == null or target == user:
 				user.items.append(item)
 				return events
+			if target.items.has("shield"):
+				# A shield eats the bomb; both are spent.
+				target.items.erase("shield")
+				events.append({"kind": "item_used", "peer": user.peer_id, "item": item, "target": target.peer_id})
+				events.append({"kind": "shield", "peer": target.peer_id, "from": user.peer_id})
+				return events
 			var delta := int(def.get("coins", -5))
 			var before := target.coins
 			target.coins = maxi(0, target.coins + delta)
@@ -83,6 +92,20 @@ static func use_item(state: BoardState, graph: BoardGraph, cfg: Dictionary, peer
 		"turbo":
 			user.roll_bonus += int(def.get("roll_bonus", 3))
 			events.append({"kind": "item_used", "peer": user.peer_id, "item": item, "target": user.peer_id})
+		"swap":
+			var target := state.player(target_peer)
+			if target == null or target == user:
+				user.items.append(item)
+				return events
+			var mine := user.space
+			user.space = target.space
+			target.space = mine
+			events.append({"kind": "item_used", "peer": user.peer_id, "item": item, "target": target.peer_id})
+			events.append({"kind": "teleport", "peer": user.peer_id, "to": user.space})
+			events.append({"kind": "teleport", "peer": target.peer_id, "to": target.space})
+		"shield":
+			# Passive: it is spent when a bomb targets its holder. Using it by hand does nothing.
+			user.items.append(item)
 		_:
 			user.items.append(item)
 	return events
@@ -251,7 +274,7 @@ static func bot_choose(state: BoardState, graph: BoardGraph) -> int:
 
 
 ## [item, target_peer] or [] when the bot passes.
-static func bot_item(state: BoardState) -> Array:
+static func bot_item(state: BoardState, graph: BoardGraph = null) -> Array:
 	var me := state.active_player()
 	if me == null:
 		return []
@@ -262,4 +285,20 @@ static func bot_item(state: BoardState) -> Array:
 		for p in standings:
 			if p != me and (p.bombas > me.bombas or p.coins > me.coins + 4):
 				return ["bomb", p.peer_id]
+	if me.items.has("swap") and graph != null and state.goal != "":
+		# Swap with whoever stands clearly nearer the goal than we do.
+		var my_d := graph.distance(me.space, state.goal)
+		if my_d < 0:
+			my_d = 1 << 20
+		var best: BoardState.PlayerState = null
+		var best_d := my_d - int(BOT_SWAP_MIN_GAIN)
+		for p in state.players:
+			if p == me:
+				continue
+			var d := graph.distance(p.space, state.goal)
+			if d >= 0 and d <= best_d:
+				best_d = d
+				best = p
+		if best != null:
+			return ["swap", best.peer_id]
 	return []

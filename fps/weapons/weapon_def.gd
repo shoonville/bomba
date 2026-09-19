@@ -83,6 +83,16 @@ static func load_all(table: Dictionary) -> Array[WeaponDef]:
 	return out
 
 
+## Load a specific list of weapon ids (a minigame's manifest loadout).
+static func load_ids(table: Dictionary, ids: Array) -> Array[WeaponDef]:
+	var out: Array[WeaponDef] = []
+	for id in ids:
+		var sid := str(id)
+		if table.has(sid):
+			out.append(from_dict(sid, table[sid]))
+	return out
+
+
 func is_sniper() -> bool:
 	return model == "flat"
 

@@ -25,6 +25,7 @@ var _soak_elapsed: float = 0.0
 var _quitting: bool = false
 var _shot_timer: float = 0.0
 var _shot_done: bool = false
+var _shot_armed: bool = false
 
 
 func _ready() -> void:
@@ -259,6 +260,7 @@ func _on_board_start(board_id: String, seed_value: int, players_data: Array, _co
 	board.name = "BoardDirector"
 	add_child(board)
 	board.match_finished.connect(_on_board_finished)
+	board.events_received.connect(_arm_screenshot_on)
 	board.start(players_data, seed_value, board_id)
 	if not headless and ResourceLoader.exists("res://ui/board/board_hud.tscn"):
 		_hud = load("res://ui/board/board_hud.tscn").instantiate()
@@ -280,10 +282,13 @@ func _on_board_finished(final_state: BoardState) -> void:
 	Log.info("game", "Board match finished: %s" % ", ".join(final_state.standings().map(func(p): return "%s %d bombas %d coins" % [p.display_name, p.bombas, p.coins])))
 	var result := MinigameResult.new()
 	result.minigame_id = "board"
-	var i := 0
 	for p in final_state.standings():
 		result.add(p.peer_id, p.bombas * 1000 + p.coins, p.display_name)
 	result.finalize()
+	for r in result.rankings:
+		var p := final_state.player(int(r["peer_id"]))
+		if p != null:
+			r["label"] = "◆ %d   ·   %d COINS" % [p.bombas, p.coins]
 	_clear_hud()
 	_end_board()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -350,12 +355,13 @@ func _on_minigame_finished(result: MinigameResult, id: String) -> void:
 	if board != null and is_instance_valid(board):
 		# Part of a board match: hand the ranking back to the board, no results screen.
 		_retire_minigame()
-		Events.minigame_finished.emit(result)
+		# HUD first: the director broadcasts the reward events synchronously from this emit.
 		if not headless and ResourceLoader.exists("res://ui/board/board_hud.tscn"):
 			_hud = load("res://ui/board/board_hud.tscn").instantiate()
 			ui_layer.add_child(_hud)
 			if _hud.has_method("attach"):
 				_hud.attach(board)
+		Events.minigame_finished.emit(result)
 		if wipe != null:
 			wipe.slam()
 		return
@@ -405,7 +411,7 @@ func _clear_hud() -> void:
 func _process(delta: float) -> void:
 	if args.has("open_pause") and active_minigame != null and _pause == null and not headless and _shot_timer > 1.5:
 		_open_pause()
-	if args.has("screenshot") and (active_minigame != null or board != null or args.has("screenshot_any")) and not _shot_done:
+	if args.has("screenshot") and (active_minigame != null or board != null or args.has("screenshot_any")) and not _shot_done and (not args.has("screenshot_event") or _shot_armed):
 		_shot_timer += delta
 		if _shot_timer >= float(args.get("screenshot_at", 3.0)):
 			_shot_done = true
@@ -432,6 +438,25 @@ func _finish_soak() -> void:
 	Log.flush()
 	await get_tree().create_timer(0.5).timeout
 	get_tree().quit(0)
+
+
+## --screenshot_event=<board event kind>: start the screenshot timer when that board event is
+## shown (e.g. "minigame" for the intro card, "reward" for the reward card) instead of at load.
+func _arm_screenshot_on(events: Array) -> void:
+	if _shot_armed or not args.has("screenshot_event"):
+		return
+	var want := str(args["screenshot_event"])
+	for e in events:
+		var kind := str(e.get("kind", ""))
+		var hit := kind == want
+		if want == "reward":
+			hit = kind == "coins" and e.has("rank")
+		elif want == "myturn":
+			hit = kind == "turn" and int(e.get("peer", 0)) == multiplayer.get_unique_id()
+		if hit:
+			_shot_armed = true
+			_shot_timer = 0.0
+			return
 
 
 func _take_screenshot(path: String) -> void:

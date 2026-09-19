@@ -32,7 +32,8 @@ func show_result(result: MinigameResult) -> void:
 	var i := 0
 	for r in result.rankings:
 		var first := int(r["rank"]) == 1
-		var l := UiStyle.label("#%d   %s   %d" % [int(r["rank"]), str(r["display_name"]).to_upper(), int(r["score"])],
+		var value := str(r["label"]) if r.has("label") else "%d" % int(r["score"])
+		var l := UiStyle.label("#%d   %s   %s" % [int(r["rank"]), str(r["display_name"]).to_upper(), value],
 			44 if first else 30, Palette.hud_colour("score") if first else UiStyle.paper())
 		_list.add_child(l)
 		UiStyle.slam(l, 0.12 + 0.08 * i)
