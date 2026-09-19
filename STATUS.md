@@ -13,7 +13,7 @@ harness that produced each number is named.
 
 | Area | State |
 |---|---|
-| Project | Godot 4.7-stable, Jolt physics, netfox 1.35.3 vendored with 3 documented patches (`addons/netfox/PATCHES.md`) |
+| Project | Godot 4.7-stable, Jolt physics, netfox 1.35.3 vendored with 4 documented patches (`addons/netfox/PATCHES.md`) |
 | Docs | `DESIGN.md`, `STYLE.md` (given), `NETPLAN.md`, `DECISIONS.md` (41 entries), `README.md`, this file |
 | `tuning/` | movement, weapons, arena, net, bots, palette, controls — every gameplay number, JSON |
 | `core/` | bootstrap + CLI, event bus, seeded RNG service, tuning loader with F5 reload, logging to file |
@@ -26,7 +26,8 @@ harness that produced each number is named.
 | `art/` | two-band cel shader (shadow = hue shift), ink outline + value ceiling + dither post pass, marbled swirl, viewmodel depth-squash shader, palette from JSON |
 | `ui/` | shaped HUD (health swash, kills/timer, ammo ticks, crosshair, hitmarker, drawn scope, kill feed), main menu/lobby on the swirl, results screen |
 | `tools/` | unit test runner, determinism harness, soak harness + report joiner, per-shot and remote-view diff tools, screenshot flags |
-| Not started | `board/`, `items/`, `audio/`, noray/Steam transports beyond the interface, melee, Windows export preset |
+| `audio/` | procedural synth, buses, event-driven SFX, menu loop |
+| Not started | `board/` (planned in `BOARDPLAN.md`), `items/`, Steam transport, melee, Windows export preset |
 
 ### Numbers
 
@@ -66,6 +67,31 @@ Bandwidth (the biggest open number): host upload ≈ 45–90 KB/s per client wit
 Cost: host tick loop 2.4–2.8 ms mean with three seats; client tick loop p95 4 ms (good), 8 ms
 (bad), 11 ms (awful), on an M4 in headless mode.
 
+### Session 2 additions (same day, after the first commit)
+
+- **Audio**: everything synthesised (`audio/synth.gd`, 23 SFX + a 4-bar menu loop, seeded and
+  deterministic, 23 sounds in ~60 ms at startup). Buses Music/SFX/UI, per-user volumes. Gunshots,
+  hitmarker/headshot, kill sting, hurt, death, bolt, reload, dry fire, swap, footsteps, jump/land,
+  round start/end, UI hover/click; remote shots are 3D-positioned.
+- **Settings** (`core/settings.gd`, user://settings.json): name, sensitivity, scoped
+  sensitivity, invert, four volumes, relay host, line profile. Panel in the menu and the pause
+  overlay.
+- **UI in the approved menu language** (`ui/shared/ui_style.gd`): lobby cards with identity
+  colours and HOST/YOU/BOT tags, HOST ONLINE with a friend code and COPY, join by code or
+  address, settings panel, pause overlay (resume / settings / leave), results restyled, diagonal
+  wipe on the host's start and slams elsewhere, title slams, button sounds.
+- **Friend-code joining through noray** (`net/noray_transport.gd`): NAT punch then relay
+  fallback. Verified against the public relay `tomfol.io:8890`: a 25 s match with 3 seats held,
+  378 ms RTT (the relay's location), 7 mm misprediction, 9 of 13 hits confirmed. The first two
+  attempts died in two seconds because the host's state stream exceeded the relay's 128 kB/s
+  per-relay cap, which the public server enforces by crashing.
+- **Bandwidth** (that cap made it a blocker): `:position` + `:yaw` replace `:transform`, and
+  netfox patch #4 sends state at 30 Hz. Three seats: host upload 37 KB/s per client (was 77–90),
+  diff encoder sending 21 of 162 candidate properties per loop; six seats: 96 KB/s per client
+  (was 170), 296 KB/s total. Hit agreement unchanged (17 of 17 on the LAN check). A six-seat
+  match through the public relay would still exceed the cap; direct joins have no cap.
+- `BOARDPLAN.md` and `tuning/board.json` written; the board itself is next.
+
 ### Bugs found and fixed today (all measured before and after)
 
 1. Client's view of remote players lagged whole tick loops → 25 % hit confirmation. netfox
@@ -103,14 +129,12 @@ shadows, no bloom. Not yet: a display face, a sky beyond flat colour, any real m
 ### Not verified / not done
 
 - **Feel with a human.** Nobody has held the mouse yet. See the checklist.
-- noray NAT traversal: `Noray` and `PacketHandshake` are vendored and wired into the transport
-  interface design but the noray transport is not implemented (needs a live noray server to test).
+- noray NAT punchthrough itself: only the relay fallback could be exercised from one machine.
 - Steam sockets: interface only.
 - Windows export: no preset; nothing platform-specific was written.
 - Late join / reconnect: a client joining after the start gets no player (the six-seat run
   showed it before `--expect` was fixed).
 - Player-vs-player collision: off by decision.
-- Audio: none.
 - The `_rpc_shot_fx` tracers for other players' shots are unreliable RPCs; not visually checked.
 
 ### Human checklist for the feel verdict (DESIGN.md §8)

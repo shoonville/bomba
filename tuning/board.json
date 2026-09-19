@@ -1,0 +1,39 @@
+{
+  "_comment": "The board loop. Ticks are not used here; times are seconds.",
+  "rounds": 5,
+  "minigame_round_seconds": 90,
+  "goal_cost": 10,
+  "start_coins": 5,
+  "turn_timeout_seconds": 20.0,
+  "choice_timeout_seconds": 8.0,
+  "bot_think_seconds": 1.2,
+  "hop_seconds": 0.32,
+  "land_pause_seconds": 0.9,
+  "space_effects": {
+    "coin": 3,
+    "lose": -3
+  },
+  "rewards": {
+    "coins_by_rank": [
+      10,
+      6,
+      4,
+      2,
+      2,
+      2
+    ],
+    "winner_item": true
+  },
+  "items": {
+    "bomb": {
+      "display_name": "BOMB",
+      "coins": -5,
+      "knockback": 3
+    },
+    "turbo": {
+      "display_name": "TURBO",
+      "roll_bonus": 3
+    }
+  },
+  "default_board": "first"
+}

@@ -15,6 +15,7 @@ var coyote: int = 0
 var last_hit_by: int = 0
 var last_hit_info: int = 0  # hit kind * 10 + weapon slot
 var head_pitch: float = 0.0
+var yaw: float = 0.0
 var respawn_tick: int = -1000
 
 # --- identity ---
@@ -56,6 +57,10 @@ var _last_predicted_pos: Vector3 = Vector3.ZERO
 var _has_predicted_pos: bool = false
 var _snap_threshold: float = 0.75
 var _remote_recorded_tick: int = -1
+var _weapon_event_tick: int = -1
+var _was_on_floor: bool = true
+var _step_distance: float = 0.0
+var _last_step_pos: Vector3 = Vector3.ZERO
 
 
 func _ready() -> void:
@@ -142,8 +147,10 @@ func _rollback_tick(delta: float, tick: int, _is_fresh: bool) -> void:
 		return
 	var alive := health > 0
 
-	# Look: absolute angles from input (NETPLAN §4).
-	rotation = Vector3(0.0, wrapf(input.yaw, -PI, PI), 0.0)
+	# Look: absolute angles from input (NETPLAN §4). yaw/pitch are the replicated state; the
+	# node's rotation is derived from them (a Transform3D would cost 52 bytes a tick).
+	yaw = wrapf(input.yaw, -PI, PI)
+	rotation = Vector3(0.0, yaw, 0.0)
 	head_pitch = clampf(input.pitch, -deg_to_rad(cfg.pitch_limit_deg), deg_to_rad(cfg.pitch_limit_deg))
 	head.rotation.x = head_pitch
 
@@ -184,7 +191,7 @@ func _rollback_tick(delta: float, tick: int, _is_fresh: bool) -> void:
 	# use state ticks so they line up with what remote peers receive and record.
 	_record_hitboxes(tick + 1)
 	if record_trajectory:
-		trajectory[tick + 1] = [global_position, health, kills, deaths, rotation.y]
+		trajectory[tick + 1] = [global_position, health, kills, deaths, yaw]
 
 
 func _force_update_is_on_floor() -> void:
@@ -261,6 +268,7 @@ func take_damage(amount: int, from_id: int, tick: int, kind: int, weapon_slot: i
 ## Authority: teleport to a spawn and restore. Called by the minigame from on_player_died.
 func respawn_at(spawn_position: Vector3, spawn_yaw: float, tick: int, protection_ticks: int) -> void:
 	global_position = spawn_position
+	yaw = spawn_yaw
 	rotation = Vector3(0.0, spawn_yaw, 0.0)
 	velocity = Vector3.ZERO
 	health = max_health
@@ -312,16 +320,56 @@ func _after_tick_loop() -> void:
 				_damage_fx_tick = int(d["tick"])
 				Events.local_damaged.emit(int(d["amount"]), int(d["from"]))
 		_pending_damage.clear()
+		_emit_weapon_events()
+		_emit_movement_events()
 	elif _is_remote_on_client():
 		_record_remote_state()
 
 
 func _record_remote_state() -> void:
+	rotation = Vector3(0.0, yaw, 0.0)
+	head.rotation.x = head_pitch
 	var t := rollback_synchronizer.get_last_known_state()
 	if t > _remote_recorded_tick:
 		_remote_recorded_tick = t
 		hitbox_history.record(t, Hitboxes.sample_from(global_position, cfg, health > 0))
-		snapshot_buffer.push(t, global_position, rotation.y, head_pitch)
+		snapshot_buffer.push(t, global_position, yaw, head_pitch)
+
+
+func _emit_weapon_events() -> void:
+	var out := weapons.last_outcome
+	var t := weapons.last_outcome_tick
+	if t <= _weapon_event_tick:
+		return
+	_weapon_event_tick = t
+	if out.reload_started:
+		Events.local_weapon_event.emit("reload_started")
+	if out.reload_finished:
+		Events.local_weapon_event.emit("reload_finished")
+	if out.dry_fire:
+		Events.local_weapon_event.emit("dry_fire")
+	if out.swapped:
+		Events.local_weapon_event.emit("swapped")
+		Events.local_weapon_changed.emit(out.weapon_id)
+
+
+func _emit_movement_events() -> void:
+	var on_floor := is_on_floor()
+	if health > 0:
+		if _was_on_floor and not on_floor and velocity.y > 1.0:
+			Events.local_jump.emit()
+		elif not _was_on_floor and on_floor:
+			Events.local_land.emit()
+			_step_distance = 0.0
+		if on_floor:
+			var moved := (global_position - _last_step_pos)
+			moved.y = 0.0
+			_step_distance += moved.length()
+			if _step_distance >= 2.1 and Vector2(velocity.x, velocity.z).length() > 1.0:
+				_step_distance = 0.0
+				Events.local_footstep.emit()
+	_was_on_floor = on_floor
+	_last_step_pos = global_position
 
 
 func get_fire_fx() -> Dictionary:

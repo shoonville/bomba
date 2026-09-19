@@ -27,11 +27,13 @@ WindowTiler="*res://addons/netfox.extras/window-tiler.gd"
 NetworkSimulator="*res://addons/netfox.extras/network-simulator.gd"
 Log="*res://core/log.gd"
 Tuning="*res://core/tuning.gd"
+Settings="*res://core/settings.gd"
 Rng="*res://core/rng.gd"
 Events="*res://core/events.gd"
 Net="*res://net/network.gd"
 Session="*res://session/session.gd"
 Game="*res://core/game.gd"
+Audio="*res://audio/audio.gd"
 
 [debug]
 
@@ -151,6 +153,7 @@ time/sync_to_physics=true
 time/suppress_offline_peer_warning=true
 time/tickrate_mismatch_action=1
 rollback/history_limit=128
+rollback/state_send_interval=2
 rollback/input_redundancy=4
 rollback/enable_diff_states=true
 rollback/input_delay=0

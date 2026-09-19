@@ -86,7 +86,7 @@ func start_minigame(id: String) -> void:
 	for slot in slot_list():
 		data.append(slot.to_dict())
 	Log.info("session", "Starting %s with %d players (seed %d)" % [id, data.size(), seed_value])
-	_rpc_start_minigame.rpc(id, seed_value, data, config.to_dict())
+	Game.transition(func(): _rpc_start_minigame.rpc(id, seed_value, data, config.to_dict()))
 
 
 func report_result(result: MinigameResult) -> void:

@@ -147,6 +147,7 @@ func _spawn_player(mp: MinigamePlayer, index: int) -> void:
 	var spawns: Array = layout["spawns"]
 	var sp: Dictionary = spawns[index % spawns.size()]
 	p.position = sp["pos"]
+	p.yaw = float(sp["yaw"])
 	p.rotation = Vector3(0.0, float(sp["yaw"]), 0.0)
 	players_root.add_child(p)
 	p.configure(mp, _ctx, move_cfg, weapon_defs, swap_ticks, int(arena_cfg.get("health", 100)))
@@ -307,7 +308,8 @@ func _notify_shot(shooter: Node, tick: int, origin: Vector3, end_point: Vector3,
 	if tick <= last:
 		return
 	_shot_sent[pl.peer_id] = tick
-	_pending_shots.append([pl.peer_id, origin, end_point, hit_kind])
+	var def := pl.weapons.current_def()
+	_pending_shots.append([pl.peer_id, origin, end_point, hit_kind, def.id if def != null else "ar"])
 
 
 func _on_local_shot_fx(origin: Vector3, point: Vector3, hit_kind: int) -> void:
@@ -345,7 +347,8 @@ func _after_tick_loop() -> void:
 		_rpc_kill.rpc(k[0], k[1], k[2], k[3], k[4])
 	_pending_kills.clear()
 	for s in _pending_shots:
-		_rpc_shot_fx.rpc(s[0], s[1], s[2], s[3])
+		_rpc_shot_fx.rpc(s[0], s[1], s[2], s[3], s[4])
+		_apply_shot_fx(s[0], s[1], s[2], s[3], s[4])
 	_pending_shots.clear()
 
 
@@ -379,14 +382,19 @@ func _rpc_kill(killer_id: int, victim_id: int, weapon_id: String, headshot: bool
 
 
 @rpc("authority", "call_remote", "unreliable")
-func _rpc_shot_fx(shooter_id: int, origin: Vector3, end_point: Vector3, hit_kind: int) -> void:
-	if shooter_id == local_peer_id():
-		return
-	if Game.headless:
+func _rpc_shot_fx(shooter_id: int, origin: Vector3, end_point: Vector3, hit_kind: int, weapon: String) -> void:
+	_apply_shot_fx(shooter_id, origin, end_point, hit_kind, weapon)
+
+
+## Tracer, impact burst and 3D gunshot for another player's shot (the local player's own shots
+## are handled from its predicted fire action).
+func _apply_shot_fx(shooter_id: int, origin: Vector3, end_point: Vector3, hit_kind: int, weapon: String) -> void:
+	if shooter_id == local_peer_id() or Game.headless or not is_inside_tree():
 		return
 	var shooter := get_player(shooter_id)
 	var colour := shooter.colour if shooter != null else Color.WHITE
 	Tracer.spawn(effects_root, origin, end_point, colour, hit_kind)
+	Events.remote_shot.emit(weapon, origin)
 
 
 @rpc("authority", "call_local", "reliable")

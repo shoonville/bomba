@@ -19,6 +19,11 @@ var _started_tick: int = -1
 var _done: bool = false
 var _remote_log: Dictionary = {}  # peer -> {tick: feet}
 var _local_rows: PackedStringArray = []
+var _bw_rows: Array = []
+var _prop_full: PackedFloat32Array = []
+var _prop_sent: PackedFloat32Array = []
+var _last_bytes_in: int = 0
+var _last_bytes_out: int = 0
 var _sent_rows: PackedStringArray = []
 
 
@@ -68,6 +73,9 @@ func _after_loop() -> void:
 	var ms := float(Performance.get_custom_monitor("netfox/Network loop duration (ms)")) if Performance.has_custom_monitor("netfox/Network loop duration (ms)") else 0.0
 	_rollback_depths.append(depth)
 	_loop_ms.append(ms)
+	if Performance.has_custom_monitor("netfox/Full state properties count"):
+		_prop_full.append(float(Performance.get_custom_monitor("netfox/Full state properties count")))
+		_prop_sent.append(float(Performance.get_custom_monitor("netfox/Sent state properties count")))
 	if _arena != null and is_instance_valid(_arena) and _arena.has_method("all_player_nodes"):
 		for p in _arena.all_player_nodes():
 			var pl := p as Player
@@ -84,6 +92,12 @@ func _after_loop() -> void:
 	if NetworkTime.tick - _last_sample_tick >= NetworkTime.tickrate:
 		_last_sample_tick = NetworkTime.tick
 		_rtt_samples.append(Net.rtt_ms())
+		var st := Net.get_stats()
+		var bin := int(st.get("bytes_received", 0))
+		var bout := int(st.get("bytes_sent", 0))
+		_bw_rows.append([NetworkTime.tick, bin - _last_bytes_in, bout - _last_bytes_out])
+		_last_bytes_in = bin
+		_last_bytes_out = bout
 	if soak_ticks > 0 and _started_tick >= 0 and NetworkTime.tick - _started_tick >= soak_ticks:
 		_done = true
 		Log.info("soak", "Soak tick budget reached (%d ticks)" % soak_ticks)
@@ -117,6 +131,9 @@ func write_report() -> void:
 		"rtt_ms_mean": _mean_f(_rtt_samples),
 		"rtt_ms_max": _max_f(_rtt_samples),
 		"net": Net.get_stats(),
+		"bandwidth_per_second": _bw_rows,
+		"state_props_full_mean": _mean_f(_prop_full),
+		"state_props_sent_mean": _mean_f(_prop_sent),
 	}
 	if f != null:
 		f.store_line("peer,tick,x,y,z,health,kills,deaths,yaw")

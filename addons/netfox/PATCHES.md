@@ -26,3 +26,11 @@ Keep this list current. Re-apply when upgrading netfox, or drop a patch once ups
    "Reference tick missing" warnings (38–87 per 45 s run). Now an empty diff stores a copy of the
    reference at its tick, and a diff whose reference is missing is dropped (not acknowledged) so the
    next full state resyncs. Candidate for upstream.
+
+4. **Transmitter: state send interval** — `rollback/composite/rollback-history-transmitter.gd`
+   (`transmit_state`), new project setting `netfox/rollback/state_send_interval` (default 1 =
+   upstream behaviour). With 2, non-full state ticks are sent every second tick (30 Hz at a 60 Hz
+   simulation), which is the snapshot rate `DESIGN.md` §3 asks for and halves host upload. Full
+   states keep their own interval. Clients receive a state at most one tick older than before.
+   Needed to stay under a noray relay's default 128 kB/s per-relay cap, which the public relay
+   enforces by throwing inside its UDP handler (the process dies). Candidate for upstream.

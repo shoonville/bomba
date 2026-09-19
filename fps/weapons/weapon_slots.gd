@@ -30,6 +30,7 @@ var w2_last_shot_tick: int = -1000
 var defs: Array[WeaponDef] = []
 var swap_ticks: int = 20
 var last_outcome: WeaponLogic.Outcome = WeaponLogic.Outcome.new()
+var last_outcome_tick: int = -1
 
 var _states: Array[WeaponLogic.SlotState] = []
 var _shared := WeaponLogic.Shared.new()
@@ -115,6 +116,7 @@ func step(tick: int, alive: bool, input: PlayerInput) -> WeaponLogic.Outcome:
 	inp.reload = input.reload
 	inp.weapon = input.weapon
 	last_outcome = WeaponLogic.step(defs, _states, _shared, inp, tick, alive, swap_ticks)
+	last_outcome_tick = tick
 	_store()
 	return last_outcome
 

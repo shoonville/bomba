@@ -19,9 +19,15 @@ Open the folder in Godot 4.7 and press play, or from a shell (`GODOT` defaults t
 /Applications/Godot.app/Contents/MacOS/Godot --path . -- --join=127.0.0.1:27015 --conditioner=bad
 ```
 
-With no arguments the main menu opens: HOST, JOIN (address:port), LINE (conditioner profile),
-BOTS +/−, START ARENA. Controls: WASD, Space jump, LMB fire, RMB scope, 1/2/Q weapons, R reload,
-Esc releases the mouse, F5 reloads `tuning/*.json` in debug builds.
+With no arguments the main menu opens: HOST LAN, HOST ONLINE (a friend code through the noray
+relay, default `tomfol.io:8890`, changeable in SETTINGS), JOIN (a friend code or address:port),
+LINE (conditioner profile for direct joins), SETTINGS (name, sensitivity, volumes), BOTS +/−,
+START ARENA. Controls: WASD, Space jump, LMB fire, RMB scope, 1/2/Q weapons, R reload, Esc
+pauses (resume, settings, leave), F5 reloads `tuning/*.json` in debug builds. Sound is
+synthesised at startup; nothing is loaded from disk.
+
+Online from a shell: `-- --host_online --bots=1 --start --expect=1` prints `HOST_CODE=…`;
+`-- --join_code=CODE` (add `--relay` to skip NAT punching). `tools/noray_test.sh` does both.
 
 Useful flags after `--`: `--autoplay` (a bot drives your seat), `--seed=N`, `--soak=SECONDS`
 (quit and write `reports/<label>_summary.json` + `_traj.csv`), `--report=LABEL`, `--expect=N`

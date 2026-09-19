@@ -16,8 +16,10 @@ var soak_seconds: float = 0.0
 var headless: bool = false
 var rounds_left: int = 0
 
+var wipe: Wipe
 var _menu: Node
 var _hud: Node
+var _pause: PauseMenu
 var _soak_elapsed: float = 0.0
 var _quitting: bool = false
 var _shot_timer: float = 0.0
@@ -29,6 +31,9 @@ func _ready() -> void:
 	headless = DisplayServer.get_name() == "headless"
 	if args.has("log"):
 		Log.level = int(args["log"])
+	if args.has("netfox_debug"):
+		NetfoxLogger.log_level = NetfoxLogger.LOG_DEBUG
+		NetfoxLogger.module_log_level.clear()
 	if args.has("seed"):
 		Rng.set_match_seed(int(args["seed"]))
 	if args.has("soak"):
@@ -53,15 +58,45 @@ func boot(root: Node) -> void:
 	ui_layer = CanvasLayer.new()
 	ui_layer.name = "UI"
 	root.add_child(ui_layer)
+	if not headless:
+		var wipe_layer := CanvasLayer.new()
+		wipe_layer.name = "WipeLayer"
+		wipe_layer.layer = 10
+		root.add_child(wipe_layer)
+		wipe = Wipe.new()
+		wipe_layer.add_child(wipe)
+	Net.left.connect(_on_net_left)
 
 	Session.minigame_start_requested.connect(_on_minigame_start)
-	Session.local_name = str(args.get("name", "Player %d" % (OS.get_process_id() % 1000)))
+	Session.local_name = str(args.get("name", Settings.player_name if Settings.player_name != "" else "Player %d" % (OS.get_process_id() % 1000)))
 
-	if args.has("host"):
+	if args.has("host_online"):
+		_boot_host_online()
+	elif args.has("join_code"):
+		_boot_join_code()
+	elif args.has("host"):
 		_boot_host()
 	elif args.has("join"):
 		_boot_join()
 	else:
+		show_menu()
+
+
+func _boot_host_online() -> void:
+	var err: Error = await Net.host_online(Tuning.int_value("arena.max_players", 6))
+	if err != OK:
+		_quit_if_headless(1)
+		return
+	_after_host_ready()
+
+
+func _boot_join_code() -> void:
+	var err: Error = await Net.join_code(str(args["join_code"]), args.has("relay"))
+	if err != OK:
+		_quit_if_headless(1)
+		return
+	Session.join_session(Session.local_name)
+	if not headless:
 		show_menu()
 
 
@@ -73,6 +108,10 @@ func _boot_host() -> void:
 		Log.error("game", "Could not host on port %d: %s" % [port, error_string(err)])
 		_quit_if_headless(1)
 		return
+	_after_host_ready()
+
+
+func _after_host_ready() -> void:
 	Session.host_session(Session.local_name)
 	if args.has("round_seconds"):
 		Session.config.round_seconds = int(args["round_seconds"])
@@ -118,6 +157,73 @@ func _boot_join() -> void:
 		show_menu()
 
 
+## Run a callback under a wipe (host-side scene switches). Immediate when there is no screen.
+func transition(callback: Callable) -> void:
+	if wipe == null:
+		callback.call()
+		return
+	wipe.run(callback)
+
+
+func _on_net_left() -> void:
+	if active_minigame != null and is_instance_valid(active_minigame):
+		Log.warn("game", "Connection lost during a minigame; back to the menu")
+		_close_pause()
+		world.remove_child(active_minigame)
+		active_minigame.queue_free()
+		active_minigame = null
+		Session.players.clear()
+		show_menu()
+		if wipe != null:
+			wipe.slam()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if headless or active_minigame == null:
+		return
+	if event.is_action_pressed("pause"):
+		if _pause == null:
+			_open_pause()
+		else:
+			_close_pause()
+		get_viewport().set_input_as_handled()
+
+
+func _open_pause() -> void:
+	_pause = PauseMenu.new()
+	ui_layer.add_child(_pause)
+	_pause.resumed.connect(_close_pause)
+	_pause.left.connect(func():
+		_close_pause()
+		transition(func():
+			Net.leave()
+			if active_minigame != null and is_instance_valid(active_minigame):
+				world.remove_child(active_minigame)
+				active_minigame.queue_free()
+			active_minigame = null
+			Session.players.clear()
+			show_menu()
+		)
+	)
+	_set_local_input(false)
+
+
+func _close_pause() -> void:
+	if _pause != null and is_instance_valid(_pause):
+		_pause.queue_free()
+	_pause = null
+	if active_minigame != null:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		_set_local_input(true)
+
+
+func _set_local_input(on: bool) -> void:
+	if active_minigame != null and active_minigame.has_method("get_local_player"):
+		var lp = active_minigame.get_local_player()
+		if lp != null and lp.input.brain == null:
+			lp.input.enabled = on
+
+
 func show_menu() -> void:
 	_clear_hud()
 	if _menu != null and is_instance_valid(_menu):
@@ -161,6 +267,9 @@ func _on_minigame_start(id: String, seed_value: int, players_data: Array, config
 	active_minigame.finished.connect(_on_minigame_finished.bind(id))
 	active_minigame.setup(players, seed_value, config)
 	Events.minigame_started.emit(id)
+	Audio.music("")
+	if wipe != null:
+		wipe.slam()
 	if not headless and ResourceLoader.exists(HUD_SCENE):
 		_hud = load(HUD_SCENE).instantiate()
 		ui_layer.add_child(_hud)
@@ -173,6 +282,7 @@ func _on_minigame_finished(result: MinigameResult, id: String) -> void:
 	Log.info("game", "Minigame %s finished: %s" % [id, result.summary()])
 	Events.minigame_finished.emit(result)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_close_pause()
 	_clear_hud()
 	if Session.is_authority():
 		Session.report_result(result)
@@ -181,6 +291,8 @@ func _on_minigame_finished(result: MinigameResult, id: String) -> void:
 		ui_layer.add_child(results)
 		if results.has_method("show_result"):
 			results.show_result(result)
+		if wipe != null:
+			wipe.slam()
 	rounds_left -= 1
 	if soak_seconds > 0.0 and rounds_left <= 0:
 		# Write the report while the minigame is still in the tree, then quit.
@@ -210,6 +322,8 @@ func _clear_hud() -> void:
 
 
 func _process(delta: float) -> void:
+	if args.has("open_pause") and active_minigame != null and _pause == null and not headless and _shot_timer > 1.5:
+		_open_pause()
 	if args.has("screenshot") and (active_minigame != null or args.has("screenshot_any")) and not _shot_done:
 		_shot_timer += delta
 		if _shot_timer >= float(args.get("screenshot_at", 3.0)):

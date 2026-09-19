@@ -5,8 +5,10 @@ signal hosted(port: int)
 signal joined()
 signal join_failed(reason: String)
 signal left()
+signal progress(text: String)
 
 var transport: Transport
+var host_code: String = ""
 var conditioner: NetConditioner
 var conditioner_profile: String = "lan"
 
@@ -79,7 +81,44 @@ func join(address: String, port: int, profile: String = "lan", net_seed: int = 0
 	return OK
 
 
+## Host through noray so friends can join by code. Coroutine; emits progress.
+func host_online(max_players: int = 6) -> Error:
+	leave()
+	var t := NorayTransport.new(get_tree())
+	t.progress.connect(func(text: String): progress.emit(text))
+	transport = t
+	var err: Error = await t.host_async(Settings.noray_host, max_players)
+	if err != OK:
+		Log.error("net", "Online hosting failed: %s" % error_string(err))
+		transport = null
+		return err
+	host_code = t.code
+	multiplayer.multiplayer_peer = t.get_peer()
+	Log.info("net", "Hosting online: %s" % t.describe())
+	print("HOST_CODE=%s" % host_code)
+	hosted.emit(Noray.local_port)
+	return OK
+
+
+## Join a host by its noray code. Coroutine.
+func join_code(code: String, force_relay: bool = false) -> Error:
+	leave()
+	var t := NorayTransport.new(get_tree())
+	t.progress.connect(func(text: String): progress.emit(text))
+	transport = t
+	var err: Error = await t.join_async(Settings.noray_host, code.strip_edges(), force_relay)
+	if err != OK:
+		Log.error("net", "Join by code failed: %s" % error_string(err))
+		transport = null
+		join_failed.emit(error_string(err))
+		return err
+	multiplayer.multiplayer_peer = t.get_peer()
+	Log.info("net", "Joining online: %s" % t.describe())
+	return OK
+
+
 func leave() -> void:
+	host_code = ""
 	if transport != null:
 		transport.leave()
 		transport = null

@@ -254,8 +254,13 @@ netfox fork or a `StateSynchronizer` at 30 Hz for non-predicted fields, not a lo
 
 `[ours]` `net/transport.gd` is the interface: `host(port)`, `join(address, port)`, `leave()`,
 `get_peer() -> MultiplayerPeer`, `get_stats()`. `net/enet_transport.gd` implements it with
-`ENetMultiplayerPeer`. `net/noray_transport.gd` wraps it with the noray register/handshake flow
-(`Noray` + `PacketHandshake`) so friends join by OpenID. Steam sockets drop in as a third
+`ENetMultiplayerPeer`. `net/noray_transport.gd` (async `host_async` / `join_async`) does the
+noray flow: register with the relay server, register the external UDP address, then for a
+client try NAT punchthrough (UDP handshake on the registered port, 5 s) and fall back to the
+relay (10 s); `ENetMultiplayerPeer.create_client` binds the registered local port. The host
+answers each connect command with the ENet handshake blast. The friend code is the noray
+OpenID, shown in the lobby with a copy button; the join field accepts a code or `ip:port`. The
+conditioner cannot sit in this path (the local port is fixed). Steam sockets drop in as a third
 implementation later.
 
 **Conditioner** `[ours]` `net/conditioner.gd` is an in-process UDP proxy on its own thread:
@@ -295,18 +300,26 @@ snapshot buffer, tuning load, and a compile-all pass over every `.gd` file.
 
 ## 12. Known limitations, honestly
 
-- **Bandwidth is the biggest open number.** Measured 2026-09-18 with 33 state properties per
-  player at 60 Hz: host upload ≈ 77–90 KB/s per client with three seats, ≈ 190 KB/s per client
-  (≈ 570 KB/s total, 4.5 Mbit/s) with six seats. Diff encoding helps little because `transform`
-  and `velocity` change every tick. Fixes, in order of value: quantise the transform, drop the
-  fifteen weapon integers into one packed int, transmit non-predicted fields at 20 Hz through a
-  `StateSynchronizer`, and a netfox fork with a state decimation setting.
+- **Bandwidth.** First measured 2026-09-18 with 33 state properties per player at 60 Hz: host
+  upload ≈ 77–90 KB/s per client with three seats, ≈ 190 KB/s per client with six. Two changes
+  later that day: `:position` + `:yaw` replace `:transform`, and netfox patch #4 sends state at
+  30 Hz (`netfox/rollback/state_send_interval = 2`), the snapshot rate §3 asked for. Result with
+  three seats: 37 KB/s per client, diff encoding sending 21 of 162 candidate properties per loop,
+  hit agreement unchanged. The hard ceiling to respect is a noray relay's 128 kB/s per relay
+  (`NORAY_UDP_RELAY_MAX_INDIVIDUAL_TRAFFIC`, 100 ms slices): the public relay throws inside its
+  UDP handler when exceeded and the process dies, which is how the first two relayed matches
+  ended. Next cuts if six seats through a relay need them: pack the fifteen weapon integers,
+  quantise position to centimetres, 20 Hz for non-predicted fields.
 - **Intermittent post-death desync on clients.** In 4 of 10 forty-five second soaks a client that
   died kept its stale health and position for 0.5–2.2 s, then recovered with a 128-tick rollback.
   netfox patch #3 (empty-diff acknowledgements) removed the accompanying warnings; whether it also
   removed the outage is being measured by the death→client lag line in `tools/soak_report.py`.
-- **Vendored netfox carries three local patches** (`addons/netfox/PATCHES.md`). Each is a
+- **Vendored netfox carries four local patches** (`addons/netfox/PATCHES.md`). Each is a
   candidate for upstream; until then a netfox upgrade must re-apply them.
+- **noray relay latency.** Through the public relay (`tomfol.io`) two processes on one machine
+  measured 344–378 ms RTT; that is the relay's location, not the code. NAT punchthrough (the
+  normal path between two homes) could not be tested from one machine and falls back to the
+  relay automatically.
 - netfox transmits state every tick; there is no separate 20–30 Hz snapshot rate yet (§9).
 - The host has zero latency to itself. Listen-server host advantage is inherent; a dedicated
   headless host (`--host --headless`) removes it and is supported by the same code.

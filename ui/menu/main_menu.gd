@@ -1,227 +1,264 @@
 extends Control
-## Main menu + lobby. Typographic, angled, on the marbled swirl (STYLE.md §7). Host, join,
-## add bots, pick a conditioner profile, start. The lobby list mirrors the session registry.
+## Main menu + lobby (STYLE.md §7, the look Sean approved): swirl, angled title, skewed buttons,
+## outlined caps. Host on LAN, host online through the relay with a friend code, join by
+## address or code, pick a line profile, add bots, start.
 
-var _bg: ColorRect
-var _title: Label
 var _name_edit: LineEdit
-var _address_edit: LineEdit
+var _join_edit: LineEdit
 var _profile: OptionButton
-var _lobby_list: VBoxContainer
+var _lobby: VBoxContainer
 var _status: Label
+var _code_label: Label
+var _code_row: HBoxContainer
 var _start_btn: Button
 var _bots_label: Label
 var _host_btn: Button
+var _online_btn: Button
 var _join_btn: Button
 var _leave_btn: Button
 var _bot_plus: Button
 var _bot_minus: Button
-var _font: Font
-var _ink: Color
-var _accent: Color
-var _paper: Color
+var _settings: SettingsPanel
+var _busy: bool = false
 
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
-	_font = ThemeDB.fallback_font
-	_ink = Palette.map_colour("menu", "line")
-	_accent = Palette.map_colour("menu", "accent")
-	_paper = Palette.hud_colour("paper")
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_build()
 	Session.registry_changed.connect(_refresh)
 	Net.hosted.connect(func(_p): _refresh())
 	Net.joined.connect(_refresh)
-	Net.join_failed.connect(func(r: String): _status.text = "JOIN FAILED: " + r)
+	Net.join_failed.connect(func(r: String): _set_status("JOIN FAILED: " + r.to_upper()))
 	Net.left.connect(_refresh)
+	Net.progress.connect(func(t: String): _set_status(t.to_upper()))
+	Audio.music("music_menu")
 	_refresh()
 
 
 func _build() -> void:
-	_bg = ColorRect.new()
-	_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	var mat := ShaderMaterial.new()
-	mat.shader = load("res://art/shaders/swirl.gdshader")
-	mat.set_shader_parameter("col_a", Palette.map_colour("menu", "field"))
-	mat.set_shader_parameter("col_b", Palette.map_colour("menu", "counter"))
-	mat.set_shader_parameter("col_c", Palette.map_colour("menu", "accent"))
-	mat.set_shader_parameter("col_d", _ink)
-	_bg.material = mat
-	add_child(_bg)
-
-	_title = Label.new()
-	_title.text = "BOMBA"
-	_title.add_theme_font_size_override("font_size", 132)
-	_title.add_theme_color_override("font_color", _paper)
-	_title.add_theme_color_override("font_outline_color", _accent)
-	_title.add_theme_constant_override("outline_size", 22)
-	_title.position = Vector2(64, 40)
-	_title.rotation = deg_to_rad(-6.0)
-	add_child(_title)
-	var sub := Label.new()
-	sub.text = "SIX FRIENDS. ONE BOARD. TOO MANY MINIGAMES."
-	sub.add_theme_font_size_override("font_size", 22)
-	sub.add_theme_color_override("font_color", _paper)
-	sub.add_theme_color_override("font_outline_color", _ink)
-	sub.add_theme_constant_override("outline_size", 8)
+	add_child(UiStyle.swirl_background())
+	var title := UiStyle.title("BOMBA", 132)
+	title.position = Vector2(64, 40)
+	add_child(title)
+	UiStyle.slam(title)
+	var sub := UiStyle.label("SIX FRIENDS. ONE BOARD. TOO MANY MINIGAMES.", 22)
 	sub.position = Vector2(90, 214)
 	sub.rotation = deg_to_rad(-6.0)
 	add_child(sub)
+	UiStyle.slam(sub, 0.08)
 
-	var panel := VBoxContainer.new()
-	panel.position = Vector2(80, 300)
-	panel.custom_minimum_size = Vector2(520, 0)
-	panel.add_theme_constant_override("separation", 10)
-	add_child(panel)
+	var col := VBoxContainer.new()
+	col.position = Vector2(80, 290)
+	col.custom_minimum_size = Vector2(520, 0)
+	col.add_theme_constant_override("separation", 10)
+	add_child(col)
 
 	var row1 := HBoxContainer.new()
-	panel.add_child(row1)
-	row1.add_child(_label("NAME"))
-	_name_edit = LineEdit.new()
-	_name_edit.text = Session.local_name
-	_name_edit.custom_minimum_size = Vector2(260, 40)
+	col.add_child(row1)
+	row1.add_child(UiStyle.label("NAME"))
+	_name_edit = UiStyle.line_edit(Session.local_name, 300)
+	_name_edit.text_changed.connect(func(v: String): Session.local_name = v)
+	_name_edit.focus_exited.connect(func(): Settings.set_value("player_name", _name_edit.text.strip_edges()))
 	row1.add_child(_name_edit)
 
 	var row2 := HBoxContainer.new()
-	panel.add_child(row2)
-	_host_btn = _button("HOST", _on_host)
+	row2.add_theme_constant_override("separation", 8)
+	col.add_child(row2)
+	_host_btn = UiStyle.button("HOST LAN", _on_host)
 	row2.add_child(_host_btn)
-	_address_edit = LineEdit.new()
-	_address_edit.text = "127.0.0.1:%d" % Tuning.int_value("net.default_port")
-	_address_edit.custom_minimum_size = Vector2(240, 40)
-	row2.add_child(_address_edit)
-	_join_btn = _button("JOIN", _on_join)
-	row2.add_child(_join_btn)
+	_online_btn = UiStyle.button("HOST ONLINE", _on_host_online)
+	row2.add_child(_online_btn)
 
 	var row3 := HBoxContainer.new()
-	panel.add_child(row3)
-	row3.add_child(_label("LINE"))
+	row3.add_theme_constant_override("separation", 8)
+	col.add_child(row3)
+	_join_edit = UiStyle.line_edit("", 330)
+	_join_edit.placeholder_text = "friend code or ip:port"
+	_join_edit.text_submitted.connect(func(_v: String): _on_join())
+	row3.add_child(_join_edit)
+	_join_btn = UiStyle.button("JOIN", _on_join)
+	row3.add_child(_join_btn)
+
+	var row4 := HBoxContainer.new()
+	row4.add_theme_constant_override("separation", 8)
+	col.add_child(row4)
+	row4.add_child(UiStyle.label("LINE", 20))
 	_profile = OptionButton.new()
 	for p in ["lan", "good", "bad", "awful"]:
 		_profile.add_item(p.to_upper())
-	_profile.custom_minimum_size = Vector2(160, 40)
-	row3.add_child(_profile)
-	_leave_btn = _button("LEAVE", _on_leave)
-	row3.add_child(_leave_btn)
+		if p == Settings.conditioner_profile:
+			_profile.selected = _profile.item_count - 1
+	_profile.custom_minimum_size = Vector2(150, 40)
+	_profile.item_selected.connect(func(i: int): Settings.set_value("conditioner_profile", _profile.get_item_text(i).to_lower()))
+	row4.add_child(_profile)
+	row4.add_child(UiStyle.button("SETTINGS", _toggle_settings, 20))
+	_leave_btn = UiStyle.button("LEAVE", _on_leave, 20, Palette.hud_colour("danger"))
+	row4.add_child(_leave_btn)
+	row4.add_child(UiStyle.button("QUIT", func(): get_tree().quit(), 20, Color.from_hsv(0.0, 0.0, 0.35)))
 
-	var row4 := HBoxContainer.new()
-	panel.add_child(row4)
-	row4.add_child(_label("BOTS"))
-	_bot_minus = _button("-", func(): Session.remove_bot())
-	row4.add_child(_bot_minus)
-	_bots_label = _label("0")
-	row4.add_child(_bots_label)
-	_bot_plus = _button("+", func(): Session.add_bot(str(Tuning.value("bots.default_difficulty", "normal"))))
-	row4.add_child(_bot_plus)
-	_start_btn = _button("START ARENA", func(): Session.start_minigame("arena"))
-	row4.add_child(_start_btn)
+	_status = UiStyle.label("", 18, UiStyle.accent())
+	col.add_child(_status)
 
-	_status = _label("")
-	panel.add_child(_status)
-	panel.add_child(_label("LOBBY"))
-	_lobby_list = VBoxContainer.new()
-	panel.add_child(_lobby_list)
+	# Lobby column
+	var lobby_col := VBoxContainer.new()
+	lobby_col.position = Vector2(760, 290)
+	lobby_col.add_theme_constant_override("separation", 10)
+	add_child(lobby_col)
+	var lobby_head := HBoxContainer.new()
+	lobby_head.add_theme_constant_override("separation", 12)
+	lobby_col.add_child(lobby_head)
+	lobby_head.add_child(UiStyle.label("LOBBY", 30))
+	_bot_minus = UiStyle.button("−", func(): Session.remove_bot(), 20)
+	lobby_head.add_child(_bot_minus)
+	_bots_label = UiStyle.label("0 BOTS", 20)
+	lobby_head.add_child(_bots_label)
+	_bot_plus = UiStyle.button("+", func(): Session.add_bot(str(Tuning.value("bots.default_difficulty", "normal"))), 20)
+	lobby_head.add_child(_bot_plus)
+	_code_row = HBoxContainer.new()
+	_code_row.add_theme_constant_override("separation", 10)
+	lobby_col.add_child(_code_row)
+	_code_row.add_child(UiStyle.label("CODE", 20))
+	_code_label = UiStyle.label("", 30, UiStyle.accent())
+	_code_row.add_child(_code_label)
+	_code_row.add_child(UiStyle.button("COPY", func():
+		DisplayServer.clipboard_set(Net.host_code)
+		_set_status("CODE COPIED")
+	, 18))
+	_lobby = VBoxContainer.new()
+	_lobby.add_theme_constant_override("separation", 8)
+	lobby_col.add_child(_lobby)
+	_start_btn = UiStyle.button("START ARENA", func(): Session.start_minigame("arena"), 30)
+	lobby_col.add_child(_start_btn)
 
-	var hint := _label("WASD move · SPACE jump · LMB fire · RMB scope · 1/2/Q weapons · R reload · ESC mouse")
+	var hint := UiStyle.label("WASD MOVE · SPACE JUMP · LMB FIRE · RMB SCOPE · 1/2/Q WEAPONS · R RELOAD · ESC PAUSE", 15)
 	hint.position = Vector2(80, 840)
-	hint.add_theme_font_size_override("font_size", 16)
 	add_child(hint)
 
 
-func _label(text: String) -> Label:
-	var l := Label.new()
-	l.text = text
-	l.add_theme_font_size_override("font_size", 22)
-	l.add_theme_color_override("font_color", _paper)
-	l.add_theme_color_override("font_outline_color", _ink)
-	l.add_theme_constant_override("outline_size", 8)
-	l.custom_minimum_size = Vector2(0, 40)
-	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	return l
+func _set_status(text: String) -> void:
+	_status.text = text
 
 
-func _button(text: String, on_pressed: Callable) -> Button:
-	var b := Button.new()
-	b.text = text
-	b.custom_minimum_size = Vector2(0, 40)
-	b.add_theme_font_size_override("font_size", 22)
-	b.add_theme_color_override("font_color", _paper)
-	b.add_theme_color_override("font_outline_color", _ink)
-	b.add_theme_constant_override("outline_size", 8)
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = _accent
-	sb.border_color = _ink
-	sb.set_border_width_all(3)
-	sb.skew = Vector2(0.25, 0.0)
-	sb.set_content_margin_all(10)
-	b.add_theme_stylebox_override("normal", sb)
-	var sb2 := sb.duplicate()
-	sb2.bg_color = _paper
-	b.add_theme_stylebox_override("hover", sb2)
-	b.add_theme_stylebox_override("pressed", sb2)
-	b.pressed.connect(on_pressed)
-	return b
+func _toggle_settings() -> void:
+	if _settings != null:
+		_settings.queue_free()
+		_settings = null
+		return
+	_settings = SettingsPanel.new()
+	_settings.position = Vector2(760, 250)
+	_settings.closed.connect(func():
+		_toggle_settings()
+		_name_edit.text = Settings.player_name if Settings.player_name != "" else _name_edit.text
+		Session.local_name = _name_edit.text
+	)
+	add_child(_settings)
+	UiStyle.slam(_settings)
+
+
+func _commit_name() -> void:
+	Session.local_name = _name_edit.text.strip_edges()
+	if Session.local_name == "":
+		Session.local_name = "PLAYER"
+	Settings.set_value("player_name", Session.local_name)
 
 
 func _on_host() -> void:
-	Session.local_name = _name_edit.text
+	_commit_name()
 	var port := Tuning.int_value("net.default_port")
 	var err := Net.host(port, Tuning.int_value("arena.max_players", 6))
 	if err != OK:
-		_status.text = "HOST FAILED: %s" % error_string(err)
+		_set_status("HOST FAILED: %s" % error_string(err).to_upper())
 		return
 	Session.host_session(Session.local_name)
-	_status.text = "HOSTING ON PORT %d" % port
+	_set_status("HOSTING ON LAN, PORT %d" % port)
+
+
+func _on_host_online() -> void:
+	if _busy:
+		return
+	_commit_name()
+	_busy = true
+	_refresh()
+	var err: Error = await Net.host_online(Tuning.int_value("arena.max_players", 6))
+	_busy = false
+	if err != OK:
+		_set_status("ONLINE HOSTING FAILED: %s" % error_string(err).to_upper())
+		_refresh()
+		return
+	Session.host_session(Session.local_name)
+	_set_status("HOSTING ONLINE. SHARE THE CODE.")
+	_refresh()
 
 
 func _on_join() -> void:
-	Session.local_name = _name_edit.text
-	var target := _address_edit.text.strip_edges()
-	var address := target
-	var port := Tuning.int_value("net.default_port")
-	if target.contains(":"):
-		address = target.get_slice(":", 0)
-		port = int(target.get_slice(":", 1))
-	var profile := _profile.get_item_text(_profile.selected).to_lower()
-	var err := Net.join(address, port, profile)
-	if err != OK:
-		_status.text = "JOIN FAILED: %s" % error_string(err)
+	if _busy:
 		return
-	Session.join_session(Session.local_name)
-	_status.text = "JOINING %s:%d (%s)" % [address, port, profile.to_upper()]
+	_commit_name()
+	var target := _join_edit.text.strip_edges()
+	if target == "":
+		_set_status("ENTER A CODE OR ADDRESS")
+		return
+	if target.contains(".") or target.contains(":"):
+		var address := target
+		var port := Tuning.int_value("net.default_port")
+		if target.contains(":"):
+			address = target.get_slice(":", 0)
+			port = int(target.get_slice(":", 1))
+		var profile := _profile.get_item_text(_profile.selected).to_lower()
+		var err := Net.join(address, port, profile)
+		if err != OK:
+			_set_status("JOIN FAILED: %s" % error_string(err).to_upper())
+			return
+		Session.join_session(Session.local_name)
+		_set_status("JOINING %s:%d (%s)" % [address, port, profile.to_upper()])
+		return
+	_busy = true
+	_refresh()
+	var err2: Error = await Net.join_code(target)
+	_busy = false
+	if err2 == OK:
+		Session.join_session(Session.local_name)
+		_set_status("CONNECTED BY CODE")
+	_refresh()
 
 
 func _on_leave() -> void:
 	Net.leave()
 	Session.players.clear()
-	_status.text = ""
+	_set_status("")
 	_refresh()
 
 
 func _refresh() -> void:
 	var online := Net.transport != null
 	var host := Session.is_authority() and online
-	_host_btn.disabled = online
-	_join_btn.disabled = online
+	_host_btn.disabled = online or _busy
+	_online_btn.disabled = online or _busy
+	_join_btn.disabled = online or _busy
 	_leave_btn.disabled = not online
 	_start_btn.visible = host
 	_bot_plus.visible = host
 	_bot_minus.visible = host
+	_code_row.visible = online and Net.host_code != ""
+	_code_label.text = Net.host_code
 	var bots := 0
-	for child in _lobby_list.get_children():
+	for child in _lobby.get_children():
 		child.queue_free()
+	var me := multiplayer.get_unique_id()
 	for slot in Session.slot_list():
 		if slot.is_bot:
 			bots += 1
-		var l := _label("%s  %s%s" % [Palette.player_name(slot.colour_index), slot.display_name, "  (BOT)" if slot.is_bot else ""])
-		l.add_theme_color_override("font_color", Palette.player_colour(slot.colour_index))
-		_lobby_list.add_child(l)
-	_bots_label.text = str(bots)
-	if online and not host:
-		_status.text = "CONNECTED — WAITING FOR HOST" if Net.is_online() else _status.text
-
-
-func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("pause"):
-		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		var tags := PackedStringArray()
+		if slot.peer_id == 1:
+			tags.append("HOST")
+		if slot.peer_id == me and not slot.is_bot:
+			tags.append("YOU")
+		if slot.is_bot:
+			tags.append("BOT · " + slot.bot_difficulty.to_upper())
+		var card := PlayerCard.new()
+		_lobby.add_child(card)
+		card.setup(slot.display_name, Palette.player_colour(slot.colour_index), Palette.player_name(slot.colour_index), tags)
+	_bots_label.text = "%d BOTS" % bots
+	if online and not host and Net.is_online() and _status.text == "":
+		_set_status("CONNECTED. WAITING FOR THE HOST.")

@@ -21,6 +21,12 @@ signal local_damaged(amount: int, from_id: int)
 signal local_died()
 signal local_respawned()
 signal local_weapon_changed(weapon: String)
+signal local_weapon_event(name: String)   # reload_started, reload_finished, dry_fire, swapped
+signal local_footstep()
+signal local_jump()
+signal local_land()
+signal remote_shot(weapon: String, origin: Vector3)
+signal ui_sound(name: String)
 
 # Diagnostics
 signal net_stats(stats: Dictionary)

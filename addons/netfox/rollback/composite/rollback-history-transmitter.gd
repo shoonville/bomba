@@ -24,6 +24,8 @@ var _diff_state_encoder: _DiffHistoryEncoder
 
 # State
 var _ackd_state: Dictionary = {}
+# BOMBA patch #4 (see addons/netfox/PATCHES.md): transmit state every N ticks instead of every tick.
+var _state_send_interval: int = maxi(1, int(ProjectSettings.get_setting(&"netfox/rollback/state_send_interval", 1)))
 var _next_full_state_tick: int
 var _next_diff_ack_tick: int
 
@@ -134,10 +136,14 @@ func transmit_state(tick: int) -> void:
 	if full_state.is_empty():
 		return
 
-	_latest_state_tick = max(_latest_state_tick, tick)
-
 	var is_sending_diffs := NetworkRollback.enable_diff_states
 	var is_full_state_tick := not is_sending_diffs or (full_state_interval > 0 and tick > _next_full_state_tick)
+
+	# BOMBA patch #4: decimate. Full states always go; other ticks only every _state_send_interval.
+	if not is_full_state_tick and _state_send_interval > 1 and (tick % _state_send_interval) != 0:
+		return
+
+	_latest_state_tick = max(_latest_state_tick, tick)
 
 	if is_full_state_tick:
 		# Broadcast new full state

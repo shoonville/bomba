@@ -42,11 +42,15 @@ var _gathers: int = 0
 
 
 func _ready() -> void:
-	var controls := Tuning.table("controls")
-	mouse_sensitivity = float(controls.get("mouse_sensitivity", mouse_sensitivity))
-	ads_sensitivity_multiplier = float(controls.get("ads_sensitivity_multiplier", ads_sensitivity_multiplier))
-	invert_y = bool(controls.get("invert_y", invert_y))
+	_apply_settings()
+	Settings.changed.connect(_apply_settings)
 	NetworkTime.before_tick_loop.connect(_on_before_tick_loop)
+
+
+func _apply_settings() -> void:
+	mouse_sensitivity = Settings.mouse_sensitivity
+	ads_sensitivity_multiplier = Settings.ads_sensitivity_multiplier
+	invert_y = Settings.invert_y
 
 
 func is_local_human() -> bool:
