@@ -4,6 +4,7 @@ extends Node
 
 signal registry_changed()
 signal minigame_start_requested(id: String, seed_value: int, players: Array, config: Dictionary)
+signal board_start_requested(board_id: String, seed_value: int, players: Array, config: Dictionary)
 signal result_received(result: MinigameResult)
 
 var players: Dictionary = {}
@@ -87,6 +88,25 @@ func start_minigame(id: String) -> void:
 		data.append(slot.to_dict())
 	Log.info("session", "Starting %s with %d players (seed %d)" % [id, data.size(), seed_value])
 	Game.transition(func(): _rpc_start_minigame.rpc(id, seed_value, data, config.to_dict()))
+
+
+func start_board(board_id: String = "first") -> void:
+	if not is_authority():
+		Log.warn("session", "Only the host starts a match")
+		return
+	var seed_value := Rng.get_match_seed()
+	var data: Array = []
+	for slot in slot_list():
+		data.append(slot.to_dict())
+	Log.info("session", "Starting board '%s' with %d players (seed %d)" % [board_id, data.size(), seed_value])
+	Game.transition(func(): _rpc_start_board.rpc(board_id, seed_value, data, config.to_dict()))
+
+
+@rpc("authority", "call_local", "reliable")
+func _rpc_start_board(board_id: String, seed_value: int, data: Array, cfg: Dictionary) -> void:
+	Rng.set_match_seed(seed_value)
+	config = MatchConfig.from_dict(cfg)
+	board_start_requested.emit(board_id, seed_value, data, cfg)
 
 
 func report_result(result: MinigameResult) -> void:

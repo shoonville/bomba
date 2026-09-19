@@ -27,7 +27,8 @@ harness that produced each number is named.
 | `ui/` | shaped HUD (health swash, kills/timer, ammo ticks, crosshair, hitmarker, drawn scope, kill feed), main menu/lobby on the swirl, results screen |
 | `tools/` | unit test runner, determinism harness, soak harness + report joiner, per-shot and remote-view diff tools, screenshot flags |
 | `audio/` | procedural synth, buses, event-driven SFX, menu loop |
-| Not started | `board/` (planned in `BOARDPLAN.md`), `items/`, Steam transport, melee, Windows export preset |
+| `board/` | graph + rules (tested), director, 3D view, HUD, two items; the full loop verified with bots and with a client |
+| Not started | `items/` as a module (items live in the board rules for now), Steam transport, melee, Windows export preset |
 
 ### Numbers
 
@@ -90,7 +91,17 @@ Cost: host tick loop 2.4–2.8 ms mean with three seats; client tick loop p95 4 
   diff encoder sending 21 of 162 candidate properties per loop; six seats: 96 KB/s per client
   (was 170), 296 KB/s total. Hit agreement unchanged (17 of 17 on the LAN check). A six-seat
   match through the public relay would still exceed the cap; direct joins have no cap.
-- `BOARDPLAN.md` and `tuning/board.json` written; the board itself is next.
+- **The board** (`BOARDPLAN.md`, `board/`): graph loaded from `board/boards/first.json` (26
+  spaces, two forks, six goal candidates), pure rules (`BoardRules`) with 11 tests (seeded dice,
+  forks, landing effects, goal claim and move, BOMB and TURBO, minigame rewards, round advance,
+  finish, standings, serialisation, bot choices), a server-authoritative director replicating the
+  state by reliable RPC, a 3D view (hex tiles by type, planks, goal ring, hopping pawns with
+  bursts and floating labels, following camera, own palette and sky) and a HUD (turn strip with
+  coins/Bombas/items, slammed dice, prompts, fork and item input). The lobby's START MATCH runs
+  it; QUICK ARENA keeps the old flow.
+  Verified headless: host + 2 bots, 2 rounds with 8 s arenas, board → arena → rewards → board →
+  arena → finish, 0 errors; and host + client through `bad` with the same final standings on
+  both peers. Not yet: a human has not played a board turn; 2 items only; one board.
 
 ### Bugs found and fixed today (all measured before and after)
 
@@ -114,7 +125,8 @@ Cost: host tick loop 2.4–2.8 ms mean with three seats; client tick loop p95 4 
 ### Visual state (screenshots taken today, `docs/screenshots/`)
 
 `arena_spectator_sky.png` (`--spectate`, after the reference pass), `arena_hip_sniper.png`,
-`arena_hip_ar.png`, `arena_burst.png` (`--fx_test`), `arena_scoped_target.png`, `main_menu.png`, `results.png`, and the earlier
+`arena_hip_ar.png`, `arena_burst.png` (`--fx_test`), `arena_scoped_target.png`, `main_menu.png`,
+`lobby.png`, `pause.png`, `results.png`, `board_turn.png`, `board_shared_tile.png`, and the earlier
 `arena_spectator.png`. Cel bands with hard single-value shadows, ink line work on silhouettes and interior edges, value
 ceiling, light dither, HUD as shaped elements, drawn scope overlay, kill feed, menu and results
 on the marbled swirl. After the second reference drop (seven more images, measured in the

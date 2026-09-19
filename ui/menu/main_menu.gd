@@ -11,6 +11,7 @@ var _status: Label
 var _code_label: Label
 var _code_row: HBoxContainer
 var _start_btn: Button
+var _arena_btn: Button
 var _bots_label: Label
 var _host_btn: Button
 var _online_btn: Button
@@ -128,8 +129,10 @@ func _build() -> void:
 	_lobby = VBoxContainer.new()
 	_lobby.add_theme_constant_override("separation", 8)
 	lobby_col.add_child(_lobby)
-	_start_btn = UiStyle.button("START ARENA", func(): Session.start_minigame("arena"), 30)
+	_start_btn = UiStyle.button("START MATCH", func(): Session.start_board(str(Tuning.value("board.default_board", "first"))), 30)
 	lobby_col.add_child(_start_btn)
+	_arena_btn = UiStyle.button("QUICK ARENA", func(): Session.start_minigame("arena"), 20)
+	lobby_col.add_child(_arena_btn)
 
 	var hint := UiStyle.label("WASD MOVE · SPACE JUMP · LMB FIRE · RMB SCOPE · 1/2/Q WEAPONS · R RELOAD · ESC PAUSE", 15)
 	hint.position = Vector2(80, 840)
@@ -238,6 +241,7 @@ func _refresh() -> void:
 	_join_btn.disabled = online or _busy
 	_leave_btn.disabled = not online
 	_start_btn.visible = host
+	_arena_btn.visible = host
 	_bot_plus.visible = host
 	_bot_minus.visible = host
 	_code_row.visible = online and Net.host_code != ""

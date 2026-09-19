@@ -1,0 +1,347 @@
+{
+ "id": "first",
+ "display_name": "FIRST LOOP",
+ "start": "0",
+ "spaces": [
+  {
+   "id": "0",
+   "position": [
+    -10,
+    0,
+    7
+   ],
+   "type": "start",
+   "next": [
+    "1"
+   ],
+   "goal": false
+  },
+  {
+   "id": "1",
+   "position": [
+    -7,
+    0,
+    8
+   ],
+   "type": "coin",
+   "next": [
+    "2"
+   ],
+   "goal": false
+  },
+  {
+   "id": "2",
+   "position": [
+    -4,
+    0,
+    8.5
+   ],
+   "type": "blank",
+   "next": [
+    "3"
+   ],
+   "goal": false
+  },
+  {
+   "id": "3",
+   "position": [
+    -1,
+    0.6,
+    8.5
+   ],
+   "type": "coin",
+   "next": [
+    "4"
+   ],
+   "goal": true
+  },
+  {
+   "id": "4",
+   "position": [
+    2,
+    0.6,
+    8.5
+   ],
+   "type": "item",
+   "next": [
+    "5"
+   ],
+   "goal": false
+  },
+  {
+   "id": "5",
+   "position": [
+    5,
+    0,
+    8
+   ],
+   "type": "blank",
+   "next": [
+    "6",
+    "20"
+   ],
+   "goal": false
+  },
+  {
+   "id": "6",
+   "position": [
+    8,
+    0,
+    7
+   ],
+   "type": "lose",
+   "next": [
+    "7"
+   ],
+   "goal": false
+  },
+  {
+   "id": "7",
+   "position": [
+    10,
+    0,
+    4
+   ],
+   "type": "coin",
+   "next": [
+    "8"
+   ],
+   "goal": false
+  },
+  {
+   "id": "8",
+   "position": [
+    11,
+    0.8,
+    1
+   ],
+   "type": "blank",
+   "next": [
+    "9"
+   ],
+   "goal": true
+  },
+  {
+   "id": "9",
+   "position": [
+    11,
+    0.8,
+    -2
+   ],
+   "type": "event",
+   "next": [
+    "10"
+   ],
+   "goal": false
+  },
+  {
+   "id": "10",
+   "position": [
+    10,
+    0,
+    -5
+   ],
+   "type": "coin",
+   "next": [
+    "11"
+   ],
+   "goal": false
+  },
+  {
+   "id": "11",
+   "position": [
+    8,
+    0,
+    -7.5
+   ],
+   "type": "blank",
+   "next": [
+    "12"
+   ],
+   "goal": false
+  },
+  {
+   "id": "12",
+   "position": [
+    5,
+    0,
+    -8.5
+   ],
+   "type": "item",
+   "next": [
+    "13"
+   ],
+   "goal": false
+  },
+  {
+   "id": "13",
+   "position": [
+    2,
+    0,
+    -8.5
+   ],
+   "type": "coin",
+   "next": [
+    "14"
+   ],
+   "goal": true
+  },
+  {
+   "id": "14",
+   "position": [
+    -1,
+    0.6,
+    -8.5
+   ],
+   "type": "blank",
+   "next": [
+    "15",
+    "23"
+   ],
+   "goal": false
+  },
+  {
+   "id": "15",
+   "position": [
+    -4,
+    0.6,
+    -8
+   ],
+   "type": "lose",
+   "next": [
+    "16"
+   ],
+   "goal": false
+  },
+  {
+   "id": "16",
+   "position": [
+    -7,
+    0,
+    -7
+   ],
+   "type": "coin",
+   "next": [
+    "17"
+   ],
+   "goal": false
+  },
+  {
+   "id": "17",
+   "position": [
+    -10,
+    0,
+    -4
+   ],
+   "type": "blank",
+   "next": [
+    "18"
+   ],
+   "goal": false
+  },
+  {
+   "id": "18",
+   "position": [
+    -11,
+    0,
+    -1
+   ],
+   "type": "coin",
+   "next": [
+    "19"
+   ],
+   "goal": true
+  },
+  {
+   "id": "19",
+   "position": [
+    -11,
+    0,
+    2.5
+   ],
+   "type": "item",
+   "next": [
+    "0"
+   ],
+   "goal": false
+  },
+  {
+   "id": "20",
+   "position": [
+    4,
+    1.2,
+    4
+   ],
+   "type": "lose",
+   "next": [
+    "21"
+   ],
+   "goal": false
+  },
+  {
+   "id": "21",
+   "position": [
+    4,
+    1.2,
+    -1
+   ],
+   "type": "blank",
+   "next": [
+    "22"
+   ],
+   "goal": true
+  },
+  {
+   "id": "22",
+   "position": [
+    4.5,
+    0.6,
+    -5
+   ],
+   "type": "coin",
+   "next": [
+    "12"
+   ],
+   "goal": false
+  },
+  {
+   "id": "23",
+   "position": [
+    -2,
+    1.2,
+    -12
+   ],
+   "type": "item",
+   "next": [
+    "24"
+   ],
+   "goal": false
+  },
+  {
+   "id": "24",
+   "position": [
+    -6,
+    1.2,
+    -12.5
+   ],
+   "type": "event",
+   "next": [
+    "25"
+   ],
+   "goal": true
+  },
+  {
+   "id": "25",
+   "position": [
+    -9,
+    0.6,
+    -10
+   ],
+   "type": "coin",
+   "next": [
+    "17"
+   ],
+   "goal": false
+  }
+ ]
+}

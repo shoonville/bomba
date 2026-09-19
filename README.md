@@ -29,6 +29,10 @@ synthesised at startup; nothing is loaded from disk.
 Online from a shell: `-- --host_online --bots=1 --start --expect=1` prints `HOST_CODE=…`;
 `-- --join_code=CODE` (add `--relay` to skip NAT punching). `tools/noray_test.sh` does both.
 
+A full match from a shell: `-- --host --bots=2 --start --board --autoplay --board_rounds=2
+--board_minigame_seconds=8 --soak=120` runs the board → arena → board loop with bots; the lobby's
+START MATCH does the same for humans, QUICK ARENA skips the board.
+
 Useful flags after `--`: `--autoplay` (a bot drives your seat), `--seed=N`, `--soak=SECONDS`
 (quit and write `reports/<label>_summary.json` + `_traj.csv`), `--report=LABEL`, `--expect=N`
 (host waits for N humans before `--start`), `--round_seconds=N`, `--log=0..4`,
@@ -48,7 +52,8 @@ python3 tools/remote_diff.py reports/soak_bad_host_traj.csv reports/soak_bad_cli
 
 ## Layout
 
-One folder per subsystem (`DESIGN.md` §4): `core/` bootstrap and services, `net/` transport,
+One folder per subsystem (`DESIGN.md` §4): `core/` bootstrap and services, `board/` the turn-based
+board (graph, rules, director, view; `BOARDPLAN.md`), `net/` transport,
 conditioner, hitscan and history, `session/` lobby and registry, `fps/` player, weapons, view,
 `minigames/sdk/` the contract and `minigames/arena/` the first minigame, `bots/`, `art/`
 shaders and palette, `ui/` HUD, menu, results, `tools/` harnesses and tests, `tuning/` every

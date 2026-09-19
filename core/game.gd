@@ -12,6 +12,7 @@ var args: Dictionary = {}
 var world: Node3D
 var ui_layer: CanvasLayer
 var active_minigame: Minigame
+var board: BoardDirector
 var soak_seconds: float = 0.0
 var headless: bool = false
 var rounds_left: int = 0
@@ -68,6 +69,7 @@ func boot(root: Node) -> void:
 	Net.left.connect(_on_net_left)
 
 	Session.minigame_start_requested.connect(_on_minigame_start)
+	Session.board_start_requested.connect(_on_board_start)
 	Session.local_name = str(args.get("name", Settings.player_name if Settings.player_name != "" else "Player %d" % (OS.get_process_id() % 1000)))
 
 	if args.has("host_online"):
@@ -121,16 +123,21 @@ func _after_host_ready() -> void:
 		Session.add_bot(difficulty)
 	var expect := int(args.get("expect", 0))
 	var minigame_id := str(args.get("minigame", "arena"))
-	if args.has("start"):
-		if expect > 0:
-			Log.info("game", "Waiting for %d human players before starting %s" % [expect, minigame_id])
-			Session.registry_changed.connect(func():
-				# expect counts joining clients; the host's own seat is not one of them.
-				if Session.human_count() - 1 >= expect and active_minigame == null:
-					Session.start_minigame(minigame_id)
-			)
+	var start_match := func():
+		if args.has("board"):
+			Session.start_board(str(args.get("board_id", Tuning.value("board.default_board", "first"))))
 		else:
 			Session.start_minigame(minigame_id)
+	if args.has("start"):
+		if expect > 0:
+			Log.info("game", "Waiting for %d human players before starting" % expect)
+			Session.registry_changed.connect(func():
+				# expect counts joining clients; the host's own seat is not one of them.
+				if Session.human_count() - 1 >= expect and active_minigame == null and board == null:
+					start_match.call()
+			)
+		else:
+			start_match.call()
 	elif not headless:
 		show_menu()
 
@@ -166,6 +173,13 @@ func transition(callback: Callable) -> void:
 
 
 func _on_net_left() -> void:
+	if board != null:
+		_end_board()
+		_clear_hud()
+		show_menu()
+		if wipe != null:
+			wipe.slam()
+		return
 	if active_minigame != null and is_instance_valid(active_minigame):
 		Log.warn("game", "Connection lost during a minigame; back to the menu")
 		_close_pause()
@@ -179,7 +193,7 @@ func _on_net_left() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if headless or active_minigame == null:
+	if headless or (active_minigame == null and board == null):
 		return
 	if event.is_action_pressed("pause"):
 		if _pause == null:
@@ -201,6 +215,7 @@ func _open_pause() -> void:
 				world.remove_child(active_minigame)
 				active_minigame.queue_free()
 			active_minigame = null
+			_end_board()
 			Session.players.clear()
 			show_menu()
 		)
@@ -212,7 +227,7 @@ func _close_pause() -> void:
 	if _pause != null and is_instance_valid(_pause):
 		_pause.queue_free()
 	_pause = null
-	if active_minigame != null:
+	if active_minigame != null and board == null:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		_set_local_input(true)
 
@@ -233,6 +248,54 @@ func show_menu() -> void:
 		return
 	_menu = load(MENU_SCENE).instantiate()
 	ui_layer.add_child(_menu)
+
+
+func _on_board_start(board_id: String, seed_value: int, players_data: Array, _config: Dictionary) -> void:
+	if _menu != null and is_instance_valid(_menu):
+		_menu.queue_free()
+		_menu = null
+	_end_board()
+	board = BoardDirector.new()
+	board.name = "BoardDirector"
+	add_child(board)
+	board.match_finished.connect(_on_board_finished)
+	board.start(players_data, seed_value, board_id)
+	if not headless and ResourceLoader.exists("res://ui/board/board_hud.tscn"):
+		_hud = load("res://ui/board/board_hud.tscn").instantiate()
+		ui_layer.add_child(_hud)
+		if _hud.has_method("attach"):
+			_hud.attach(board)
+	if wipe != null:
+		wipe.slam()
+
+
+func _end_board() -> void:
+	if board != null and is_instance_valid(board):
+		remove_child(board)
+		board.queue_free()
+	board = null
+
+
+func _on_board_finished(final_state: BoardState) -> void:
+	Log.info("game", "Board match finished: %s" % ", ".join(final_state.standings().map(func(p): return "%s %d bombas %d coins" % [p.display_name, p.bombas, p.coins])))
+	var result := MinigameResult.new()
+	result.minigame_id = "board"
+	var i := 0
+	for p in final_state.standings():
+		result.add(p.peer_id, p.bombas * 1000 + p.coins, p.display_name)
+	result.finalize()
+	_clear_hud()
+	_end_board()
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	if not headless and ResourceLoader.exists(RESULTS_SCENE):
+		var results: Node = load(RESULTS_SCENE).instantiate()
+		ui_layer.add_child(results)
+		if results.has_method("show_result"):
+			results.show_result(result)
+		if wipe != null:
+			wipe.slam()
+	if soak_seconds > 0.0:
+		_finish_soak()
 
 
 func _on_minigame_start(id: String, seed_value: int, players_data: Array, config: Dictionary) -> void:
@@ -270,6 +333,7 @@ func _on_minigame_start(id: String, seed_value: int, players_data: Array, config
 	Audio.music("")
 	if wipe != null:
 		wipe.slam()
+	_clear_hud()
 	if not headless and ResourceLoader.exists(HUD_SCENE):
 		_hud = load(HUD_SCENE).instantiate()
 		ui_layer.add_child(_hud)
@@ -280,10 +344,22 @@ func _on_minigame_start(id: String, seed_value: int, players_data: Array, config
 
 func _on_minigame_finished(result: MinigameResult, id: String) -> void:
 	Log.info("game", "Minigame %s finished: %s" % [id, result.summary()])
-	Events.minigame_finished.emit(result)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_close_pause()
 	_clear_hud()
+	if board != null and is_instance_valid(board):
+		# Part of a board match: hand the ranking back to the board, no results screen.
+		_retire_minigame()
+		Events.minigame_finished.emit(result)
+		if not headless and ResourceLoader.exists("res://ui/board/board_hud.tscn"):
+			_hud = load("res://ui/board/board_hud.tscn").instantiate()
+			ui_layer.add_child(_hud)
+			if _hud.has_method("attach"):
+				_hud.attach(board)
+		if wipe != null:
+			wipe.slam()
+		return
+	Events.minigame_finished.emit(result)
 	if Session.is_authority():
 		Session.report_result(result)
 	if not headless and ResourceLoader.exists(RESULTS_SCENE):
@@ -298,21 +374,26 @@ func _on_minigame_finished(result: MinigameResult, id: String) -> void:
 		# Write the report while the minigame is still in the tree, then quit.
 		_finish_soak()
 		return
-	if active_minigame != null and is_instance_valid(active_minigame):
-		# finished is emitted from inside the tick loop; take the minigame out at the end of the
-		# frame so the rest of the loop's handlers are not called on nodes outside the tree.
-		var old := active_minigame
-		(func():
-			if is_instance_valid(old):
-				if old.get_parent() == world:
-					world.remove_child(old)
-				old.queue_free()
-		).call_deferred()
-	active_minigame = null
+	_retire_minigame()
 	if rounds_left > 0 and Session.is_authority():
 		Log.info("game", "Rematch in 1 s (%d rounds left)" % rounds_left)
 		await get_tree().create_timer(1.0).timeout
 		Session.start_minigame(id)
+
+
+## Take the finished minigame down after a short grace so packets still in flight (one RTT of
+## client inputs) find their nodes, and never from inside the tick loop.
+func _retire_minigame() -> void:
+	var old := active_minigame
+	active_minigame = null
+	if old == null or not is_instance_valid(old):
+		return
+	get_tree().create_timer(0.6).timeout.connect(func():
+		if is_instance_valid(old):
+			if old.get_parent() == world:
+				world.remove_child(old)
+			old.queue_free()
+	)
 
 
 func _clear_hud() -> void:
@@ -324,12 +405,12 @@ func _clear_hud() -> void:
 func _process(delta: float) -> void:
 	if args.has("open_pause") and active_minigame != null and _pause == null and not headless and _shot_timer > 1.5:
 		_open_pause()
-	if args.has("screenshot") and (active_minigame != null or args.has("screenshot_any")) and not _shot_done:
+	if args.has("screenshot") and (active_minigame != null or board != null or args.has("screenshot_any")) and not _shot_done:
 		_shot_timer += delta
 		if _shot_timer >= float(args.get("screenshot_at", 3.0)):
 			_shot_done = true
 			_take_screenshot(str(args["screenshot"]))
-	if soak_seconds > 0.0 and active_minigame != null:
+	if soak_seconds > 0.0 and (active_minigame != null or board != null):
 		_soak_elapsed += delta
 		if _soak_elapsed >= soak_seconds:
 			Log.info("game", "Soak time reached (%.1fs)" % _soak_elapsed)
