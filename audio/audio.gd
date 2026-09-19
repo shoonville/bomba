@@ -84,6 +84,7 @@ func _connect_events() -> void:
 		match name:
 			"reload_started": play("reload_start", -6.0)
 			"reload_finished": play("reload_end", -6.0)
+			"reload_round": play("shell_in", -4.0, _jitter(0.06))
 			"dry_fire": play("dry", -8.0)
 			"swapped": play("swap", -8.0)
 	)
@@ -135,7 +136,15 @@ func play_at(name: String, position: Vector3, volume_db: float = 0.0, pitch: flo
 
 
 ## Start a music loop by name (synthesised on a thread the first time), with a short fade.
+## Music is off for now (Sean, 2026-09-18). The loops still build and test; flip this to hear them.
+const MUSIC_ENABLED := false
+
+
 func music(name: String) -> void:
+	if not MUSIC_ENABLED:
+		if _music_player != null and _music_player.playing:
+			_music_player.stop()
+		return
 	if not enabled or name == _music_name:
 		return
 	_music_name = name

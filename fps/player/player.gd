@@ -345,6 +345,8 @@ func _emit_weapon_events() -> void:
 	_weapon_event_tick = t
 	if out.reload_started:
 		Events.local_weapon_event.emit("reload_started")
+	if out.reload_round:
+		Events.local_weapon_event.emit("reload_round")
 	if out.reload_finished:
 		Events.local_weapon_event.emit("reload_finished")
 	if out.dry_fire:

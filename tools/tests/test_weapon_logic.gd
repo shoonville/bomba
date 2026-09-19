@@ -101,18 +101,66 @@ func test_ar_auto_fire_rate_and_recoil() -> void:
 
 
 func test_reload_refills_at_end_and_blocks_fire() -> void:
+	# The AR: a magazine swap, everything comes back at the end.
+	var f := _fresh()
+	var sh: WeaponLogic.Shared = f[1]
+	sh.slot = 1
+	var st: WeaponLogic.SlotState = f[0][1]
+	st.ammo = 1
+	var out := WeaponLogic.step(defs, f[0], sh, _inp(false, false, false, true, 1), 50, true, swap_ticks)
+	assert_true(out.reload_started)
+	assert_eq(st.reload_until_tick, 50 + defs[1].reload_ticks)
+	var mid := WeaponLogic.step(defs, f[0], sh, _inp(true, true, false, false, 1), 60, true, swap_ticks)
+	assert_false(mid.fired, "cannot fire while reloading")
+	assert_eq(st.ammo, 1, "nothing comes back early")
+	var done := WeaponLogic.step(defs, f[0], sh, _inp(false, false, false, false, 1), 50 + defs[1].reload_ticks, true, swap_ticks)
+	assert_true(done.reload_finished)
+	assert_eq(st.ammo, defs[1].magazine)
+
+
+func test_sniper_reloads_one_round_at_a_time() -> void:
 	var f := _fresh()
 	var sh: WeaponLogic.Shared = f[1]
 	var st: WeaponLogic.SlotState = f[0][0]
-	st.ammo = 1
-	var out := WeaponLogic.step(defs, f[0], sh, _inp(false, false, false, true), 50, true, swap_ticks)
+	var def := defs[0]
+	assert_true(def.reload_per_round)
+	st.ammo = 0
+	var out := WeaponLogic.step(defs, f[0], sh, _inp(false, false, false, true), 100, true, swap_ticks)
 	assert_true(out.reload_started)
-	assert_eq(st.reload_until_tick, 50 + defs[0].reload_ticks)
-	var mid := WeaponLogic.step(defs, f[0], sh, _inp(true, true), 60, true, swap_ticks)
-	assert_false(mid.fired, "cannot fire while reloading")
-	var done := WeaponLogic.step(defs, f[0], sh, _inp(), 50 + defs[0].reload_ticks, true, swap_ticks)
-	assert_true(done.reload_finished)
-	assert_eq(st.ammo, defs[0].magazine)
+	var first := 100 + def.reload_start_ticks + def.reload_round_ticks
+	assert_eq(st.reload_until_tick, first)
+	var rounds := 0
+	var finished_at := -1
+	for tick in range(101, first + def.reload_round_ticks * def.magazine + 5):
+		var o := WeaponLogic.step(defs, f[0], sh, _inp(), tick, true, swap_ticks)
+		if o.reload_round:
+			rounds += 1
+			assert_eq(st.ammo, rounds, "one round per interval at tick %d" % tick)
+			assert_eq(tick, first + (rounds - 1) * def.reload_round_ticks, "rounds land every %d ticks" % def.reload_round_ticks)
+		if o.reload_finished:
+			finished_at = tick
+	assert_eq(rounds, def.magazine)
+	assert_eq(st.ammo, def.magazine)
+	assert_eq(finished_at, first + (def.magazine - 1) * def.reload_round_ticks, "finished as the last round goes in")
+	assert_eq(st.reload_until_tick, 0)
+
+
+func test_sniper_reload_gives_way_to_the_trigger() -> void:
+	var f := _fresh()
+	var sh: WeaponLogic.Shared = f[1]
+	var st: WeaponLogic.SlotState = f[0][0]
+	var def := defs[0]
+	st.ammo = 0
+	WeaponLogic.step(defs, f[0], sh, _inp(false, false, false, true), 100, true, swap_ticks)
+	var first := 100 + def.reload_start_ticks + def.reload_round_ticks
+	var o := WeaponLogic.step(defs, f[0], sh, _inp(), first, true, swap_ticks)
+	assert_true(o.reload_round)
+	assert_eq(st.ammo, 1)
+	# a tick later the trigger wins: the reload stops and the round fires
+	var shot := WeaponLogic.step(defs, f[0], sh, _inp(true, true), first + 1, true, swap_ticks)
+	assert_true(shot.fired, "fires the one round that was loaded")
+	assert_eq(st.ammo, 0)
+	assert_eq(st.reload_until_tick, 0, "reload cancelled by the shot")
 
 
 func test_empty_mag_auto_reloads() -> void:

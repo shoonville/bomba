@@ -14,9 +14,11 @@ var models: Array[Node3D] = []
 # barrel runs toward the crosshair (Sean: lower, whole scope visible).
 # Positive yaw turns the muzzle left and swings the stock away to the right, so the scope is
 # seen along its side from the rear-left-top instead of straight into the eyepiece.
-var hip_positions: Array[Vector3] = [Vector3(0.26, -0.24, -0.50), Vector3(0.25, -0.20, -0.38)]
+# From reference/Intervention_MW2.webp: seen from the rear-right-top, eyepiece close at the
+# right, muzzle to the upper left, the rifle canted so the top of the scope and the bolt show.
+var hip_positions: Array[Vector3] = [Vector3(0.28, -0.235, -0.44), Vector3(0.25, -0.20, -0.38)]
 var hip_rotations: Array[Vector3] = [
-	Vector3(deg_to_rad(-3.0), deg_to_rad(25.0), deg_to_rad(-8.0)),
+	Vector3(deg_to_rad(10.0), deg_to_rad(28.0), deg_to_rad(16.0)),
 	Vector3(deg_to_rad(4.0), deg_to_rad(-19.0), deg_to_rad(-7.0)),
 ]
 # ADS: the sniper's scope tube sits 0.115 above the model origin, so the model goes to

@@ -307,6 +307,11 @@ func test_main_board_shape() -> void:
 			forks += 1
 	assert_true(forks >= 4, "%d forks" % forks)
 	assert_true(g.goal_candidates().size() >= 8, "%d goal candidates" % g.goal_candidates().size())
+	var shields := 0
+	for sid in g.ids():
+		if g.get_space(sid).type == "shield":
+			shields += 1
+	assert_eq(shields, 1, "exactly one safe spot")
 	assert_eq(g.distance(g.start_id, g.start_id), 0)
 	var ids := g.ids()
 	var max_hop := 0.0
@@ -318,3 +323,27 @@ func test_main_board_shape() -> void:
 				var d := (g.get_space(a).position - g.get_space(b).position).length()
 				assert_true(d >= 3.0, "%s-%s %.2f m apart" % [a, b, d])
 	assert_true(max_hop <= 5.6, "longest hop %.2f m" % max_hop)
+
+
+func test_shield_space_and_damage_space() -> void:
+	var s := _fresh(3)
+	var me := s.active_player()
+	graph.get_space("2").type = "shield"
+	graph.get_space("3").type = "lose"
+	me.space = "2"
+	var ev := []
+	BoardRules._land(s, graph, cfg, ev)
+	assert_true(me.items.has("shield"), "the safe spot hands out a shield")
+	assert_true(ev.any(func(e): return e["kind"] == "item" and e["item"] == "shield"))
+	BoardRules._land(s, graph, cfg, ev)
+	assert_eq(me.items.count("shield"), 1, "never two from the same spot")
+	me.space = "3"
+	var coins := me.coins
+	var ev2 := []
+	BoardRules._land(s, graph, cfg, ev2)
+	assert_eq(me.coins, coins, "shield took the damage")
+	assert_false(me.items.has("shield"))
+	assert_true(ev2.any(func(e): return e["kind"] == "shield"))
+	var ev3 := []
+	BoardRules._land(s, graph, cfg, ev3)
+	assert_eq(me.coins, maxi(0, coins - 3), "no shield: damage costs coins")

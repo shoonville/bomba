@@ -99,6 +99,8 @@ for i, (x, z) in enumerate(loop):
     typ = "start" if i == 0 else pick_type(False, "")
     if i in (1, 2) and typ == "lose":
         typ = "coin"
+    if i == L // 2 + 1:
+        typ = "shield"   # the one safe spot, opposite the start
     add("L%d" % i, (x, elev(i), z), typ, nxt)
 for name, bi, bj, side, y in branches:
     pts = branch_pts[name]

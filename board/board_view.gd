@@ -155,6 +155,26 @@ func _build_marker(space: BoardGraph.Space, shadow: Color) -> void:
 			sign.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 			sign.position.y = 0.2
 			root.add_child(sign)
+		"shield":
+			var dome := MeshInstance3D.new()
+			var dm := SphereMesh.new()
+			dm.radius = 0.3
+			dm.height = 0.6
+			dm.radial_segments = 14
+			dm.rings = 7
+			dome.mesh = dm
+			dome.scale = Vector3(1.0, 0.6, 1.0)
+			dome.material_override = CelMaterial.for_colour(Palette.hud_colour("meter"), shadow, 0.5)
+			root.add_child(dome)
+			var band := MeshInstance3D.new()
+			var bm2 := TorusMesh.new()
+			bm2.inner_radius = 0.3
+			bm2.outer_radius = 0.38
+			bm2.rings = 16
+			bm2.ring_segments = 6
+			band.mesh = bm2
+			band.material_override = ink_mat
+			root.add_child(band)
 		"start":
 			var pole := MeshInstance3D.new()
 			var pm := CylinderMesh.new()
@@ -187,6 +207,7 @@ func _tone_for(type: String) -> Color:
 		"lose": return Palette.hud_colour("danger")
 		"item": return Palette.player_colour(5)
 		"event": return Palette.player_colour(0)
+		"shield": return Palette.hud_colour("meter")
 		"start": return Palette.map_colour("board", "accent")
 	return Palette.map_colour("board", "field")
 

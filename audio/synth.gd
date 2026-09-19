@@ -170,7 +170,7 @@ static func to_wav(buf: PackedFloat32Array, loop: bool = false, normalize_to: fl
 static func names() -> PackedStringArray:
 	return PackedStringArray(["sniper_fire", "ar_fire", "hitmarker", "headshot", "kill", "death", "hurt",
 		"bolt", "reload_start", "reload_end", "dry", "swap", "jump", "land", "footstep", "respawn",
-		"ui_hover", "ui_click", "ui_back", "round_start", "round_end", "dice", "coin"])
+		"ui_hover", "ui_click", "ui_back", "round_start", "round_end", "dice", "coin", "shell_in"])
 
 
 ## Build a named sound as float samples. Unknown names return a short click so a typo is audible.
@@ -300,6 +300,13 @@ static func build(name: String) -> PackedFloat32Array:
 				var m := samples(0.04)
 				out = mix(out, mul(lowpass(noise(m, 161 + i), 3000.0 - 400.0 * i), env_exp(m, 0.008)), 0.9, samples(0.06 * i))
 			return out
+		"shell_in":
+			# One round pressed into the sniper: a short press-click, a brass slide and a seat thock.
+			var out := silence(samples(0.14))
+			out = mix(out, mul(lowpass(highpass(noise(samples(0.02), 171), 800.0), 3000.0), env_exp(samples(0.02), 0.005)), 0.9)
+			out = mix(out, mul(tone(samples(0.06), 1400.0, 900.0, "tri"), env_exp(samples(0.06), 0.02)), 0.45, samples(0.015))
+			out = mix(out, mul(tone(samples(0.05), 210.0, 150.0, "sine"), env_exp(samples(0.05), 0.02)), 0.7, samples(0.055))
+			return mix(out, mul(lowpass(noise(samples(0.02), 172), 1800.0), env_exp(samples(0.02), 0.005)), 0.8, samples(0.058))
 		"coin":
 			var n := samples(0.22)
 			var out := mul(tone(n, 1318.5, 1318.5, "square"), env_exp(n, 0.08))

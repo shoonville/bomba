@@ -38,6 +38,7 @@ class Outcome:
 	var swapped: bool = false
 	var reload_started: bool = false
 	var reload_finished: bool = false
+	var reload_round: bool = false   # one round went in (per-round reloads)
 	var dry_fire: bool = false
 
 
@@ -86,11 +87,21 @@ static func step(defs: Array[WeaponDef], states: Array[SlotState], sh: Shared, i
 	var st := states[sh.slot]
 	out.weapon_id = def.id
 
-	# 2. Reload completion (derived from state, so it is rollback-safe)
+	# 2. Reload progress (derived from state, so it is rollback-safe). A per-round weapon loads
+	# one round each interval until full; anything else refills at the end.
 	if st.reload_until_tick > 0 and tick >= st.reload_until_tick:
-		st.ammo = def.magazine
-		st.reload_until_tick = 0
-		out.reload_finished = true
+		if def.reload_per_round:
+			st.ammo = mini(def.magazine, st.ammo + 1)
+			out.reload_round = true
+			if st.ammo >= def.magazine:
+				st.reload_until_tick = 0
+				out.reload_finished = true
+			else:
+				st.reload_until_tick = tick + def.reload_round_ticks
+		else:
+			st.ammo = def.magazine
+			st.reload_until_tick = 0
+			out.reload_finished = true
 
 	# 3. ADS
 	var swapping := tick < sh.swap_until_tick
@@ -106,7 +117,7 @@ static func step(defs: Array[WeaponDef], states: Array[SlotState], sh: Shared, i
 	var trigger := inp.fire if def.auto else inp.fire_pressed
 	if alive and not reloading and not swapping and tick >= st.next_fire_tick and st.ammo < def.magazine:
 		if inp.reload or (trigger and st.ammo <= 0):
-			st.reload_until_tick = tick + def.reload_ticks
+			st.reload_until_tick = tick + (def.reload_start_ticks + def.reload_round_ticks if def.reload_per_round else def.reload_ticks)
 			sh.ads_since_tick = -1
 			out.ads_active = false
 			out.reload_started = true
@@ -114,7 +125,10 @@ static func step(defs: Array[WeaponDef], states: Array[SlotState], sh: Shared, i
 			if trigger and st.ammo <= 0:
 				out.dry_fire = true
 
-	# 5. Fire
+	# 5. Fire. A per-round reload with something in the chamber gives way to the trigger.
+	if trigger and def.reload_per_round and st.reload_until_tick > 0 and st.ammo > 0 and alive and tick >= st.next_fire_tick and not swapping:
+		st.reload_until_tick = 0
+		out.reload_finished = true
 	if trigger and can_fire(def, st, sh, tick, alive):
 		out.fired = true
 		st.ammo -= 1

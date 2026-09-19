@@ -1,6 +1,9 @@
 {
   "_comment": "Ticks are 60 Hz. scope_in_ticks is read by BOTH the server accuracy rule and the scope animation; they must never be two numbers.",
-  "loadout": ["sniper", "ar"],
+  "loadout": [
+    "sniper",
+    "ar"
+  ],
   "swap_ticks": 20,
   "sniper": {
     "display_name": "INTERVENTION",
@@ -19,7 +22,10 @@
     "ads_fov_vertical": 18.0,
     "recoil_kick_deg": 3.0,
     "recoil_recovery_delay_ticks": 8,
-    "recoil_recovery_per_tick_deg": 0.25
+    "recoil_recovery_per_tick_deg": 0.25,
+    "reload_per_round": true,
+    "reload_start_ticks": 22,
+    "reload_round_ticks": 26
   },
   "ar": {
     "display_name": "SCAR",
@@ -41,8 +47,54 @@
     "recoil_recovery_delay_ticks": 6,
     "recoil_recovery_per_tick_deg": 0.18,
     "recoil_pattern_deg": [
-      [0.00, 0.55], [0.05, 0.60], [-0.10, 0.60], [0.20, 0.55], [0.30, 0.50], [-0.35, 0.45],
-      [-0.40, 0.40], [0.45, 0.35], [0.50, 0.30], [-0.50, 0.30], [0.55, 0.25], [-0.60, 0.25]
+      [
+        0.0,
+        0.55
+      ],
+      [
+        0.05,
+        0.6
+      ],
+      [
+        -0.1,
+        0.6
+      ],
+      [
+        0.2,
+        0.55
+      ],
+      [
+        0.3,
+        0.5
+      ],
+      [
+        -0.35,
+        0.45
+      ],
+      [
+        -0.4,
+        0.4
+      ],
+      [
+        0.45,
+        0.35
+      ],
+      [
+        0.5,
+        0.3
+      ],
+      [
+        -0.5,
+        0.3
+      ],
+      [
+        0.55,
+        0.25
+      ],
+      [
+        -0.6,
+        0.25
+      ]
     ]
   }
 }

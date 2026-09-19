@@ -187,11 +187,26 @@ static func _land(state: BoardState, graph: BoardGraph, cfg: Dictionary, events:
 		return
 	var effects: Dictionary = cfg.get("space_effects", {})
 	match space.type:
-		"coin", "lose":
-			var delta := int(effects.get(space.type, 3 if space.type == "coin" else -3))
+		"coin":
+			var delta := int(effects.get("coin", 3))
 			var before := ap.coins
 			ap.coins = maxi(0, ap.coins + delta)
 			events.append({"kind": "coins", "peer": ap.peer_id, "delta": ap.coins - before, "total": ap.coins})
+		"lose":
+			# Damage. A shield (the shield space, or the item) takes it instead of the coins.
+			if ap.items.has("shield"):
+				ap.items.erase("shield")
+				events.append({"kind": "shield", "peer": ap.peer_id, "from": 0})
+			else:
+				var delta := int(effects.get("lose", -3))
+				var before := ap.coins
+				ap.coins = maxi(0, ap.coins + delta)
+				events.append({"kind": "coins", "peer": ap.peer_id, "delta": ap.coins - before, "total": ap.coins})
+		"shield":
+			# The one safe spot: you leave it invulnerable to the next hit (bomb or damage space).
+			if not ap.items.has("shield"):
+				ap.items.append("shield")
+				events.append({"kind": "item", "peer": ap.peer_id, "item": "shield"})
 		"item":
 			var names := (cfg.get("items", {}) as Dictionary).keys()
 			if not names.is_empty():
