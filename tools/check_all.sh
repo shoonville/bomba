@@ -7,6 +7,7 @@
 # SOAK=1 appends the 3-seat netcode soak through the "bad" profile (another minute).
 cd "$(dirname "$0")/.."
 GODOT="${GODOT:-/Applications/Godot.app/Contents/MacOS/Godot}"
+PORT="${PORT:-27103}"   # its own port: a running game on 27015 must not fail the check
 fail=0
 stage() {
   if [ "$2" -eq 0 ]; then echo "PASS  $1"; else echo "FAIL  $1"; fail=1; fi
@@ -24,11 +25,13 @@ stage "determinism 60 vs 240 fps" $?
 
 for f in board/boards/*.json; do
   board=$(basename "$f" .json)
-  log=$("$GODOT" --headless --path . -- --host --bots=3 --start --board --board_id="$board" --autoplay \
+  log=$("$GODOT" --headless --path . -- --host --port="$PORT" --bots=3 --start --board --board_id="$board" --autoplay \
     --board_rounds=2 --board_minigame_seconds=8 --seed=3 --soak=240 --log=2 2>&1)
   echo "$log" | grep -E "minigame:|Board match finished" | sed 's/^.*\] /      /'
   echo "$log" | grep -q "Board match finished" && ! echo "$log" | grep -q -E "SCRIPT ERROR|\[ERR\]|\[WRN\]"
-  stage "board '$board': 4 seats, 2 rounds, random minigames, no warnings" $?
+  ok=$?
+  [ "$ok" -ne 0 ] && echo "$log" | grep -E "SCRIPT ERROR|\[ERR\]|\[WRN\]" | head -5 | sed 's/^/      /'
+  stage "board '$board': 4 seats, 2 rounds, random minigames, no warnings" $ok
 done
 
 if [ "${SOAK:-0}" = "1" ]; then
