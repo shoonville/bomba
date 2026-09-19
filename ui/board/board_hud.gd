@@ -304,6 +304,7 @@ func _draw() -> void:
 		if chips != "":
 			_text(Vector2(x + 330, y + 29), chips.strip_edges(), 14, Palette.player_colour(5))
 		y += h + 8.0
+	_draw_name_tags(st)
 	_text(Vector2(size.x - 250, 52), "ROUND %d / %d" % [mini(st.round, st.rounds), st.rounds], 26, paper)
 	_text(Vector2(size.x - 250, 84), "GOAL COSTS %d" % int(director.cfg.get("goal_cost", 10)), 18, Palette.hud_colour("score"))
 	if _dice_t > 0.0:
@@ -353,6 +354,45 @@ func _draw() -> void:
 		if _flash > 0.0:
 			pc = pc.lerp(Color.WHITE, _flash * 0.6)
 		_text(Vector2((size.x - pw) * 0.5, size.y - 52), prompt, 26, pc, 7.0)
+
+
+## Name tags over the pawns, projected from the 3D view and pushed apart when they would
+## overprint (pawns share tiles; depth makes a fixed lift useless). The active player's tag is
+## in the accent colour; far pawns get smaller type.
+func _draw_name_tags(st: BoardState) -> void:
+	var cam := get_viewport().get_camera_3d()
+	if cam == null or director.view == null or not director.view.has_method("pawn_tag_anchor"):
+		return
+	var tags: Array = []
+	for i in st.players.size():
+		var p := st.players[i]
+		var a: Vector3 = director.view.pawn_tag_anchor(p.peer_id)
+		if a == Vector3.INF or cam.is_position_behind(a):
+			continue
+		var sp := cam.unproject_position(a)
+		var dist := cam.global_position.distance_to(a)
+		var fs := clampi(int(230.0 / maxf(dist, 1.0)), 12, 22)
+		var text := p.display_name.to_upper()
+		var w := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, fs).x
+		tags.append({"pos": sp, "size": fs, "text": text, "w": w, "active": i == st.active,
+			"col": Palette.player_colour(p.colour_index)})
+	tags.sort_custom(func(a, b): return a["pos"].y < b["pos"].y)
+	# Push the upper tag of any overlapping pair further up, a few passes.
+	for _pass in 4:
+		for i in range(1, tags.size()):
+			for j in i:
+				var upper: Dictionary = tags[j]
+				var lower: Dictionary = tags[i]
+				var ux: float = upper["pos"].x
+				var lx: float = lower["pos"].x
+				if absf(ux - lx) < (float(upper["w"]) + float(lower["w"])) * 0.5 + 10.0:
+					var gap := (float(upper["size"]) + float(lower["size"])) * 0.5 + 8.0
+					if float(lower["pos"].y) - float(upper["pos"].y) < gap:
+						upper["pos"] = Vector2(ux, float(lower["pos"].y) - gap)
+	for t in tags:
+		var pos: Vector2 = t["pos"]
+		var col: Color = UiStyle.accent() if bool(t["active"]) else Color(t["col"]).lightened(0.35)
+		_text(Vector2(pos.x - float(t["w"]) * 0.5, pos.y), str(t["text"]), int(t["size"]), col, 4.0, -0.12)
 
 
 func _card(pos: Vector2, size: Vector2, alpha: float) -> void:

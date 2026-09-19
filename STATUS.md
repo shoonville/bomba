@@ -264,7 +264,9 @@ upright; TURBO shows as "5 +3". Found while doing it: every `Label3D` in a post-
 (pawn names, the "?" event sign, floating +3 labels, arena name tags, the die numbers) had
 never rendered, because the outline post quad samples the screen texture from the opaque pass
 and paints over transparent objects drawn before it. Labels now use alpha-cut (opaque pass)
-and get inked with everything else. `board_dice_landed.png`, `board_turn.png`.
+and get inked with everything else. Pawn name tags moved to the HUD (projected from each
+head, sized by distance, pushed apart when four pawns share the start tile, the active
+player's in the accent colour). `board_dice_landed.png`, `board_turn.png`.
 
 ### Bugs found and fixed today (all measured before and after)
 

@@ -310,11 +310,18 @@ func _ensure_pawn(p: BoardState.PlayerState) -> BoardPawn:
 	var pawn := BoardPawn.new()
 	pawn.name = "Pawn_%d" % p.peer_id
 	add_child(pawn)
-	var seat := director.state.players.find(p) if director.state != null else 0
-	pawn.setup(p.peer_id, Palette.player_colour(p.colour_index), p.display_name, 0.42 * maxi(seat, 0))
+	pawn.setup(p.peer_id, Palette.player_colour(p.colour_index), p.display_name)
 	pawns[p.peer_id] = pawn
 	pawn.snap_to(_slot_position(p.space, p.peer_id))
 	return pawn
+
+
+## World point just over a pawn's cap, where the HUD hangs its name tag; INF when unknown.
+func pawn_tag_anchor(peer_id: int) -> Vector3:
+	var pawn: BoardPawn = pawns.get(peer_id, null)
+	if pawn == null or not is_instance_valid(pawn):
+		return Vector3.INF
+	return pawn.global_position + Vector3(0, 2.15, 0)
 
 
 ## Pawns sharing a space stand in a small circle.
