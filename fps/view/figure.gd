@@ -15,6 +15,7 @@ var _r_leg: Node3D
 var _gun: Node3D
 var _phase: float = 0.0
 var _tilt: float = 0.0
+var _flinch: float = 0.0
 var _has_gun: bool = false
 
 const SHOULDER_Y := 1.38
@@ -66,8 +67,14 @@ func build(colour: Color, map_id: String, head_y: float = 1.62, with_gun: bool =
 		_box(_gun, Vector3(0.05, 0.16, 0.05), Vector3(-0.1, -0.3, 0.06), dark_mat)
 
 
+## A hit: the torso and head jerk back for a quarter second.
+func flinch() -> void:
+	_flinch = 1.0
+
+
 ## Speed in m/s, on_floor, look pitch (radians, up positive), alive. Call every frame.
 func animate(speed: float, on_floor: bool, pitch: float, alive: bool, delta: float) -> void:
+	_flinch = maxf(0.0, _flinch - delta * 4.5)
 	if not alive:
 		_tilt = move_toward(_tilt, 1.0, delta * 3.5)
 	else:
@@ -96,7 +103,8 @@ func animate(speed: float, on_floor: bool, pitch: float, alive: bool, delta: flo
 	else:
 		_l_arm.rotation.x = lerpf(_l_arm.rotation.x, -0.9, delta * 8.0)
 		_r_arm.rotation.x = lerpf(_r_arm.rotation.x, -0.9, delta * 8.0)
-	head.rotation.x = pitch * (0.35 if _has_gun else 1.0)
+	head.rotation.x = pitch * (0.35 if _has_gun else 1.0) + _flinch * 0.35
+	_torso.rotation.x = _flinch * 0.22
 	_torso.position.y = (SHOULDER_Y + HIP_Y) * 0.5 + sin(_phase * 0.45) * 0.008
 
 

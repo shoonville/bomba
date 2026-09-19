@@ -12,6 +12,7 @@ var _remote_mode: bool = false
 var _last_pos: Vector3 = Vector3.ZERO
 var _speed: float = 0.0
 var _vspeed: float = 0.0
+var _last_health: int = 100
 
 
 func setup(p: Player, p_cfg: MovementConfig) -> void:
@@ -54,4 +55,7 @@ func _process(delta: float) -> void:
 		_speed = Vector2(player.velocity.x, player.velocity.z).length()
 		on_floor = player.is_on_floor()
 	if figure != null:
+		if player.health < _last_health and player.health > 0:
+			figure.flinch()
+		_last_health = player.health
 		figure.animate(_speed, on_floor, pitch, player.health > 0, delta)

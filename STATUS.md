@@ -243,6 +243,11 @@ can click a bot's lobby card to set EASY / NORMAL / HARD. Frames: `arena_hip_sni
 `sniper_ads_45.png`, `arena_spectator_sky.png`, `board_turn.png`, `last_stand_spectate.png`,
 `lobby.png`.
 
+Autonomous block after the humanoids: results podium (top three figures on ink blocks, the
+winner hopping, `results.png`), the board counts down the last 10 s before an auto-roll,
+figures flinch when hit, pawns verified to face their travel direction mid-hop
+(`board_hop.png`), `tools/check_all.sh` 3 of 3 PASS with the figures in.
+
 ### Bugs found and fixed today (all measured before and after)
 
 1. Client's view of remote players lagged whole tick loops → 25 % hit confirmation. netfox

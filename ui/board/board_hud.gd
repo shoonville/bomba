@@ -332,6 +332,9 @@ func _draw() -> void:
 				prompt = "%s → %s   ·   CLICK A PLAYER OR A/D + ENTER   ·   SPACE CANCELS" % [_item_target_mode.to_upper(), target.display_name.to_upper()]
 			else:
 				prompt = "YOUR TURN"
+				var left := director.turn_seconds_left()
+				if left >= 0.0 and left <= 10.0:
+					prompt = "YOUR TURN   ·   AUTO-ROLL IN %d" % ceili(left)
 		elif ap != null:
 			prompt = "%s IS ROLLING" % ap.display_name.to_upper()
 	elif st.phase == BoardState.PHASE_CHOOSING:

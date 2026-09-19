@@ -324,6 +324,16 @@ func _hide_board_soon() -> void:
 	)
 
 
+## Seconds before the server auto-rolls the active human (the host's HUD counts it down);
+## -1 when unknown (clients) or not applicable.
+func turn_seconds_left() -> float:
+	if not is_server() or state == null or state.phase != BoardState.PHASE_TURNS:
+		return -1.0
+	if _clock < _busy_until:
+		return float(cfg.get("turn_timeout_seconds", 20.0))
+	return maxf(0.0, float(cfg.get("turn_timeout_seconds", 20.0)) - _timer)
+
+
 func space_position(space_id: String) -> Vector3:
 	var s := graph.get_space(space_id) if graph != null else null
 	return s.position if s != null else Vector3.ZERO
