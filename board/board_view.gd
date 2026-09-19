@@ -13,6 +13,9 @@ var markers: Array = []
 var _marker_t: float = 0.0
 var _cam_target: Vector3 = Vector3.ZERO
 var _cam_look: Vector3 = Vector3.ZERO
+var _cam_yaw: float = 0.0          # camera sits behind the pawn along this heading
+var _cam_yaw_target: float = 0.0
+var _cam_fast: bool = false        # tighter follow while a pawn is moving
 var _queue: Array = []
 var _playing: bool = false
 var _hop: float = 0.32
@@ -37,8 +40,8 @@ func setup(p_director: BoardDirector) -> void:
 		post.setup("board")
 	_cam_look = Vector3.ZERO
 	_cam_target = Vector3.ZERO
-	camera.global_position = Vector3(0, 14, 16)
-	camera.look_at(Vector3.ZERO, Vector3.UP)
+	camera.global_position = Vector3(0, 6.2, 6.8)
+	camera.look_at(Vector3(0, 1.0, 0), Vector3.UP)
 	if director.state != null:
 		_on_state(director.state)
 
@@ -402,13 +405,17 @@ func _play_next() -> void:
 			var pawn: BoardPawn = pawns.get(int(e["peer"]), null)
 			var path: Array = e["path"]
 			if pawn != null:
+				_cam_fast = true
 				for sid in path:
 					if not is_inside_tree():
 						_playing = false
 						return
-					pawn.hop_to(director.space_position(str(sid)), _hop)
-					_focus(director.space_position(str(sid)))
+					var to := director.space_position(str(sid))
+					_heading_from(pawn.global_position, to)
+					pawn.hop_to(to, _hop)
+					_focus(to)
 					await get_tree().create_timer(_hop).timeout
+				_cam_fast = false
 				if not Game.headless:
 					Burst.spawn(self, pawn.global_position + Vector3(0, 0.2, 0), pawn.colour, 0.45, 0.18, 7)
 			wait = 0.1
@@ -456,7 +463,13 @@ func _play_next() -> void:
 			var opts: Array = e["options"]
 			_fork_focus = opts
 			if opts.size() >= 2:
-				_focus((director.space_position(str(opts[0])) + director.space_position(str(opts[1]))) * 0.5)
+				# Stand behind the fork looking down the middle of the two paths, so LEFT and
+				# RIGHT are on the left and right of the screen.
+				var pawn: BoardPawn = pawns.get(int(e["peer"]), null)
+				var mid := (director.space_position(str(opts[0])) + director.space_position(str(opts[1]))) * 0.5
+				if pawn != null:
+					_heading_from(pawn.global_position, mid)
+				_focus(mid)
 			wait = 0.2
 		"minigame":
 			wait = 0.3
@@ -498,17 +511,35 @@ func _focus(point: Vector3) -> void:
 	_cam_look = point
 
 
+## Put the camera behind a pawn travelling from `from` to `to` (flat), so it looks along the path.
+func _heading_from(from: Vector3, to: Vector3) -> void:
+	var travel := to - from
+	travel.y = 0.0
+	if travel.length() > 0.2:
+		_cam_yaw_target = atan2(-travel.x, -travel.z)
+
+
+static func _rotate_toward_angle(from: float, to: float, max_step: float) -> float:
+	var d := wrapf(to - from, -PI, PI)
+	return from + clampf(d, -max_step, max_step)
+
+
 func _process(delta: float) -> void:
 	if camera == null:
 		return
-	var desired_pos := _cam_look + Vector3(0.0, 12.0, 13.5)
+	# Close on whoever's turn it is, Pummel Party style: about 9 m out, 42° down, sitting
+	# behind the pawn along its heading so the spaces ahead fill the frame. The heading eases
+	# at most ~100°/s so corners swing, never snap.
+	_cam_yaw = _rotate_toward_angle(_cam_yaw, _cam_yaw_target, delta * 1.8)
+	var desired_pos := _cam_look + Vector3(sin(_cam_yaw) * 6.8, 6.2, cos(_cam_yaw) * 6.8)
 	if Game.args.has("board_overview"):
 		# Harness: the whole board from above, for layout screenshots.
 		desired_pos = Vector3(0.0, 64.0, 46.0)
 		_cam_look = Vector3.ZERO
-	camera.global_position = camera.global_position.lerp(desired_pos, 1.0 - pow(0.02, delta))
-	_cam_target = _cam_target.lerp(_cam_look, 1.0 - pow(0.02, delta))
-	camera.look_at(_cam_target + Vector3(0, 0.8, 0), Vector3.UP)
+	var k := 1.0 - pow(0.004 if _cam_fast else 0.02, delta)
+	camera.global_position = camera.global_position.lerp(desired_pos, k)
+	_cam_target = _cam_target.lerp(_cam_look, k)
+	camera.look_at(_cam_target + Vector3(0, 1.0, 0), Vector3.UP)
 	if goal_ring != null:
 		goal_ring.rotation.y += delta * 0.8
 	_marker_t += delta

@@ -252,6 +252,12 @@ Then: name labels over other players (hidden while down) and the held gun shows 
 slot (long cream rifle or short carbine); spectator rig creation guarded against a double
 build on the death frame.
 
+Board camera (Sean: "more zoomed in on whoever's turn it is, like Pummel Party"): 9 m out at
+42° instead of 18 m, and it now orbits behind the moving pawn along its heading (eased ≤
+100°/s, tighter follow during hops) and stands behind the pawn at a fork looking down the
+middle of both paths, so LEFT and RIGHT are left and right on screen; the fork buttons moved
+out to the sides. `board_turn.png`, `board_hop.png`, `board_fork.png`.
+
 ### Bugs found and fixed today (all measured before and after)
 
 1. Client's view of remote players lagged whole tick loops → 25 % hit confirmation. netfox

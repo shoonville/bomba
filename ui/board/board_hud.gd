@@ -132,8 +132,10 @@ func _layout_buttons() -> void:
 	if forking and Game.args.has("hover_fork"):
 		_hover_side(str(Game.args["hover_fork"]) == "left")
 	if forking:
-		_fork_left.position = Vector2(size.x * 0.5 - _fork_left.size.x - 30, size.y - 160)
-		_fork_right.position = Vector2(size.x * 0.5 + 30, size.y - 160)
+		# Out to the sides, near the path each one leads down; the pawn sits bottom-centre now
+		# that the camera stands behind it at a fork.
+		_fork_left.position = Vector2(size.x * 0.24 - _fork_left.size.x * 0.5, size.y * 0.56)
+		_fork_right.position = Vector2(size.x * 0.76 - _fork_right.size.x * 0.5, size.y * 0.56)
 	_item_box.visible = can_roll and _item_btns.size() > 0
 	_item_box.position = Vector2((size.x - _item_box.size.x) * 0.5, size.y - 225)
 
