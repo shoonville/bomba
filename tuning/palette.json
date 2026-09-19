@@ -108,7 +108,27 @@
         0.24,
         0.42
       ],
-      "cloud_coverage": 0.42
+      "cloud_coverage": 0.42,
+      "poster_a": [
+        325,
+        0.62,
+        0.8
+      ],
+      "poster_b": [
+        55,
+        0.72,
+        0.86
+      ],
+      "paper": [
+        40,
+        0.1,
+        0.9
+      ],
+      "glow": [
+        195,
+        0.7,
+        0.85
+      ]
     },
     "menu": {
       "field": [
@@ -207,6 +227,85 @@
         268,
         0.5,
         0.14
+      ]
+    },
+    "pit": {
+      "_comment": "LAST STAND's pit at dusk: the arena's tones pushed warm and dark, a hot sky.",
+      "field": [
+        18,
+        0.5,
+        0.62
+      ],
+      "field_dark": [
+        14,
+        0.55,
+        0.42
+      ],
+      "counter": [
+        200,
+        0.45,
+        0.4
+      ],
+      "counter_dark": [
+        205,
+        0.5,
+        0.28
+      ],
+      "sky_top": [
+        285,
+        0.45,
+        0.52
+      ],
+      "sky_bottom": [
+        24,
+        0.62,
+        0.9
+      ],
+      "shadow_tint": [
+        0.7,
+        0.62,
+        0.9
+      ],
+      "accent": [
+        55,
+        0.78,
+        0.86
+      ],
+      "line": [
+        280,
+        0.5,
+        0.12
+      ],
+      "cloud_lit": [
+        30,
+        0.4,
+        0.96
+      ],
+      "cloud_shadow": [
+        300,
+        0.4,
+        0.4
+      ],
+      "cloud_coverage": 0.3,
+      "poster_a": [
+        325,
+        0.62,
+        0.8
+      ],
+      "poster_b": [
+        55,
+        0.72,
+        0.86
+      ],
+      "paper": [
+        40,
+        0.1,
+        0.9
+      ],
+      "glow": [
+        30,
+        0.8,
+        0.95
       ]
     }
   },

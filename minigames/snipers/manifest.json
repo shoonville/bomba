@@ -6,7 +6,10 @@
   "camera": "first_person",
   "scoring": "kills",
   "time_limit_seconds": 150,
-  "weapons": ["sniper"],
+  "weapons": [
+    "sniper"
+  ],
   "bot_profile": "fps",
-  "scene": "minigame.tscn"
+  "scene": "minigame.tscn",
+  "tagline": "HEADSHOTS COUNT DOUBLE"
 }

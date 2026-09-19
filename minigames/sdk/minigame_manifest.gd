@@ -4,6 +4,7 @@ extends RefCounted
 
 var id: String = ""
 var display_name: String = ""
+var tagline: String = ""   # one line under GET READY: what wins here
 var min_players: int = 2
 var max_players: int = 6
 var camera: String = "first_person"  # or "third_person"
@@ -18,6 +19,7 @@ static func from_json(d: Dictionary, folder: String) -> MinigameManifest:
 	var m := MinigameManifest.new()
 	m.id = str(d.get("id", folder.get_file()))
 	m.display_name = str(d.get("display_name", m.id.to_upper()))
+	m.tagline = str(d.get("tagline", ""))
 	m.min_players = int(d.get("min_players", 2))
 	m.max_players = int(d.get("max_players", 6))
 	m.camera = str(d.get("camera", "first_person"))

@@ -151,7 +151,7 @@ Cost: host tick loop 2.4–2.8 ms mean with three seats; client tick loop p95 4 
   (BOT TANGERINE 1 Bomba 14 coins, client 20, bot 15, host 11), 0 errors either side. Six
   seats headless, 3 rounds on FIGURE EIGHT (LAST STAND ×2 with 6 seats, SNIPERS): 0 errors.
 
-Numbers: `tools/test.sh` 69 tests, 7867 assertions, 87 scripts compiled, 0 failures. Headless
+Numbers: `tools/test.sh` 70 tests, 9939 assertions, 89 scripts compiled, 0 failures. Headless
 host + 2 bots, 2 rounds with 8 s minigames: round 1 ARENA (2 weapons), round 2 SNIPERS (1
 weapon, one headshot kill scored 2), board → minigame → rewards → board → minigame → finish, log
 24 lines, 0 warnings, 0 errors. Headless LAST STAND with 4 seats: 2 kills at ticks 394 and 608,
@@ -215,6 +215,13 @@ kHz), the sniper rebuilt rounded and Intervention-shaped with a closer 20° hip 
 scope-in now goes through the glass (rifle up → iris closes → glass clears → zoom → reticle)
 instead of zooming into the receiver. Frames: `arena_hip_sniper.png`, `sniper_ads_45.png`,
 `sniper_ads_75.png`, `arena_scoped_target.png`.
+
+Fourth round, "add details": board space markers, a 128 BPM match loop, arena and pit
+dressing (posters, lamps, road paint, hazard stripes), a dusk palette for the pit, taglines
+under GET READY, the sniper held low and across with the whole scope in frame. The bay under
+the board went in and came out on his note (pink sky stays). The AR was left alone on his word.
+Frames: `board_turn.png`, `arena_spectator_sky.png`, `last_stand_pit.png`, `snipers_intro.png`,
+`arena_hip_sniper.png`.
 
 ### Bugs found and fixed today (all measured before and after)
 

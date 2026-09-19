@@ -10,6 +10,31 @@ static func box(pos: Vector3, size: Vector3, tone: String = "field") -> Dictiona
 	return {"pos": pos, "size": size, "tone": tone}
 
 
+static func decor_box(pos: Vector3, size: Vector3, tone: String, yaw: float = 0.0) -> Dictionary:
+	return {"pos": pos, "size": size, "tone": tone, "yaw": yaw, "shape": "box"}
+
+
+static func decor_cyl(pos: Vector3, size: Vector3, tone: String) -> Dictionary:
+	return {"pos": pos, "size": size, "tone": tone, "shape": "cylinder"}
+
+
+## A poster on a wall: a paper sheet, a coloured print and a stripe, all thin boxes standing
+## 4 cm off the wall. `normal` points away from the wall.
+static func poster(out: Array, pos: Vector3, normal: Vector3, w: float, h: float, print_tone: String, stripe_tone: String) -> void:
+	var yaw := atan2(normal.x, normal.z)
+	var off := normal * 0.04
+	out.append(decor_box(pos + off, Vector3(w, h, 0.05), "paper", yaw))
+	out.append(decor_box(pos + off * 1.6 + Vector3(0, h * 0.06, 0), Vector3(w * 0.82, h * 0.62, 0.05), print_tone, yaw))
+	out.append(decor_box(pos + off * 2.2 - Vector3(0, h * 0.36, 0), Vector3(w * 0.82, h * 0.1, 0.05), stripe_tone, yaw))
+
+
+## A street lamp: a post and a glowing head.
+static func lamp(out: Array, pos: Vector3) -> void:
+	out.append(decor_cyl(pos + Vector3(0, 2.6, 0), Vector3(0.22, 5.2, 0.28), "counter_dark"))
+	out.append(decor_box(pos + Vector3(0, 5.3, 0), Vector3(0.7, 0.32, 0.7), "counter_dark"))
+	out.append(decor_box(pos + Vector3(0, 5.1, 0), Vector3(0.5, 0.08, 0.5), "glow"))
+
+
 static func build() -> Dictionary:
 	var W := 48.0
 	var D := 40.0
@@ -124,4 +149,21 @@ static func build() -> Dictionary:
 		[3, 23], [23, 8], [17, 8], [8, 11], [3, 8],
 		[16, 7], [7, 10], [7, 13], [13, 12], [12, 14], [14, 9], [9, 11], [4, 7], [6, 10],
 	]
-	return {"boxes": boxes, "spawns": spawns, "waypoints": wp, "edges": edges, "size": Vector2(W, D)}
+	# Dressing (no collision): posters on the perimeter walls, lamps at the edges, road paint
+	# down the lanes, hazard stripes on the tower's first deck. Accents stay small (STYLE §8).
+	var decor: Array = []
+	poster(decor, Vector3(-12, 3.2, -D / 2), Vector3(0, 0, 1), 3.0, 3.6, "poster_a", "accent")
+	poster(decor, Vector3(9, 3.0, -D / 2), Vector3(0, 0, 1), 2.4, 3.0, "poster_b", "poster_a")
+	poster(decor, Vector3(14, 3.2, D / 2), Vector3(0, 0, -1), 3.0, 3.6, "poster_b", "accent")
+	poster(decor, Vector3(-8, 3.0, D / 2), Vector3(0, 0, -1), 2.4, 3.0, "poster_a", "poster_b")
+	poster(decor, Vector3(-W / 2, 3.2, 6), Vector3(1, 0, 0), 3.0, 3.6, "accent", "poster_a")
+	poster(decor, Vector3(W / 2, 3.2, -6), Vector3(-1, 0, 0), 3.0, 3.6, "poster_a", "poster_b")
+	for lp in [Vector3(-22.5, 0, 6), Vector3(-22.5, 0, -6), Vector3(-6, 0, 18.5), Vector3(8, 0, -18.5), Vector3(12, 0, 18.5)]:
+		lamp(decor, lp)
+	for z in [-16.0, 16.0]:
+		decor.append(decor_box(Vector3(0, 0.015, z), Vector3(30, 0.03, 0.25), "paper"))
+	for x in [-19.0, 19.0]:
+		decor.append(decor_box(Vector3(x, 0.015, 0), Vector3(0.25, 0.03, 24), "paper"))
+	for i in 5:
+		decor.append(decor_box(Vector3(-2.8 + i * 1.4, 3.02, 3.4), Vector3(0.7, 0.05, 0.2), "accent" if i % 2 == 0 else "paper"))
+	return {"boxes": boxes, "spawns": spawns, "waypoints": wp, "edges": edges, "size": Vector2(W, D), "decor": decor}

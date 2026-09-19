@@ -118,12 +118,16 @@ func _draw() -> void:
 		if "manifest" in _arena and _arena.manifest != null:
 			name = "%s  ·  GET READY" % _arena.manifest.display_name
 		_draw_centre_text(size, name, 56, _score_col)
+		if "manifest" in _arena and _arena.manifest != null and str(_arena.manifest.tagline) != "":
+			var tag := str(_arena.manifest.tagline)
+			var tw := _font.get_string_size(tag, HORIZONTAL_ALIGNMENT_CENTER, -1, 24).x
+			_draw_outlined(Vector2((size.x - tw) * 0.5, size.y * 0.3 + 38.0), tag, 24, _paper)
 		if _arena.has_method("warmup_seconds_left"):
 			var left := ceili(float(_arena.warmup_seconds_left()))
 			if left > 0:
 				var digit := "%d" % left
 				var dw := _font.get_string_size(digit, HORIZONTAL_ALIGNMENT_CENTER, -1, 120).x
-				_draw_outlined(Vector2((size.x - dw) * 0.5, size.y * 0.3 + 120.0), digit, 120, _score_col, 10.0, -0.22)
+				_draw_outlined(Vector2((size.x - dw) * 0.5, size.y * 0.3 + 165.0), digit, 120, _score_col, 10.0, -0.22)
 	if _player.health <= 0:
 		var txt := "DOWN"
 		if _arena != null and _arena.has_method("centre_text") and str(_arena.centre_text()) != "":

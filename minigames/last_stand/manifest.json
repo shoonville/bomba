@@ -6,7 +6,11 @@
   "camera": "first_person",
   "scoring": "survival",
   "time_limit_seconds": 60,
-  "weapons": ["sniper", "ar"],
+  "weapons": [
+    "sniper",
+    "ar"
+  ],
   "bot_profile": "fps",
-  "scene": "minigame.tscn"
+  "scene": "minigame.tscn",
+  "tagline": "ONE LIFE. LAST ONE STANDING WINS"
 }

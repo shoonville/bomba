@@ -6,7 +6,11 @@
   "camera": "first_person",
   "scoring": "kills",
   "time_limit_seconds": 180,
-  "weapons": ["sniper", "ar"],
+  "weapons": [
+    "sniper",
+    "ar"
+  ],
   "bot_profile": "fps",
-  "scene": "minigame.tscn"
+  "scene": "minigame.tscn",
+  "tagline": "MOST KILLS WINS"
 }

@@ -66,4 +66,10 @@ static func build() -> Dictionary:
 		[0, 1], [0, 5], [0, 6], [2, 7], [2, 8], [5, 3], [3, 7], [6, 4], [4, 8],
 		[9, 5], [10, 6], [11, 7], [12, 8], [9, 0], [10, 0], [11, 2], [12, 2], [9, 11], [10, 12],
 	]
-	return {"boxes": boxes, "spawns": spawns, "waypoints": wp, "edges": edges, "size": Vector2(W, D)}
+	var decor: Array = []
+	GrayboxLayout.poster(decor, Vector3(-6, 3.0, -D / 2), Vector3(0, 0, 1), 2.6, 3.2, "poster_a", "accent")
+	GrayboxLayout.poster(decor, Vector3(7, 3.0, D / 2), Vector3(0, 0, -1), 2.6, 3.2, "poster_b", "poster_a")
+	GrayboxLayout.poster(decor, Vector3(-W / 2, 3.0, -3), Vector3(1, 0, 0), 2.6, 3.2, "accent", "poster_b")
+	for lp in [Vector3(-12.2, 0, 9.5), Vector3(12.2, 0, -9.5)]:
+		GrayboxLayout.lamp(decor, lp)
+	return {"boxes": boxes, "spawns": spawns, "waypoints": wp, "edges": edges, "size": Vector2(W, D), "decor": decor}

@@ -5,6 +5,29 @@ extends RefCounted
 
 static func build(parent: Node3D, layout: Dictionary, map_id: String) -> void:
 	var materials := {}
+	# Decor: meshes only, no collision. Posters, lamp posts, road paint, hazard stripes.
+	for dcr in layout.get("decor", []):
+		var tone: String = dcr["tone"]
+		if not materials.has(tone):
+			materials[tone] = CelMaterial.for_tone(map_id, tone)
+		var mi := MeshInstance3D.new()
+		if str(dcr.get("shape", "box")) == "cylinder":
+			var cm := CylinderMesh.new()
+			cm.top_radius = (dcr["size"] as Vector3).x * 0.5
+			cm.bottom_radius = (dcr["size"] as Vector3).z * 0.5
+			cm.height = (dcr["size"] as Vector3).y
+			cm.radial_segments = 10
+			mi.mesh = cm
+		else:
+			var bm := BoxMesh.new()
+			bm.size = dcr["size"]
+			mi.mesh = bm
+		mi.position = dcr["pos"]
+		if dcr.has("yaw"):
+			mi.rotation.y = float(dcr["yaw"])
+		mi.material_override = materials[tone]
+		mi.layers = 1
+		parent.add_child(mi)
 	for b in layout["boxes"]:
 		var tone: String = b["tone"]
 		if not materials.has(tone):

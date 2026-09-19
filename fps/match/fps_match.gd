@@ -206,12 +206,12 @@ func _build_environment() -> void:
 	var sky := Sky.new()
 	var sky_mat := ShaderMaterial.new()
 	sky_mat.shader = load("res://art/shaders/sky_clouds.gdshader")
-	sky_mat.set_shader_parameter("sky_top", Palette.map_colour("arena", "sky_top"))
+	sky_mat.set_shader_parameter("sky_top", Palette.map_colour(_palette_map(), "sky_top"))
 	sky_mat.set_shader_parameter("sky_horizon", Palette.map_colour(_palette_map(), "sky_bottom"))
-	sky_mat.set_shader_parameter("cloud_lit", Palette.map_colour("arena", "cloud_lit"))
-	sky_mat.set_shader_parameter("cloud_shadow", Palette.map_colour("arena", "cloud_shadow"))
-	sky_mat.set_shader_parameter("ink", Palette.map_colour("arena", "line"))
-	sky_mat.set_shader_parameter("cloud_coverage", Tuning.float_value("palette.maps.arena.cloud_coverage", 0.44))
+	sky_mat.set_shader_parameter("cloud_lit", Palette.map_colour(_palette_map(), "cloud_lit"))
+	sky_mat.set_shader_parameter("cloud_shadow", Palette.map_colour(_palette_map(), "cloud_shadow"))
+	sky_mat.set_shader_parameter("ink", Palette.map_colour(_palette_map(), "line"))
+	sky_mat.set_shader_parameter("cloud_coverage", Tuning.float_value("palette.maps.%s.cloud_coverage" % _palette_map(), 0.44))
 	sky.sky_material = sky_mat
 	sky.radiance_size = Sky.RADIANCE_SIZE_32
 	env.sky = sky
