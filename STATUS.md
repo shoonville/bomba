@@ -127,6 +127,11 @@ Cost: host tick loop 2.4–2.8 ms mean with three seats; client tick loop p95 4 
 - **Mouse on the board**: ROLL, fork (LEFT/RIGHT by the tiles' screen positions) and item
   buttons, click a player row as the target; keys unchanged.
 - **Results after a board match** read "◆ Bombas · coins" instead of a composite score.
+- **THE PIT**, LAST STAND's own map (26 × 22 m, `_layout()` hook, folder-only): 4-seat rounds
+  end by elimination in 8.3 s mean / 12.9 s max over seeds 1–5, against 16.3 s / 35.7 s on the
+  gray-box. A new layout test checks every bot waypoint edge is clear; it caught six broken
+  edges in the gray-box (two through the mid walls, two corner waypoints and two spawns inside
+  the buildings) which are fixed. Bots had been walking into those walls since session 1.
 - **Second board** FIGURE EIGHT: hub start/fork, two loops, a raised bridge in each (27 spaces,
   3 forks, 6 goal candidates). Lobby button cycles boards; `--board_id=eight`. Tests: every
   board validates, loops to its start and reaches every goal from every space; 2-round
@@ -138,7 +143,7 @@ Cost: host tick loop 2.4–2.8 ms mean with three seats; client tick loop p95 4 
   (BOT TANGERINE 1 Bomba 14 coins, client 20, bot 15, host 11), 0 errors either side. Six
   seats headless, 3 rounds on FIGURE EIGHT (LAST STAND ×2 with 6 seats, SNIPERS): 0 errors.
 
-Numbers: `tools/test.sh` 68 tests, 6304 assertions, 86 scripts compiled, 0 failures. Headless
+Numbers: `tools/test.sh` 69 tests, 7867 assertions, 87 scripts compiled, 0 failures. Headless
 host + 2 bots, 2 rounds with 8 s minigames: round 1 ARENA (2 weapons), round 2 SNIPERS (1
 weapon, one headshot kill scored 2), board → minigame → rewards → board → minigame → finish, log
 24 lines, 0 warnings, 0 errors. Headless LAST STAND with 4 seats: 2 kills at ticks 394 and 608,
@@ -166,7 +171,8 @@ New screenshots: `board_intro_card.png`, `board_reward_card.png`, `board_roll_bu
 `snipers_intro.png`, `snipers_hip.png`, `results_board.png`, `last_stand_intro.png`,
 `last_stand_out.png` (eliminated, "OUT · 4 LEFT"), `last_stand_spectate.png` (chase camera),
 `results_last_stand.png`, `board_items.png` (item strip + ROLL), `board_fork.png` (LEFT/RIGHT),
-`board_eight.png`, `board_shield.png` (a bomb eaten by a shield), `lobby.png` (board selector).
+`board_eight.png`, `board_shield.png` (a bomb eaten by a shield), `lobby.png` (board selector),
+`last_stand_pit.png` (THE PIT from the showcase camera).
 
 ### Bugs found and fixed today (all measured before and after)
 

@@ -77,9 +77,10 @@ static func build() -> Dictionary:
 	boxes.append(box(Vector3(21.5, 2.8, -11.7), Vector3(3, 1.2, 0.8), "field"))
 
 	# Spawn points: {pos, yaw} — yaw faces the centre. Ground level, edges, one on each roof.
+	# The SW and NE corners are buildings, so those spawns sit in the corridors past them.
 	var spawns: Array = []
 	var spawn_positions := [
-		Vector3(-20, 0, 16), Vector3(20, 0, 16), Vector3(-20, 0, -16), Vector3(20, 0, -16),
+		Vector3(-16, 0, 18), Vector3(20, 0, 16), Vector3(-20, 0, -16), Vector3(16, 0, -18),
 		Vector3(0, 0, 17), Vector3(0, 0, -17), Vector3(-21, 0, 0), Vector3(21.5, 3.6, 0),
 		Vector3(16, 4.0, -12), Vector3(-16, 4.0, 12),
 	]
@@ -87,7 +88,9 @@ static func build() -> Dictionary:
 		var to_centre: Vector3 = Vector3(0, 0, 0) - p
 		spawns.append({"pos": p, "yaw": atan2(-to_centre.x, -to_centre.z)})
 
-	# Bot waypoints and edges (a hand-made graph; straight lines between linked points are clear)
+	# Bot waypoints and edges. Every edge is a clear straight line at chest height (a unit test
+	# checks each one against the boxes): the mid walls are rounded by their end points, the
+	# two buildings by the corridors past them.
 	var wp := [
 		Vector3(0, 0, 9),        # 0 south of tower steps
 		Vector3(0, 3.0, 0),      # 1 deck 1
@@ -95,10 +98,10 @@ static func build() -> Dictionary:
 		Vector3(-14, 0, 0),      # 3 west lane
 		Vector3(14, 0, 0),       # 4 east lane
 		Vector3(0, 0, -9),       # 5 north of tower
-		Vector3(-20, 0, 16),     # 6 SW corner
+		Vector3(-16, 0, 18),     # 6 south corridor below the SW building
 		Vector3(20, 0, 16),      # 7 SE corner
 		Vector3(-20, 0, -16),    # 8 NW corner
-		Vector3(20, 0, -16),     # 9 NE corner
+		Vector3(16, 0, -18),     # 9 north corridor above the NE building
 		Vector3(0, 0, 17),       # 10 south edge
 		Vector3(0, 0, -17),      # 11 north edge
 		Vector3(21.5, 3.6, 0),   # 12 catwalk middle
@@ -108,11 +111,17 @@ static func build() -> Dictionary:
 		Vector3(8, 0, 8),        # 16 SE inner
 		Vector3(-8, 0, -8),      # 17 NW inner
 		Vector3(8, 0, -8),       # 18 NE inner
+		Vector3(-7.5, 0, 13),    # 19 south wall, west end
+		Vector3(7.5, 0, 13),     # 20 south wall, east end
+		Vector3(-7.5, 0, -13),   # 21 north wall, west end
+		Vector3(7.5, 0, -13),    # 22 north wall, east end
+		Vector3(-22, 0, 2),      # 23 west edge, north of the SW building
 	]
 	var edges := [
-		[0, 1], [1, 2], [0, 15], [0, 16], [0, 10], [5, 17], [5, 18], [5, 11],
-		[15, 3], [17, 3], [16, 4], [18, 4], [15, 6], [16, 7], [17, 8], [18, 9],
-		[6, 10], [7, 10], [8, 11], [9, 11], [7, 13], [13, 12], [12, 14], [14, 9],
-		[3, 6], [3, 8], [4, 7], [4, 9], [15, 17], [16, 18],
+		[0, 1], [1, 2], [0, 15], [0, 16], [0, 19], [0, 20], [19, 10], [20, 10], [19, 15], [20, 16],
+		[5, 17], [5, 18], [5, 21], [5, 22], [21, 11], [22, 11], [21, 17], [22, 18],
+		[15, 3], [17, 3], [16, 4], [18, 4], [15, 17], [16, 18],
+		[3, 23], [23, 8], [17, 8], [8, 11], [3, 8],
+		[16, 7], [7, 10], [7, 13], [13, 12], [12, 14], [14, 9], [9, 11], [4, 7], [6, 10],
 	]
 	return {"boxes": boxes, "spawns": spawns, "waypoints": wp, "edges": edges, "size": Vector2(W, D)}

@@ -7,6 +7,10 @@ func _respawns() -> bool:
 	return false
 
 
+func _layout() -> Dictionary:
+	return PitLayout.build()
+
+
 func _score_for(pl: Player) -> int:
 	if pl.is_alive():
 		return 1 << 30

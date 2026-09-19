@@ -66,7 +66,8 @@ board (graph, rules, director, view; `BOARDPLAN.md`), `net/` transport,
 conditioner, hitscan and history, `session/` lobby and registry, `fps/` player, weapons, view
 and `fps/match/` the shared first-person match (map, spawns, clock, kill log),
 `minigames/sdk/` the contract and `minigames/arena/`, `minigames/snipers/`,
-`minigames/last_stand/` (a manifest and a few lines each), `bots/`, `art/`
+`minigames/last_stand/` (a manifest and a few lines each; LAST STAND also carries its own map
+table), `bots/`, `art/`
 shaders and palette, `ui/` HUD, menu, results, `tools/` harnesses and tests, `tuning/` every
 gameplay number as JSON. `addons/netfox` is vendored with two documented patches
 (`addons/netfox/PATCHES.md`).
