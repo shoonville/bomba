@@ -16,6 +16,10 @@ func setup(map_id: String) -> void:
 	material = ShaderMaterial.new()
 	material.shader = load(SHADER_PATH)
 	material.set_shader_parameter("ink", Palette.map_colour(map_id, "line"))
+	# Lines are drawn at the internal (supersampled) resolution and downsampled with the frame,
+	# so their width scales with the render scale and their edges come out anti-aliased.
+	var render_scale := float(ProjectSettings.get_setting("rendering/scaling_3d/scale", 1.0))
+	material.set_shader_parameter("line_width", 1.7 * render_scale)
 	material.set_shader_parameter("value_ceiling", Palette.value_ceiling())
 	material_override = material
 	extra_cull_margin = 16384.0

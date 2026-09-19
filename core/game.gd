@@ -471,6 +471,9 @@ func _finish_soak() -> void:
 	if _quitting:
 		return
 	_quitting = true
+	if not headless:
+		Log.info("perf", "FPS at soak end: %d (window %dx%d, render scale %.2f)" % [Engine.get_frames_per_second(),
+			get_viewport().size.x, get_viewport().size.y, float(ProjectSettings.get_setting("rendering/scaling_3d/scale", 1.0))])
 	soak_seconds = 0.0
 	var recorder := get_node_or_null("/root/SoakRecorder")
 	if recorder != null and recorder.has_method("write_report"):

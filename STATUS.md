@@ -302,6 +302,15 @@ middle-click pings the tile under the cursor (a bouncing pin in your colour with
 (2.4 s, a pop). One any_peer RPC on the director, cosmetic, rate-limited to one per 0.4 s per
 peer, payloads validated; works on anyone's turn. `board_ping.png`; `--social_test` harness.
 
+Graphics pass: 1.5× supersampling so ink lines and cel edges are anti-aliased, line width
+scaled by render scale and distance, 8192 24-bit directional shadows (117 texels/m on the
+board). 60 FPS at the vsync cap in the board and the arena at 1600×900 on the M4 (headroom
+past the cap not measured). Moon theme: the board on a floating slab of grey moon rock with
+craters, boulders, posts under every tile, a rocket on a landing pad, a satellite dish, a
+buggy, a buried probe, a crew member and flag; asteroids, a ringed planet, a small moon and a
+UFO doing laps; pink sky kept. `board_turn.png`, `board_map.png`, `board_overview.png`,
+`arena_hip_sniper.png`.
+
 ### Bugs found and fixed today (all measured before and after)
 
 1. Client's view of remote players lagged whole tick loops → 25 % hit confirmation. netfox

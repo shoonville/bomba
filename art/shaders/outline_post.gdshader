@@ -10,7 +10,7 @@ uniform sampler2D screen_tex : hint_screen_texture, filter_nearest;
 uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
 uniform sampler2D normal_tex : hint_normal_roughness_texture, filter_nearest;
 uniform vec4 ink : source_color = vec4(0.14, 0.09, 0.06, 1.0);
-uniform float line_width : hint_range(0.5, 3.0) = 1.0;
+uniform float line_width : hint_range(0.5, 6.0) = 1.0;
 uniform float depth_threshold : hint_range(0.01, 2.0) = 0.35;
 uniform float depth_distance_scale : hint_range(0.0, 0.2) = 0.03;
 uniform float normal_threshold : hint_range(0.0, 1.0) = 0.42;
@@ -50,8 +50,9 @@ float hash12(vec2 p) {
 
 void fragment() {
 	vec2 uv = SCREEN_UV;
-	vec2 px = line_width / VIEWPORT_SIZE;
 	float d0 = linear_depth(uv, INV_PROJECTION_MATRIX);
+	// Drawn line weight: heavier up close, lighter in the distance, like a pen at two scales.
+	vec2 px = line_width * mix(1.3, 0.8, clamp(d0 / 40.0, 0.0, 1.0)) / VIEWPORT_SIZE;
 	float dl = linear_depth(uv - vec2(px.x, 0.0), INV_PROJECTION_MATRIX);
 	float dr = linear_depth(uv + vec2(px.x, 0.0), INV_PROJECTION_MATRIX);
 	float du = linear_depth(uv - vec2(0.0, px.y), INV_PROJECTION_MATRIX);
