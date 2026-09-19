@@ -80,10 +80,12 @@ func setup(colour: Color, ink: Color, shadow: Color) -> void:
 		var n := face_normal(v)
 		var label := Label3D.new()
 		label.text = "%d" % v
-		label.font_size = 84
-		label.pixel_size = 0.0054
-		label.outline_size = 0
+		# Bold: a same-colour outline fattens the strokes (Sean: "more bold").
+		label.font_size = 96
+		label.pixel_size = 0.0046
+		label.outline_size = 16
 		label.modulate = ink
+		label.outline_modulate = ink
 		label.double_sided = false
 		label.alpha_cut = Label3D.ALPHA_CUT_DISCARD   # opaque pass: under the outline post quad
 		label.position = face_signs(v) * RADIUS / 3.0 + n * 0.012
