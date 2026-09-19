@@ -212,6 +212,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+## --ads_progress=0..1 pins the scope-in animation for screenshots (presentation only).
+func ads_progress_override(actual: float) -> float:
+	if args.has("ads_progress"):
+		return clampf(float(args["ads_progress"]), 0.0, 1.0)
+	return actual
+
+
 func is_paused() -> bool:
 	return _pause != null and is_instance_valid(_pause)
 

@@ -193,30 +193,30 @@ static func build(name: String) -> PackedFloat32Array:
 			out = mix(out, thump, 0.9)
 			return softclip(out, 2.0)
 		"hitmarker":
-			# Call of Duty style: a hard bright tick (3 kHz click + short sine ring) with a little
-			# body under it, 75 ms, so a landed shot is a clean "tk". Sean's note 4.
-			var n := samples(0.075)
-			var click := mul(highpass(noise(n, 31), 2600.0), env_exp(n, 0.0035))
-			var ring := mul(tone(n, 3300.0, 2900.0, "sine"), env_exp(n, 0.02))
-			var body := mul(tone(n, 820.0, 640.0, "tri"), env_exp(n, 0.014))
+			# Call of Duty style, take two (Sean: "too high pitched"): a woody click banded
+			# 0.9–3.2 kHz, a 1.5→1.15 kHz knock and a little 320 Hz body; 60 ms, instant attack.
+			var n := samples(0.06)
+			var click := mul(lowpass(highpass(noise(n, 31), 900.0), 3200.0), env_exp(n, 0.0045))
+			var knock := mul(tone(n, 1500.0, 1150.0, "tri"), env_exp(n, 0.02))
+			var body := mul(tone(n, 320.0, 240.0, "sine"), env_exp(n, 0.017))
 			var out := mix(silence(n), click, 1.0)
-			out = mix(out, ring, 0.85)
-			out = mix(out, body, 0.4)
-			return softclip(out, 1.8)
+			out = mix(out, knock, 0.9)
+			out = mix(out, body, 0.55)
+			return softclip(out, 2.0)
 		"headshot":
-			# Two ticks 45 ms apart, the second lower, over a short thud: "you really hit that".
-			var n := samples(0.19)
-			var c1 := mul(highpass(noise(samples(0.06), 32), 2600.0), env_exp(samples(0.06), 0.0035))
-			var t1 := mul(tone(samples(0.06), 3300.0, 2900.0, "sine"), env_exp(samples(0.06), 0.018))
-			var c2 := mul(highpass(noise(samples(0.09), 33), 2200.0), env_exp(samples(0.09), 0.004))
-			var t2 := mul(tone(samples(0.09), 2400.0, 2000.0, "sine"), env_exp(samples(0.09), 0.03))
-			var thud := mul(tone(samples(0.12), 260.0, 140.0, "sine"), env_exp(samples(0.12), 0.05))
+			# Two knocks 45 ms apart, the second lower, over a 200 Hz thud: heavier than a body hit.
+			var n := samples(0.18)
+			var c1 := mul(lowpass(highpass(noise(samples(0.06), 32), 900.0), 3200.0), env_exp(samples(0.06), 0.0045))
+			var k1 := mul(tone(samples(0.06), 1500.0, 1150.0, "tri"), env_exp(samples(0.06), 0.02))
+			var c2 := mul(lowpass(highpass(noise(samples(0.08), 33), 700.0), 2600.0), env_exp(samples(0.08), 0.005))
+			var k2 := mul(tone(samples(0.08), 1100.0, 820.0, "tri"), env_exp(samples(0.08), 0.028))
+			var thud := mul(tone(samples(0.12), 200.0, 120.0, "sine"), env_exp(samples(0.12), 0.05))
 			var out := mix(silence(n), c1, 1.0)
-			out = mix(out, t1, 0.85)
+			out = mix(out, k1, 0.9)
 			out = mix(out, c2, 1.0, samples(0.045))
-			out = mix(out, t2, 0.9, samples(0.045))
-			out = mix(out, thud, 0.6, samples(0.04))
-			return softclip(out, 1.8)
+			out = mix(out, k2, 0.95, samples(0.045))
+			out = mix(out, thud, 0.7, samples(0.04))
+			return softclip(out, 2.0)
 		"kill":
 			var out := silence(samples(0.55))
 			var notes := [659.25, 783.99, 987.77]

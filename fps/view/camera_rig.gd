@@ -47,8 +47,9 @@ func _sync() -> void:
 	global_position = player.global_position + Vector3.UP * player.cfg.eye_height
 	rotation = Vector3(inp.look_pitch + rp, inp.look_yaw + ry, 0.0)
 	var def := player.weapons.current_def()
-	var progress := player.weapons.ads_progress(tick)
-	var eased := 1.0 - pow(1.0 - progress, 2.0)
+	var progress := Game.ads_progress_override(player.weapons.ads_progress(tick))
+	# The rifle comes up first; the zoom happens behind the iris, from 55 % on.
+	var zoom := smoothstep(0.55, 1.0, progress) if (def != null and def.is_sniper()) else 1.0 - pow(1.0 - progress, 2.0)
 	if def != null:
-		camera.fov = lerpf(base_fov, def.ads_fov_vertical, eased)
+		camera.fov = lerpf(base_fov, def.ads_fov_vertical, zoom)
 	inp.ads_hint = progress > 0.5

@@ -83,7 +83,7 @@ func _draw() -> void:
 		return
 	var tick := NetworkTime.tick
 	var scoped := _player.weapons.is_scoped(tick)
-	var progress := _player.weapons.ads_progress(tick)
+	var progress := Game.ads_progress_override(_player.weapons.ads_progress(tick))
 	var def := _player.weapons.current_def()
 	var spectating := _arena != null and _arena.has_method("spectating_name") and str(_arena.spectating_name()) != ""
 	if spectating:
@@ -91,8 +91,19 @@ func _draw() -> void:
 		_draw_score(size)
 		_draw_feed()
 	else:
-		if def != null and def.is_sniper() and progress > 0.9:
-			_draw_scope(size, scoped)
+		if def != null and def.is_sniper() and progress > 0.5:
+			# Iris: the ink tube closes from beyond the corners down to the lens between 50 % and
+			# 90 % of the scope-in, then the reticle appears.
+			var lens := size.y * 0.42
+			var open_r := size.length() * 0.55
+			var k := smoothstep(0.5, 0.9, progress)
+			var r := lerpf(open_r, lens, k)
+			_draw_scope(size, scoped, r, progress > 0.9)
+			# Inside the tube the glass clears from the eyepiece's dark to the zoomed view, so the
+			# rifle leaving the frame is never a pop.
+			var dark := 1.0 - smoothstep(0.6, 0.9, progress)
+			if dark > 0.0:
+				draw_circle(size * 0.5, r, Color(_ink, dark))
 		else:
 			_draw_crosshair(size, progress)
 		_draw_hitmarker(size)
@@ -136,9 +147,10 @@ func _draw_crosshair(size: Vector2, progress: float) -> void:
 		draw_line(a, b, _paper, w)
 
 
-func _draw_scope(size: Vector2, settled: bool) -> void:
+func _draw_scope(size: Vector2, settled: bool, r: float = -1.0, with_reticle: bool = true) -> void:
 	var c := size * 0.5
-	var r := size.y * 0.42
+	if r < 0.0:
+		r = size.y * 0.42
 	# Flat ink everywhere except the lens: four bands around the lens' bounding square plus four
 	# corner fans (square corner + quarter arc). Godot cannot subtract shapes, so build the ring.
 	var sq := Rect2(c.x - r, c.y - r, 2.0 * r, 2.0 * r)
@@ -157,6 +169,8 @@ func _draw_scope(size: Vector2, settled: bool) -> void:
 		draw_colored_polygon(pts, _ink)
 	draw_arc(c, r, 0.0, TAU, 96, _ink, 10.0)
 	draw_arc(c, r - 8.0, 0.0, TAU, 96, _paper, 3.0)
+	if not with_reticle:
+		return
 	var reticle := _meter_col if settled else _danger_col
 	for seg in [[Vector2(-r, 0), Vector2(-14, 0)], [Vector2(14, 0), Vector2(r, 0)], [Vector2(0, -r), Vector2(0, -14)], [Vector2(0, 14), Vector2(0, r)]]:
 		draw_line(c + seg[0], c + seg[1], _ink, 5.0)

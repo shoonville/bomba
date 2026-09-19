@@ -210,6 +210,12 @@ SNIPERS 9–2 and 14–3 ("normal" retuned: 550 ms reaction, chest aim, 5.5° se
 260°/s turn, no head start in the countdown; bots now first kill 1.1–5.6 s after the start,
 headshots 12 % of kills).
 
+Third round while he played: hitmarker lowered to a 2.06 kHz-centroid click-knock (was 3.25
+kHz), the sniper rebuilt rounded and Intervention-shaped with a closer 20° hip pose, and the
+scope-in now goes through the glass (rifle up → iris closes → glass clears → zoom → reticle)
+instead of zooming into the receiver. Frames: `arena_hip_sniper.png`, `sniper_ads_45.png`,
+`sniper_ads_75.png`, `arena_scoped_target.png`.
+
 ### Bugs found and fixed today (all measured before and after)
 
 1. Client's view of remote players lagged whole tick loops → 25 % hit confirmation. netfox
