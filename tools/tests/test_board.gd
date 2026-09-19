@@ -5,7 +5,8 @@ var cfg: Dictionary
 
 
 func setup() -> void:
-	graph = BoardGraph.load_file("res://board/boards/first.json")
+	# The rules tests run on a small fixture board whose topology they know by id.
+	graph = BoardGraph.load_file("res://tools/tests/fixtures/board_small.json")
 	cfg = TuningLoader.load_file("res://tuning/board.json")
 
 
@@ -281,7 +282,7 @@ func test_bot_swaps_only_for_a_real_gain() -> void:
 
 func test_every_board_validates_and_loops() -> void:
 	var ids := BoardGraph.available_ids()
-	assert_true(ids.has("first") and ids.has("eight"), str(ids))
+	assert_eq(ids, ["main"], "one shipped board, Sean's note 6")
 	for id in ids:
 		var g := BoardGraph.load_file("res://board/boards/%s.json" % id)
 		assert_true(g != null, id)
@@ -297,18 +298,23 @@ func test_every_board_validates_and_loops() -> void:
 		assert_true(forks >= 2, "%s has %d forks" % [id, forks])
 
 
-func test_eight_shape() -> void:
-	var g := BoardGraph.load_file("res://board/boards/eight.json")
-	assert_eq(g.spaces.size(), 27)
-	assert_true(g.is_fork("H"), "hub forks into the two loops")
-	assert_true(g.is_fork("L4") and g.is_fork("R4"), "bridges fork off space 4 of each loop")
-	assert_eq(g.distance("L4", "L8"), 3, "bridge L4→LB1→LB2→L8")
-	assert_eq(g.distance("H", "H"), 0)
-	assert_eq(g.distance("L1", "H"), 10)
-	# tiles never sit closer than 3 m so pawns and rings do not overlap
+func test_main_board_shape() -> void:
+	var g := BoardGraph.load_file("res://board/boards/main.json")
+	assert_true(g.spaces.size() >= 50, "%d spaces" % g.spaces.size())
+	var forks := 0
+	for sid in g.ids():
+		if g.is_fork(sid):
+			forks += 1
+	assert_true(forks >= 4, "%d forks" % forks)
+	assert_true(g.goal_candidates().size() >= 8, "%d goal candidates" % g.goal_candidates().size())
+	assert_eq(g.distance(g.start_id, g.start_id), 0)
 	var ids := g.ids()
+	var max_hop := 0.0
 	for a in ids:
+		for n in g.get_space(a).next:
+			max_hop = maxf(max_hop, (g.get_space(a).position - g.get_space(n).position).length())
 		for b in ids:
 			if a < b:
 				var d := (g.get_space(a).position - g.get_space(b).position).length()
 				assert_true(d >= 3.0, "%s-%s %.2f m apart" % [a, b, d])
+	assert_true(max_hop <= 5.6, "longest hop %.2f m" % max_hop)

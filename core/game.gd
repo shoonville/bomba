@@ -129,7 +129,7 @@ func _after_host_ready() -> void:
 	var minigame_id := str(args.get("minigame", "arena"))
 	var start_match := func():
 		if args.has("board"):
-			Session.start_board(str(args.get("board_id", Tuning.value("board.default_board", "first"))))
+			Session.start_board(str(args.get("board_id", Tuning.value("board.default_board", "main"))))
 		else:
 			Session.start_minigame(minigame_id)
 	if args.has("start"):

@@ -182,6 +182,28 @@ New screenshots: `board_intro_card.png`, `board_reward_card.png`, `board_roll_bu
 `board_eight.png`, `board_shield.png` (a bomb eaten by a shield), `lobby.png` (board selector),
 `last_stand_pit.png` (THE PIT from the showcase camera).
 
+### Session 4 (evening, Sean's six notes after his first play)
+
+His first launch (`Shoon`, HOST LAN, no bots) sat in empty 90 s minigames: the lobby now
+seeds two bots. Then six notes, all done:
+
+1. **Logo**: a drawn wordmark (`ui/shared/logo_mark.gd`): round-stroke throw-up letters,
+   ink outline, teal drop layer, yellow spark; cream/ink/teal/yellow from the menu palette, no
+   orange. `main_menu.png`. His verdict pending.
+2. **Pawn flash**: state broadcasts no longer snap existing pawns; the events move them.
+3. **Dice**: a 0.8 m score-yellow die with ink pips tumbles from the active pawn (0.55 s air,
+   0.22 s settle to the real face, 0.8 s hold); the HUD number slams on touchdown.
+   `board_dice_air.png`, `board_dice_landed.png`.
+4. **Hitmarker**: CoD-style tick, 74 ms, spectral peak 3161 Hz, centroid 3251 Hz; headshot
+   two ticks 45 ms apart over a 260 Hz thud, 189 ms. Measured, not yet heard by him.
+5. **Sniper**: round barrel and a cylinder telescopic sight with rings, bell, eyepiece and a
+   glow lens. `arena_hip_sniper.png`.
+6. **One board**: BOMBA BAY (`board/boards/main.json`, `tools/gen_board.py`): 65 spaces, a
+   35-space loop plus a raised 11-space bridge, two inner cuts and an outside detour; 4 forks,
+   10 goal candidates, min tile spacing 3.17 m, hops 3.25–5.36 m. FIRST LOOP and FIGURE EIGHT
+   removed (the small one is now the rules-test fixture); the lobby BOARD button is gone.
+   `board_overview.png`, `board_turn.png`.
+
 ### Bugs found and fixed today (all measured before and after)
 
 1. Client's view of remote players lagged whole tick loops → 25 % hit confirmation. netfox

@@ -46,6 +46,10 @@ func attach(p_director: BoardDirector) -> void:
 	director = p_director
 	director.state_changed.connect(func(_s): _rebuild_items())
 	director.events_received.connect(_on_events)
+	Events.board_dice_landed.connect(func(v: int):
+		_dice_value = v
+		_dice_t = 1.3
+	)
 	_rebuild_items()
 
 
@@ -54,9 +58,7 @@ func _on_events(events: Array) -> void:
 	for e in events:
 		match str(e.get("kind", "")):
 			"roll":
-				_dice_value = int(e["value"])
-				_dice_t = 1.6
-				Audio.play("dice", -2.0)
+				pass  # the number slams in when the 3D die lands (Events.board_dice_landed)
 			"choose":
 				_fork_options.clear()
 				for o in e["options"]:

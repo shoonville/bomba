@@ -165,14 +165,16 @@ func _slot_position(space_id: String, peer_id: int) -> Vector3:
 
 
 func _on_state(state: BoardState) -> void:
+	var first := pawns.is_empty()
 	for p in state.players:
 		_ensure_pawn(p)
-	if not _playing:
-		_snap_all()
-	if goal_ring != null and state.goal != "":
+	# Existing pawns are moved by the events that follow this state. Snapping them here showed
+	# every pawn at its destination for a frame before the hop (Sean's note 2); the queue's
+	# end-of-events snap reconciles instead.
+	if goal_ring != null and state.goal != "" and (first or not _playing):
 		goal_ring.global_position = director.space_position(state.goal) + Vector3(0, 0.08, 0)
 	var ap := state.active_player()
-	if ap != null and not _playing:
+	if ap != null and first:
 		_focus(director.space_position(ap.space))
 
 
@@ -205,7 +207,28 @@ func _play_next() -> void:
 				_focus(director.space_position(p.space))
 			wait = 0.3
 		"roll":
-			wait = 0.6
+			var pawn: BoardPawn = pawns.get(int(e["peer"]), null)
+			var v := int(e["value"])
+			if pawn != null and not Game.headless:
+				var base := pawn.global_position
+				var dice := BoardDice.new()
+				dice.name = "Dice"
+				add_child(dice)
+				dice.setup(Palette.hud_colour("score"), Palette.map_colour("board", "line"), Palette.map_colour("board", "shadow_tint"))
+				var rng := RandomNumberGenerator.new()
+				rng.seed = (director.state.turn_serial if director.state != null else 0) * 7919 + v
+				var to := base + Vector3(1.5, BoardDice.SIZE * 0.5, 1.0)
+				dice.roll(base + Vector3(0.3, 2.8, 0.2), to, v, rng)
+				dice.landed.connect(func(val: int):
+					Audio.play("land", -9.0)
+					Events.board_dice_landed.emit(val)
+				)
+				_focus(base)
+				Audio.play("dice", -2.0)
+				wait = BoardDice.T_AIR + BoardDice.T_SETTLE + 0.5
+			else:
+				Events.board_dice_landed.emit(v)
+				wait = 0.6
 		"move":
 			var pawn: BoardPawn = pawns.get(int(e["peer"]), null)
 			var path: Array = e["path"]
@@ -310,6 +333,10 @@ func _process(delta: float) -> void:
 	if camera == null:
 		return
 	var desired_pos := _cam_look + Vector3(0.0, 12.0, 13.5)
+	if Game.args.has("board_overview"):
+		# Harness: the whole board from above, for layout screenshots.
+		desired_pos = Vector3(0.0, 64.0, 46.0)
+		_cam_look = Vector3.ZERO
 	camera.global_position = camera.global_position.lerp(desired_pos, 1.0 - pow(0.02, delta))
 	_cam_target = _cam_target.lerp(_cam_look, 1.0 - pow(0.02, delta))
 	camera.look_at(_cam_target + Vector3(0, 0.8, 0), Vector3.UP)

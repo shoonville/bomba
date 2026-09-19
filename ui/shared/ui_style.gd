@@ -102,33 +102,12 @@ static func title(text: String, size: int = 96, outline_colour: Color = Color(0,
 	return t
 
 
-## The logo treatment: fill + ink outline over a white sticker border (STYLE.md §3 key-art
-## outlines). Colours come from palette.json menu.logo_fill / logo_ink / logo_sticker.
+## The logo: a drawn wordmark (LogoMark), not a font. Colours from palette.json menu.logo_*.
 static func logo(text: String, size: int = 132) -> Control:
-	var root := Control.new()
-	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var fill := Palette.map_colour("menu", "logo_fill")
-	var logo_ink := Palette.map_colour("menu", "logo_ink")
-	var sticker := Palette.map_colour("menu", "logo_sticker")
-	var ink_w := maxi(10, size / 9)
-	var sticker_w := ink_w + maxi(10, size / 9)
-	var back := Label.new()
-	back.text = text
-	back.add_theme_font_size_override("font_size", size)
-	back.add_theme_color_override("font_color", sticker)
-	back.add_theme_color_override("font_outline_color", sticker)
-	back.add_theme_constant_override("outline_size", sticker_w)
-	root.add_child(back)
-	var front := Label.new()
-	front.text = text
-	front.add_theme_font_size_override("font_size", size)
-	front.add_theme_color_override("font_color", fill)
-	front.add_theme_color_override("font_outline_color", logo_ink)
-	front.add_theme_constant_override("outline_size", ink_w)
-	root.add_child(front)
-	root.custom_minimum_size = front.get_minimum_size()
-	root.size = root.custom_minimum_size
-	return root
+	var m := LogoMark.new()
+	m.text = text
+	m.cap = float(size)
+	return m
 
 
 ## Slam a control in: from 1.35× settling in 0.22 s. No rotation: lettering stays upright.

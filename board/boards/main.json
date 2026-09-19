@@ -1,0 +1,856 @@
+{
+ "id": "main",
+ "display_name": "BOMBA BAY",
+ "start": "L0",
+ "spaces": [
+  {
+   "id": "L0",
+   "position": [
+    24.81,
+    0.75,
+    0.0
+   ],
+   "type": "start",
+   "next": [
+    "L1"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L1",
+   "position": [
+    24.87,
+    0.9,
+    3.69
+   ],
+   "type": "blank",
+   "next": [
+    "L2"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L2",
+   "position": [
+    23.62,
+    0.9,
+    7.14
+   ],
+   "type": "blank",
+   "next": [
+    "L3"
+   ],
+   "goal": true
+  },
+  {
+   "id": "L3",
+   "position": [
+    21.26,
+    0.9,
+    9.98
+   ],
+   "type": "event",
+   "next": [
+    "L4",
+    "A1"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L4",
+   "position": [
+    18.26,
+    0.75,
+    12.14
+   ],
+   "type": "blank",
+   "next": [
+    "L5"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L5",
+   "position": [
+    14.9,
+    0.75,
+    13.73
+   ],
+   "type": "blank",
+   "next": [
+    "L6"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L6",
+   "position": [
+    11.36,
+    0.6,
+    14.87
+   ],
+   "type": "blank",
+   "next": [
+    "L7"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L7",
+   "position": [
+    7.73,
+    0.3,
+    15.62
+   ],
+   "type": "coin",
+   "next": [
+    "L8"
+   ],
+   "goal": true
+  },
+  {
+   "id": "L8",
+   "position": [
+    4.04,
+    0.15,
+    16.05
+   ],
+   "type": "blank",
+   "next": [
+    "L9",
+    "B1"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L9",
+   "position": [
+    0.33,
+    0.15,
+    16.2
+   ],
+   "type": "blank",
+   "next": [
+    "L10"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L10",
+   "position": [
+    -3.37,
+    0.0,
+    16.1
+   ],
+   "type": "lose",
+   "next": [
+    "L11"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L11",
+   "position": [
+    -7.08,
+    0.0,
+    15.78
+   ],
+   "type": "coin",
+   "next": [
+    "L12"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L12",
+   "position": [
+    -10.73,
+    0.0,
+    15.19
+   ],
+   "type": "coin",
+   "next": [
+    "L13"
+   ],
+   "goal": true
+  },
+  {
+   "id": "L13",
+   "position": [
+    -14.32,
+    0.15,
+    14.27
+   ],
+   "type": "coin",
+   "next": [
+    "L14"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L14",
+   "position": [
+    -17.74,
+    0.3,
+    12.85
+   ],
+   "type": "lose",
+   "next": [
+    "L15"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L15",
+   "position": [
+    -20.75,
+    0.45,
+    10.7
+   ],
+   "type": "item",
+   "next": [
+    "L16",
+    "D1"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L16",
+   "position": [
+    -22.8,
+    0.6,
+    7.64
+   ],
+   "type": "coin",
+   "next": [
+    "L17"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L17",
+   "position": [
+    -23.52,
+    0.75,
+    4.02
+   ],
+   "type": "event",
+   "next": [
+    "L18"
+   ],
+   "goal": true
+  },
+  {
+   "id": "L18",
+   "position": [
+    -23.24,
+    0.75,
+    0.33
+   ],
+   "type": "event",
+   "next": [
+    "L19"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L19",
+   "position": [
+    -22.4,
+    0.9,
+    -3.29
+   ],
+   "type": "item",
+   "next": [
+    "L20"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L20",
+   "position": [
+    -21.14,
+    0.9,
+    -6.77
+   ],
+   "type": "blank",
+   "next": [
+    "L21"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L21",
+   "position": [
+    -19.37,
+    0.9,
+    -10.03
+   ],
+   "type": "coin",
+   "next": [
+    "L22"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L22",
+   "position": [
+    -16.83,
+    0.75,
+    -12.7
+   ],
+   "type": "coin",
+   "next": [
+    "L23"
+   ],
+   "goal": true
+  },
+  {
+   "id": "L23",
+   "position": [
+    -13.56,
+    0.6,
+    -14.43
+   ],
+   "type": "blank",
+   "next": [
+    "L24"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L24",
+   "position": [
+    -9.97,
+    0.45,
+    -15.39
+   ],
+   "type": "coin",
+   "next": [
+    "L25"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L25",
+   "position": [
+    -6.3,
+    0.3,
+    -15.91
+   ],
+   "type": "coin",
+   "next": [
+    "L26",
+    "C1"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L26",
+   "position": [
+    -2.6,
+    0.15,
+    -16.15
+   ],
+   "type": "coin",
+   "next": [
+    "L27"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L27",
+   "position": [
+    1.1,
+    0.0,
+    -16.19
+   ],
+   "type": "coin",
+   "next": [
+    "L28"
+   ],
+   "goal": true
+  },
+  {
+   "id": "L28",
+   "position": [
+    4.8,
+    0.0,
+    -16.02
+   ],
+   "type": "blank",
+   "next": [
+    "L29"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L29",
+   "position": [
+    8.49,
+    0.0,
+    -15.56
+   ],
+   "type": "blank",
+   "next": [
+    "L30"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L30",
+   "position": [
+    12.09,
+    0.0,
+    -14.64
+   ],
+   "type": "lose",
+   "next": [
+    "L31"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L31",
+   "position": [
+    15.43,
+    0.15,
+    -13.07
+   ],
+   "type": "blank",
+   "next": [
+    "L32"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L32",
+   "position": [
+    18.39,
+    0.3,
+    -10.83
+   ],
+   "type": "item",
+   "next": [
+    "L33"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L33",
+   "position": [
+    20.9,
+    0.45,
+    -8.1
+   ],
+   "type": "blank",
+   "next": [
+    "L34"
+   ],
+   "goal": false
+  },
+  {
+   "id": "L34",
+   "position": [
+    22.95,
+    0.6,
+    -5.02
+   ],
+   "type": "item",
+   "next": [
+    "L0"
+   ],
+   "goal": false
+  },
+  {
+   "id": "A1",
+   "position": [
+    17.91,
+    1.2,
+    8.1
+   ],
+   "type": "coin",
+   "next": [
+    "A2"
+   ],
+   "goal": false
+  },
+  {
+   "id": "A2",
+   "position": [
+    14.56,
+    1.2,
+    6.26
+   ],
+   "type": "lose",
+   "next": [
+    "A3"
+   ],
+   "goal": false
+  },
+  {
+   "id": "A3",
+   "position": [
+    11.18,
+    1.2,
+    4.48
+   ],
+   "type": "blank",
+   "next": [
+    "A4"
+   ],
+   "goal": false
+  },
+  {
+   "id": "A4",
+   "position": [
+    7.76,
+    1.2,
+    2.79
+   ],
+   "type": "blank",
+   "next": [
+    "A5"
+   ],
+   "goal": false
+  },
+  {
+   "id": "A5",
+   "position": [
+    4.3,
+    1.2,
+    1.21
+   ],
+   "type": "blank",
+   "next": [
+    "A6"
+   ],
+   "goal": false
+  },
+  {
+   "id": "A6",
+   "position": [
+    0.79,
+    1.2,
+    -0.25
+   ],
+   "type": "item",
+   "next": [
+    "A7"
+   ],
+   "goal": true
+  },
+  {
+   "id": "A7",
+   "position": [
+    -2.91,
+    1.2,
+    -1.64
+   ],
+   "type": "coin",
+   "next": [
+    "A8"
+   ],
+   "goal": false
+  },
+  {
+   "id": "A8",
+   "position": [
+    -6.52,
+    1.2,
+    -2.84
+   ],
+   "type": "lose",
+   "next": [
+    "A9"
+   ],
+   "goal": false
+  },
+  {
+   "id": "A9",
+   "position": [
+    -10.17,
+    1.2,
+    -3.94
+   ],
+   "type": "coin",
+   "next": [
+    "A10"
+   ],
+   "goal": false
+  },
+  {
+   "id": "A10",
+   "position": [
+    -13.86,
+    1.2,
+    -4.94
+   ],
+   "type": "lose",
+   "next": [
+    "A11"
+   ],
+   "goal": false
+  },
+  {
+   "id": "A11",
+   "position": [
+    -17.57,
+    1.2,
+    -5.89
+   ],
+   "type": "item",
+   "next": [
+    "L20"
+   ],
+   "goal": false
+  },
+  {
+   "id": "B1",
+   "position": [
+    1.07,
+    0.9,
+    13.04
+   ],
+   "type": "coin",
+   "next": [
+    "B2"
+   ],
+   "goal": false
+  },
+  {
+   "id": "B2",
+   "position": [
+    -2.18,
+    0.9,
+    10.48
+   ],
+   "type": "blank",
+   "next": [
+    "B3"
+   ],
+   "goal": false
+  },
+  {
+   "id": "B3",
+   "position": [
+    -6.12,
+    0.9,
+    9.0
+   ],
+   "type": "coin",
+   "next": [
+    "B4"
+   ],
+   "goal": true
+  },
+  {
+   "id": "B4",
+   "position": [
+    -10.25,
+    0.9,
+    9.32
+   ],
+   "type": "blank",
+   "next": [
+    "B5"
+   ],
+   "goal": false
+  },
+  {
+   "id": "B5",
+   "position": [
+    -14.11,
+    0.9,
+    10.86
+   ],
+   "type": "blank",
+   "next": [
+    "L14"
+   ],
+   "goal": false
+  },
+  {
+   "id": "C1",
+   "position": [
+    -3.46,
+    0.6,
+    -13.04
+   ],
+   "type": "lose",
+   "next": [
+    "C2"
+   ],
+   "goal": false
+  },
+  {
+   "id": "C2",
+   "position": [
+    -0.39,
+    0.6,
+    -10.44
+   ],
+   "type": "lose",
+   "next": [
+    "C3"
+   ],
+   "goal": false
+  },
+  {
+   "id": "C3",
+   "position": [
+    3.08,
+    0.6,
+    -8.53
+   ],
+   "type": "blank",
+   "next": [
+    "C4"
+   ],
+   "goal": true
+  },
+  {
+   "id": "C4",
+   "position": [
+    6.95,
+    0.6,
+    -7.74
+   ],
+   "type": "coin",
+   "next": [
+    "C5"
+   ],
+   "goal": false
+  },
+  {
+   "id": "C5",
+   "position": [
+    10.89,
+    0.6,
+    -8.16
+   ],
+   "type": "blank",
+   "next": [
+    "C6"
+   ],
+   "goal": false
+  },
+  {
+   "id": "C6",
+   "position": [
+    14.74,
+    0.6,
+    -9.35
+   ],
+   "type": "coin",
+   "next": [
+    "L32"
+   ],
+   "goal": false
+  },
+  {
+   "id": "D1",
+   "position": [
+    -24.83,
+    0.3,
+    10.05
+   ],
+   "type": "item",
+   "next": [
+    "D2"
+   ],
+   "goal": false
+  },
+  {
+   "id": "D2",
+   "position": [
+    -28.67,
+    0.3,
+    9.36
+   ],
+   "type": "coin",
+   "next": [
+    "D3"
+   ],
+   "goal": false
+  },
+  {
+   "id": "D3",
+   "position": [
+    -32.64,
+    0.3,
+    8.46
+   ],
+   "type": "coin",
+   "next": [
+    "D4"
+   ],
+   "goal": false
+  },
+  {
+   "id": "D4",
+   "position": [
+    -36.28,
+    0.3,
+    7.05
+   ],
+   "type": "item",
+   "next": [
+    "D5"
+   ],
+   "goal": true
+  },
+  {
+   "id": "D5",
+   "position": [
+    -36.6,
+    0.3,
+    3.82
+   ],
+   "type": "item",
+   "next": [
+    "D6"
+   ],
+   "goal": false
+  },
+  {
+   "id": "D6",
+   "position": [
+    -33.33,
+    0.3,
+    1.6
+   ],
+   "type": "item",
+   "next": [
+    "D7"
+   ],
+   "goal": false
+  },
+  {
+   "id": "D7",
+   "position": [
+    -29.65,
+    0.3,
+    -0.21
+   ],
+   "type": "event",
+   "next": [
+    "D8"
+   ],
+   "goal": false
+  },
+  {
+   "id": "D8",
+   "position": [
+    -26.06,
+    0.3,
+    -1.77
+   ],
+   "type": "coin",
+   "next": [
+    "L19"
+   ],
+   "goal": false
+  }
+ ]
+}

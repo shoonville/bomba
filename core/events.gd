@@ -27,6 +27,7 @@ signal local_jump()
 signal local_land()
 signal remote_shot(weapon: String, origin: Vector3)
 signal ui_sound(name: String)
+signal board_dice_landed(value: int)   # the 3D die has settled; HUD shows the number now
 
 # Diagnostics
 signal net_stats(stats: Dictionary)

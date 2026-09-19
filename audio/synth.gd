@@ -193,15 +193,30 @@ static func build(name: String) -> PackedFloat32Array:
 			out = mix(out, thump, 0.9)
 			return softclip(out, 2.0)
 		"hitmarker":
-			var n := samples(0.07)
-			var out := mul(tone(n, 1500.0, 1300.0, "square"), env_exp(n, 0.022))
-			return mix(out, mul(noise(n, 31), env_exp(n, 0.006)), 0.3)
+			# Call of Duty style: a hard bright tick (3 kHz click + short sine ring) with a little
+			# body under it, 75 ms, so a landed shot is a clean "tk". Sean's note 4.
+			var n := samples(0.075)
+			var click := mul(highpass(noise(n, 31), 2600.0), env_exp(n, 0.0035))
+			var ring := mul(tone(n, 3300.0, 2900.0, "sine"), env_exp(n, 0.02))
+			var body := mul(tone(n, 820.0, 640.0, "tri"), env_exp(n, 0.014))
+			var out := mix(silence(n), click, 1.0)
+			out = mix(out, ring, 0.85)
+			out = mix(out, body, 0.4)
+			return softclip(out, 1.8)
 		"headshot":
-			var n := samples(0.16)
-			var a := mul(tone(samples(0.07), 1100.0, 1150.0, "square"), env_exp(samples(0.07), 0.03))
-			var b := mul(tone(samples(0.1), 1750.0, 1900.0, "square"), env_exp(samples(0.1), 0.04))
-			var out := mix(silence(n), a, 0.8)
-			return mix(out, b, 0.8, samples(0.055))
+			# Two ticks 45 ms apart, the second lower, over a short thud: "you really hit that".
+			var n := samples(0.19)
+			var c1 := mul(highpass(noise(samples(0.06), 32), 2600.0), env_exp(samples(0.06), 0.0035))
+			var t1 := mul(tone(samples(0.06), 3300.0, 2900.0, "sine"), env_exp(samples(0.06), 0.018))
+			var c2 := mul(highpass(noise(samples(0.09), 33), 2200.0), env_exp(samples(0.09), 0.004))
+			var t2 := mul(tone(samples(0.09), 2400.0, 2000.0, "sine"), env_exp(samples(0.09), 0.03))
+			var thud := mul(tone(samples(0.12), 260.0, 140.0, "sine"), env_exp(samples(0.12), 0.05))
+			var out := mix(silence(n), c1, 1.0)
+			out = mix(out, t1, 0.85)
+			out = mix(out, c2, 1.0, samples(0.045))
+			out = mix(out, t2, 0.9, samples(0.045))
+			out = mix(out, thud, 0.6, samples(0.04))
+			return softclip(out, 1.8)
 		"kill":
 			var out := silence(samples(0.55))
 			var notes := [659.25, 783.99, 987.77]

@@ -37,14 +37,21 @@ func setup(p: Player) -> void:
 	# Sniper: long and thin. Barrel, receiver, scope, stock, bolt handle.
 	var sniper := Node3D.new()
 	sniper.name = "Sniper"
-	_box(sniper, Vector3(0.05, 0.05, 0.95), Vector3(0, 0.02, -0.55), dark_mat)
+	# Round barrel and a real telescopic sight (tube, objective bell, eyepiece, two rings, lens);
+	# the receiver and stock stay boxy, that is the style. Sean's note 5.
+	_cyl(sniper, 0.021, 0.95, Vector3(0, 0.02, -0.55), dark_mat)
+	_cyl(sniper, 0.03, 0.06, Vector3(0, 0.02, -1.0), accent_mat)
 	_box(sniper, Vector3(0.09, 0.11, 0.42), Vector3(0, 0, -0.1), body_mat)
 	_box(sniper, Vector3(0.07, 0.10, 0.34), Vector3(0, -0.03, 0.26), body_mat)
-	_box(sniper, Vector3(0.06, 0.07, 0.30), Vector3(0, 0.105, -0.12), dark_mat)
-	_box(sniper, Vector3(0.075, 0.075, 0.05), Vector3(0, 0.105, 0.04), accent_mat)
-	_box(sniper, Vector3(0.075, 0.075, 0.05), Vector3(0, 0.105, -0.28), accent_mat)
+	_box(sniper, Vector3(0.03, 0.05, 0.03), Vector3(0, 0.075, -0.22), dark_mat)
+	_box(sniper, Vector3(0.03, 0.05, 0.03), Vector3(0, 0.075, -0.02), dark_mat)
+	_cyl(sniper, 0.024, 0.34, Vector3(0, 0.115, -0.12), dark_mat)
+	_cyl(sniper, 0.038, 0.08, Vector3(0, 0.115, -0.32), dark_mat)
+	_cyl(sniper, 0.032, 0.07, Vector3(0, 0.115, 0.07), dark_mat)
+	_cyl(sniper, 0.032, 0.028, Vector3(0, 0.115, -0.22), accent_mat)
+	_cyl(sniper, 0.032, 0.028, Vector3(0, 0.115, -0.02), accent_mat)
+	_cyl(sniper, 0.031, 0.012, Vector3(0, 0.115, -0.362), glow_mat)
 	_box(sniper, Vector3(0.05, 0.02, 0.05), Vector3(0.06, 0.02, 0.02), accent_mat)
-	_box(sniper, Vector3(0.02, 0.02, 0.06), Vector3(0.0, 0.045, -0.05), glow_mat)
 	_box(sniper, Vector3(0.04, 0.16, 0.08), Vector3(0, -0.12, 0.05), dark_mat)
 	_arm(sniper, Vector3(0.0, -0.12, 0.05), accent_mat, dark_mat)
 	add_child(sniper)
@@ -63,6 +70,24 @@ func setup(p: Player) -> void:
 	models = [sniper, ar]
 	scale = Vector3.ONE * 1.22
 	Events.local_fired.connect(_on_fired)
+
+
+## A cylinder along the weapon's length (local Z).
+func _cyl(parent: Node3D, radius: float, length: float, pos: Vector3, mat: Material) -> void:
+	var mi := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = radius
+	cm.bottom_radius = radius
+	cm.height = length
+	cm.radial_segments = 14
+	cm.rings = 1
+	mi.mesh = cm
+	mi.position = pos
+	mi.rotation.x = PI * 0.5
+	mi.material_override = mat
+	mi.layers = 2
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	parent.add_child(mi)
 
 
 func _box(parent: Node3D, size: Vector3, pos: Vector3, mat: Material) -> void:
