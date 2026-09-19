@@ -248,6 +248,10 @@ winner hopping, `results.png`), the board counts down the last 10 s before an au
 figures flinch when hit, pawns verified to face their travel direction mid-hop
 (`board_hop.png`), `tools/check_all.sh` 3 of 3 PASS with the figures in.
 
+Then: name labels over other players (hidden while down) and the held gun shows the weapon
+slot (long cream rifle or short carbine); spectator rig creation guarded against a double
+build on the death frame.
+
 ### Bugs found and fixed today (all measured before and after)
 
 1. Client's view of remote players lagged whole tick loops → 25 % hit confirmation. netfox
