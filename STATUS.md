@@ -453,3 +453,25 @@ run on it.
   What remains is the switch frame's build (match build 75–83 ms of which map 1 ms, HUD
   15 ms, freeing the old scene) under the wipe's cover. A shared primitive-mesh cache was tried
   and reverted (no change).
+- **Bandwidth** (Next item 2, done by measurement): the six-seat soak (host + 3 clients through
+  `bad` + 2 bots, 30 s) showed the real cost: 113 KB/s per client in 1100 packets/s, at the
+  relay cap, because netfox transmitted every resimulated tick's state (the host rolls back
+  ~7 ticks a loop with lagged clients) and every fire action broadcast every loop. netfox
+  patches #5 and #6 (`addons/netfox/PATCHES.md`):
+
+  | Seats, profile | Host upload per client | Packets/s per client | Client RTT | Mispredict | Hit confirm | Death→client lag |
+  |---|---|---|---|---|---|---|
+  | 6, bad, before | 113 KB/s | 1100 | 131–144 ms | 2–129 mm | 0.55–0.67 | ≤ 22 ticks |
+  | 6, bad, after | 30 KB/s | 263 | 131–137 ms | 3–6 mm | 0.71–1.11 | ≤ 8 ticks |
+  | 3, bad, before | 42.5 KB/s | 487 | 131 ms | 1.7 mm | 0.86 | 7 ticks |
+  | 3, bad, after | 14.9 KB/s | 147 | 133 ms | 3.7 mm | 0.89 | 1 tick |
+
+  Zero outages and zero client warnings after; 28 of 28 shots agree at three seats; remote
+  players as the client sees them err 0.3–0.7 mm mean excluding respawn teleports (was 2.3–3.0 mm). Client
+  upload is 25 KB/s, so a relayed client now moves ~55 KB/s both ways against the 128 kB/s cap.
+  The first cut of patch #5 ("the loop's newest tick") broke every client (128-tick rollbacks
+  each loop, disconnects) because a client's own player is not simulated on the host at the
+  loop's newest ticks; the shipped patch sends each node's newest simulated tick.
+- **Soak harness**: host outlives its clients by 3 s, a headless client whose host leaves
+  finishes its soak or quits (one had sat for 5 min 48 s), reports keep the peer id from the
+  start, `remote_diff` prints the mean without respawn teleports.

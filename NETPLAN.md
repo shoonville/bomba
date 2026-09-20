@@ -308,8 +308,14 @@ snapshot buffer, tuning load, and a compile-all pass over every `.gd` file.
   hit agreement unchanged. The hard ceiling to respect is a noray relay's 128 kB/s per relay
   (`NORAY_UDP_RELAY_MAX_INDIVIDUAL_TRAFFIC`, 100 ms slices): the public relay throws inside its
   UDP handler when exceeded and the process dies, which is how the first two relayed matches
-  ended. Next cuts if six seats through a relay need them: pack the fifteen weapon integers,
-  quantise position to centimetres, 20 Hz for non-predicted fields.
+  ended. 2026-09-19, six seats on Sean's desktop (host + 3 clients through `bad` + 2 bots): 113 KB/s
+  per client in 1100 packets/s, because the host resimulates ~7 ticks a loop with lagged clients
+  and netfox transmitted every resimulated tick's state (3–4 sends per node per loop), and every
+  RewindableAction broadcast every loop. Patches #5 (one state per node per loop, its newest
+  simulated tick) and #6 (actions broadcast on change or every 4th loop): 30 KB/s per client,
+  263 packets/s, with clients as good or better (misprediction 3–6 mm, hit confirmation
+  0.71–1.11, death lag ≤ 8 ticks, no outages); three seats 14.9 KB/s (was 42.5). Still available
+  if needed: pack the fifteen weapon integers, quantise position to centimetres.
 - **Intermittent post-death desync on clients.** In 4 of 10 forty-five second soaks a client that
   died kept its stale health and position for 0.5–2.2 s, then recovered with a 128-tick rollback.
   netfox patch #3 (empty-diff acknowledgements) removed the accompanying warnings; whether it also

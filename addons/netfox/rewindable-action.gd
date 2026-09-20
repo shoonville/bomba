@@ -17,6 +17,9 @@ enum {
 
 var _active_ticks: _Set = _Set.new()
 var _last_set_tick: int = -1
+# BOMBA patch #6 (see addons/netfox/PATCHES.md): broadcast on change or every few loops.
+var _dirty: bool = false
+var _loops_since_send: int = 0
 
 # Maps the set of changed ticks ( int ) to their state ( active / inactive )
 var _state_changes: Dictionary = {}
@@ -62,6 +65,7 @@ func set_active(active: bool, tick: int = NetworkRollback.tick) -> void:
 	# Update local state
 	if active: _active_ticks.add(tick)
 	else: _active_ticks.erase(tick)
+	_dirty = true
 
 	# Save changes for a single loop
 	_state_changes[tick] = active
@@ -202,14 +206,22 @@ func _after_loop() -> void:
 	_queued_changes.clear()
 
 	# Submit
+	# BOMBA patch #6 (see addons/netfox/PATCHES.md): broadcast when the tickset changed this loop,
+	# or every 4th loop so peers still learn the newest known tick and can cancel a prediction the
+	# authority never confirmed. It used to go every loop whether anything changed or not: six
+	# actions × 60 loops/s × ~50 B = 18 KB/s per client with six seats.
 	if is_multiplayer_authority() and _last_set_tick >= 0:
-		var serialize_from := NetworkRollback.history_start
-		var serialize_to := _last_set_tick
-		if not _active_ticks.is_empty():
-			serialize_to = maxi(_active_ticks.max(), serialize_to)
+		_loops_since_send += 1
+		if _dirty or _loops_since_send >= 4:
+			var serialize_from := NetworkRollback.history_start
+			var serialize_to := _last_set_tick
+			if not _active_ticks.is_empty():
+				serialize_to = maxi(_active_ticks.max(), serialize_to)
 
-		var active_tick_bytes = _TicksetSerializer.serialize(serialize_from, serialize_to, _active_ticks)
-		_submit_state.rpc(active_tick_bytes)
+			var active_tick_bytes = _TicksetSerializer.serialize(serialize_from, serialize_to, _active_ticks)
+			_submit_state.rpc(active_tick_bytes)
+			_dirty = false
+			_loops_since_send = 0
 
 @rpc("authority", "unreliable_ordered", "call_remote")
 func _submit_state(bytes: PackedByteArray) -> void:

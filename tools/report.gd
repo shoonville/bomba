@@ -286,13 +286,18 @@ func _remote_diff(a: Array) -> int:
 	for peer in peers:
 		var lst: Array = by_peer[peer]
 		var errs: Array[float] = []
+		var small: Array[float] = []
 		var big: Array = []
 		for x in lst:
 			errs.append(x[1])
 			if x[1] > 0.3:
 				big.append(x)
-		print("peer %d: %d ticks compared, mean err %.4f m, p95 %.4f m, max %.3f m, >0.3m: %d" % [
-			peer, errs.size(), _mean(errs), _p95(errs), errs.max(), big.size()])
+			else:
+				small.append(x[1])
+		# Samples over 30 cm are respawn teleports (a death moves the body across the map in one
+		# tick); the mean without them is the interpolation error itself.
+		print("peer %d: %d ticks compared, mean err %.4f m (%.4f m excluding >0.3m), p95 %.4f m, max %.3f m, >0.3m: %d" % [
+			peer, errs.size(), _mean(errs), _mean(small), _p95(errs), errs.max(), big.size()])
 		for x in big.slice(0, 8):
 			print("   tick %d: %.3f m" % [x[0], x[1]])
 	return 0

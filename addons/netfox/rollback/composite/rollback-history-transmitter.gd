@@ -28,6 +28,7 @@ var _ackd_state: Dictionary = {}
 var _state_send_interval: int = maxi(1, int(ProjectSettings.get_setting(&"netfox/rollback/state_send_interval", 1)))
 var _next_full_state_tick: int
 var _next_diff_ack_tick: int
+var _pending_state_tick: int = -1   # BOMBA patch #5: the loop's newest simulated tick, sent at its end
 
 var _earliest_input_tick: int
 var _latest_state_tick: int
@@ -80,6 +81,7 @@ func configure(
 
 func reset() -> void:
 	_ackd_state.clear()
+	_pending_state_tick = -1
 	_latest_state_tick = NetworkTime.tick - 1
 	_earliest_input_tick = NetworkTime.tick
 	_next_full_state_tick = NetworkTime.tick
@@ -96,9 +98,6 @@ func reset() -> void:
 	_diff_state_encoder.add_properties(_state_property_config.get_properties())
 	_full_state_encoder.set_properties(_get_owned_state_props())
 	_input_encoder.set_properties(_get_owned_input_props())
-
-func conclude_tick_loop() -> void:
-	_earliest_input_tick = NetworkTime.tick
 
 func transmit_input(tick: int) -> void:
 	if not _get_owned_input_props().is_empty():
@@ -136,11 +135,36 @@ func transmit_state(tick: int) -> void:
 	if full_state.is_empty():
 		return
 
+	# BOMBA patch #5 (see addons/netfox/PATCHES.md): one state per node per rollback loop, the
+	# newest tick the node was simulated for. Every resimulated tick used to send its own state:
+	# with three lagged clients the host resimulated ~7 ticks a loop and sent each node's state
+	# 3–4 times per loop (260 properties per loop for six nodes, 113 KB/s per client). A peer
+	# only needs the newest authoritative state to roll back to; older ticks in the same loop are
+	# superseded by it. Ticks ascend within a loop, so the last candidate wins and is sent from
+	# conclude_tick_loop(). It must be the node's own newest simulated tick, not the loop's: a
+	# client's player is not simulated on the server at the newest ticks (its input is still in
+	# flight), and sending only the loop's newest tick would never send that player at all.
+	_pending_state_tick = tick
+
+
+## Send the state kept by transmit_state() for this loop, if any.
+func conclude_tick_loop() -> void:
+	_earliest_input_tick = NetworkTime.tick
+	if _pending_state_tick < 0:
+		return
+	var tick := _pending_state_tick
+	_pending_state_tick = -1
+	_flush_state(tick)
+
+
+func _flush_state(tick: int) -> void:
 	var is_sending_diffs := NetworkRollback.enable_diff_states
 	var is_full_state_tick := not is_sending_diffs or (full_state_interval > 0 and tick > _next_full_state_tick)
 
-	# BOMBA patch #4: decimate. Full states always go; other ticks only every _state_send_interval.
-	if not is_full_state_tick and _state_send_interval > 1 and (tick % _state_send_interval) != 0:
+	# BOMBA patch #4: decimate to one state every _state_send_interval ticks (30 Hz at 60), counted
+	# from the last send rather than by tick parity, so a loop covering two ticks cannot starve a
+	# peer. Full states always go.
+	if not is_full_state_tick and _state_send_interval > 1 and tick - _latest_state_tick < _state_send_interval:
 		return
 
 	_latest_state_tick = max(_latest_state_tick, tick)

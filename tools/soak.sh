@@ -16,8 +16,10 @@ LABEL="${LABEL:-soak_$PROFILE}"
 LOG="${LOG:-2}"
 mkdir -p "$OUT"
 echo "soak: profile=$PROFILE seconds=$SECONDS_ clients=$CLIENTS bots=$BOTS port=$PORT seed=$SEED"
+# The host runs 3 s longer than the clients: their soak clocks start when their minigame starts,
+# a few ticks after the host's, and a client whose host quits first records nothing.
 "$GODOT" --headless --path . -- --host --port="$PORT" --bots="$BOTS" --start --expect="$CLIENTS" --autoplay \
-  --seed="$SEED" --soak="$SECONDS_" --report="${LABEL}_host" --report_dir="$(pwd)/$OUT" --log="$LOG" \
+  --seed="$SEED" --soak="$((SECONDS_ + 3))" --report="${LABEL}_host" --report_dir="$(pwd)/$OUT" --log="$LOG" \
   > "$OUT/${LABEL}_host.log" 2>&1 &
 HOST_PID=$!
 sleep 2

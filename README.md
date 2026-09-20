@@ -90,5 +90,5 @@ and `fps/match/` the shared first-person match (map, spawns, clock, kill log),
 `minigames/last_stand/` (a manifest and a few lines each; LAST STAND also carries its own map
 table), `bots/`, `art/`
 shaders and palette, `ui/` HUD, menu, results, `tools/` harnesses and tests, `tuning/` every
-gameplay number as JSON. `addons/netfox` is vendored with two documented patches
+gameplay number as JSON. `addons/netfox` is vendored with six documented patches
 (`addons/netfox/PATCHES.md`).

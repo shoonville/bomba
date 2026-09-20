@@ -210,6 +210,14 @@ func _on_net_left() -> void:
 		return
 	if active_minigame != null and is_instance_valid(active_minigame):
 		Log.warn("game", "Connection lost during a minigame; back to the menu")
+		if headless:
+			# A headless client has no menu to go back to. Finish the soak (report written) or
+			# quit; a soak client whose host finished first used to sit here for minutes.
+			if soak_seconds > 0.0:
+				_finish_soak()
+			else:
+				_quit_if_headless(2)
+			return
 		_close_pause()
 		world.remove_child(active_minigame)
 		active_minigame.queue_free()

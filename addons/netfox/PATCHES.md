@@ -34,3 +34,27 @@ Keep this list current. Re-apply when upgrading netfox, or drop a patch once ups
    states keep their own interval. Clients receive a state at most one tick older than before.
    Needed to stay under a noray relay's default 128 kB/s per-relay cap, which the public relay
    enforces by throwing inside its UDP handler (the process dies). Candidate for upstream.
+
+5. **Transmitter: one state per node per loop, its newest simulated tick** — `rollback/composite/rollback-history-transmitter.gd`
+   (`transmit_state` keeps the candidate, `conclude_tick_loop` sends it). Unpatched, every
+   resimulated tick transmits its own state: with three clients at 120 ms RTT the host
+   resimulated ~7 ticks a loop and sent each node's state 3–4 times per loop (measured in
+   BOMBA's six-seat soak as 260 state properties per loop for six nodes and 113 KB/s of host
+   upload per client, at a relay's 128 kB/s cap). A peer only needs the newest authoritative
+   state to roll back to; older ticks in the same loop are superseded by it. It has to be the
+   node's own newest *simulated* tick, not the loop's newest: a client's player is not
+   simulated on the server at the newest ticks (its input is still in flight), and a first
+   version that sent only the loop's newest tick never sent that player at all (its client
+   rolled back the whole 128-tick window every loop). Patch #4's decimation now counts ticks
+   since the last send instead of tick parity, so a loop that covers two ticks cannot starve a
+   peer. After (six seats, `bad`): 30 KB/s per client, 263 packets/s, clients unchanged or
+   better (misprediction 3–6 mm, hit confirmation 0.71–1.11, death lag ≤ 8 ticks, no outages).
+   Candidate for upstream.
+
+6. **RewindableAction: broadcast on change or every 4th loop** — `rewindable-action.gd`
+   (`set_active`, `_after_loop`). Unpatched, the authority broadcasts the action's tickset every
+   loop in which `set_active` was called at all, which a per-tick weapon does every tick: six
+   actions × 60 loops/s × ~50 B = 18 KB/s per client. Now a real change (a tick added to or
+   removed from the set) sends at once, and otherwise every 4th loop (15 Hz) keeps the peers'
+   "last known tick" moving so a prediction the authority never confirmed still cancels within
+   ~70 ms. Candidate for upstream.

@@ -25,6 +25,7 @@ var _prop_sent: PackedFloat32Array = []
 var _last_bytes_in: int = 0
 var _last_bytes_out: int = 0
 var _sent_rows: PackedStringArray = []
+var _peer_id: int = 0   # captured when recording starts: a report written after a disconnect must not say 1
 
 
 func _ready() -> void:
@@ -62,7 +63,8 @@ func _on_started(_id: String) -> void:
 			if tx != null and tx.has_signal("_on_transmit_state"):
 				tx.connect("_on_transmit_state", func(state, tick: int):
 					_sent_rows.append("%d,%d,%d,%d,%d" % [pl.peer_id, tick, state.size(),
-						1 if state.has(":transform") else 0, 1 if state.has(":health") else 0]))
+						1 if state.has(":position") else 0, 1 if state.has(":health") else 0]))
+	_peer_id = multiplayer.get_unique_id()
 	Log.info("soak", "Recording %d players (scripted=%s, soak_ticks=%d)" % [_arena.all_player_nodes().size(), scripted, soak_ticks])
 
 
@@ -116,7 +118,7 @@ func write_report() -> void:
 		players = _arena.all_player_nodes()
 	var summary := {
 		"label": label,
-		"peer_id": multiplayer.get_unique_id(),
+		"peer_id": _peer_id if _peer_id != 0 else multiplayer.get_unique_id(),
 		"is_server": multiplayer.is_server(),
 		"tickrate": NetworkTime.tickrate,
 		"ticks_recorded": 0,
@@ -178,7 +180,7 @@ func write_report() -> void:
 	if not _sent_rows.is_empty():
 		var sf2 := FileAccess.open(report_dir.path_join("%s_sent.csv" % label), FileAccess.WRITE)
 		if sf2 != null:
-			sf2.store_line("peer,tick,props,has_transform,has_health")
+			sf2.store_line("peer,tick,props,has_position,has_health")
 			for row in _sent_rows:
 				sf2.store_line(row)
 			sf2.close()
