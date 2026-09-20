@@ -15,6 +15,12 @@ var _islands: Array = []   # asteroids: [{node, base_y, phase, spin}]
 var _ufo: Node3D
 var _planet: Node3D
 var _astronaut: Figure
+var _dressing: BoardDressing
+var _craters: Array = []       # Vector3(x, z, r), for the dressing to keep clear of
+var _prop_spots: Array = []    # Vector2 of the five landmark props
+var _moon_c: Vector3 = Vector3.ZERO
+var _moon_rx: float = 20.0
+var _moon_rz: float = 20.0
 var _bounds_centre: Vector3 = Vector3.ZERO
 var _bounds_radius: float = 20.0
 var _map_blend: float = 0.0
@@ -514,6 +520,11 @@ func _build_moon(g: BoardGraph, shadow: Color) -> void:
 				break
 		if ok:
 			spots.append(Vector2(x, z))
+	_craters = craters
+	_prop_spots = spots
+	_moon_c = c
+	_moon_rx = rx
+	_moon_rz = rz
 	for n in spots.size():
 		var at := Vector3(spots[n].x, MOON_TOP, spots[n].y)
 		var prop := Node3D.new()
@@ -969,6 +980,16 @@ func _build_tiles() -> void:
 	_bounds_radius = maxf(hi.x - lo.x, hi.z - lo.z) * 0.5
 	_build_moon(g, shadow)
 	_build_space(g, shadow)
+	# The detail pass: everything a moon base has around a walkway (board/board_dressing.gd).
+	var t0 := Time.get_ticks_msec()
+	_dressing = BoardDressing.new()
+	_dressing.name = "Dressing"
+	add_child(_dressing)
+	_dressing.build(self, g, _moon_c, _moon_rx, _moon_rz, MOON_TOP, _craters, _prop_spots, shadow)
+	var placed := []
+	for k in _dressing.counts:
+		placed.append("%s ×%d" % [k, int(_dressing.counts[k])])
+	Log.info("board", "Dressing built in %d ms: %s" % [Time.get_ticks_msec() - t0, ", ".join(placed)])
 
 
 func _ensure_pawn(p: BoardState.PlayerState) -> BoardPawn:
