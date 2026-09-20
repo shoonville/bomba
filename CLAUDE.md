@@ -36,13 +36,17 @@ that travels with the repo.
 ## Verify before claiming
 - `tools/check_all.sh`: tests + compile-all, determinism, a headless board match. `SOAK=1` adds the
   netcode soak. Scripts are shell scripts; on Windows run them from Git Bash with
-  `GODOT=/c/path/to/Godot_v4.7-stable_win64_console.exe`.
+  `GODOT=/c/Users/Shoon/Tools/Godot/Godot_v4.7.2-stable_win64_console.exe` (Sean's desktop: RTX 5090,
+  no Python, so the report tools are GDScript, `tools/report.gd`). `.gitattributes` keeps every text
+  file LF; if a script dies on `\r`, strip them: `git ls-files --eol | grep w/crlf`, `sed -i 's/\r$//'`.
 - `tools/test.sh` re-imports first; REQUIRED after adding any `class_name` script.
 - Screenshots: `-- --screenshot=out.png --screenshot_at=N --screenshot_quit`, with
   `--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results|shield|roll|move` to arm on an
   event. Handy flags: `--board_overview`, `--board_map`, `--board_cam=x,y,z:tx,ty,tz`, `--hover_fork=left`,
   `--social_test`, `--show_scoreboard`, `--figure_test`, `--ads_progress=0..1`, `--force_weapon=0|1`,
-  `--force_ads`, `--give_item=ID`, `--minigame=ID`, `--render_scale=N`, `--port=N`.
+  `--force_ads`, `--give_item=ID`, `--minigame=ID`, `--render_scale=N`, `--port=N`, `--no_warmup`.
+- Windowed runs: wrap them in `timeout 90` so a broken build cannot sit at a window forever; grep
+  the output for `Frame hitch` (any frame over 150 ms, with what it did) and `Minigame build`.
 - Harness runs must not use port 27015 while his own game is open; pass `--port=27077`.
 - Never run two soaks, or a soak and a windowed run, at once (contention ruins the numbers).
 

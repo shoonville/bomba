@@ -27,6 +27,11 @@ var _shot_timer: float = 0.0
 var _shot_done: bool = false
 var _shot_armed: bool = false
 var _last_frame_ms: int = 0
+var _last_vmem: int = 0
+var _last_nodes: int = 0
+var _last_resources: int = 0
+var _last_pipes := PackedInt64Array([0, 0, 0, 0, 0])
+var _held: Array[Resource] = []
 
 
 func _ready() -> void:
@@ -77,6 +82,18 @@ func boot(root: Node) -> void:
 	Session.minigame_start_requested.connect(_on_minigame_start)
 	Session.board_start_requested.connect(_on_board_start)
 	Session.local_name = str(args.get("name", Settings.player_name if Settings.player_name != "" else "Player %d" % (OS.get_process_id() % 1000)))
+
+	if not headless and not args.has("no_warmup"):
+		# Load every scene, script and shader a match needs now, and keep them referenced so the
+		# switch into a minigame finds them in the cache: the first load of the FPS script graph
+		# cost 106 ms, the HUD 31 ms, on the switch frame on Sean's desktop.
+		_preload_resources()
+		# Create the GPU pipelines and the shadow atlas now, behind the boot colour, instead of
+		# on the first frame of the first match (a 300–800 ms stall on Sean's desktop).
+		var warm := PipelineWarmup.new()
+		warm.name = "PipelineWarmup"
+		world.add_child(warm)
+		await warm.run(ui_layer)
 
 	if args.has("host_online"):
 		_boot_host_online()
@@ -360,10 +377,12 @@ func _on_minigame_start(id: String, seed_value: int, players_data: Array, config
 		var p := MinigamePlayer.from_dict(d)
 		p.colour = Palette.player_colour(p.colour_index)
 		players.append(p)
+	var t0 := Time.get_ticks_usec()
 	var scene: PackedScene = load(manifest.scene_path)
 	if scene == null:
 		Log.error("game", "Minigame '%s' scene missing at %s" % [id, manifest.scene_path])
 		return
+	var t1 := Time.get_ticks_usec()
 	active_minigame = scene.instantiate() as Minigame
 	if active_minigame == null:
 		Log.error("game", "Minigame '%s' root is not a Minigame" % id)
@@ -372,7 +391,9 @@ func _on_minigame_start(id: String, seed_value: int, players_data: Array, config
 	active_minigame.manifest = manifest
 	world.add_child(active_minigame)
 	active_minigame.finished.connect(_on_minigame_finished.bind(id))
+	var t2 := Time.get_ticks_usec()
 	active_minigame.setup(players, seed_value, config)
+	var t3 := Time.get_ticks_usec()
 	Events.minigame_started.emit(id)
 	Audio.music("music_match")
 	if wipe != null:
@@ -381,9 +402,12 @@ func _on_minigame_start(id: String, seed_value: int, players_data: Array, config
 	if not headless and ResourceLoader.exists(HUD_SCENE):
 		_hud = load(HUD_SCENE).instantiate()
 		ui_layer.add_child(_hud)
+	var t4 := Time.get_ticks_usec()
 	if not headless and not args.has("screenshot"):
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	Log.info("game", "Minigame %s started with %d players, seed %d" % [id, players.size(), seed_value])
+	Log.info("perf", "Minigame build: scene load %d ms, instantiate+add %d ms, setup %d ms, hud %d ms" % [
+		(t1 - t0) / 1000, (t2 - t1) / 1000, (t3 - t2) / 1000, (t4 - t3) / 1000])
 
 
 func _on_minigame_finished(result: MinigameResult, id: String) -> void:
@@ -453,14 +477,36 @@ func _process(delta: float) -> void:
 	var now := Time.get_ticks_msec()
 	var gap := now - _last_frame_ms
 	_last_frame_ms = now
+	var vmem := 0 if headless else int(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_VIDEO_MEM_USED))
 	if gap > 150 and not headless and _last_frame_ms > 0:
-		# A frame this long is a freeze the player felt; name where we were so logs explain it.
+		# A frame this long is a freeze the player felt. Name where we were and what that frame
+		# did: GPU memory change (a jump is an allocation), script and physics time, nodes and
+		# resources created, pipelines compiled by source ("draw" ones are compile stalls). On
+		# Sean's desktop this told apart the 635 MB first-frame allocation (free), pipeline
+		# creation (none, ubershaders) and the script loading and scene build that was the cost.
 		var where := "menu"
 		if active_minigame != null:
 			where = "minigame:%s" % (active_minigame.manifest.id if active_minigame.manifest != null else "?")
 		elif board != null:
 			where = "board"
-		Log.info("perf", "Frame hitch %d ms (%s)" % [gap, where])
+		if wipe != null and wipe.phase != "idle":
+			where += " wipe:%s %.2f" % [wipe.phase, wipe.progress]
+		var nodes := int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
+		var resources := int(Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT))
+		var pipes := _pipeline_counts()
+		Log.info("perf", "Frame hitch %d ms (%s) vram %d MB (%+d MB) objects %d | process %.0f ms physics %.0f ms | nodes %d (%+d) resources %d (%+d) | pipelines canvas %+d mesh %+d surface %+d draw %+d spec %+d" % [
+			gap, where, vmem / 1048576, (vmem - _last_vmem) / 1048576,
+			int(Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)),
+			Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0,
+			Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0,
+			nodes, nodes - _last_nodes, resources, resources - _last_resources,
+			pipes[0] - _last_pipes[0], pipes[1] - _last_pipes[1], pipes[2] - _last_pipes[2],
+			pipes[3] - _last_pipes[3], pipes[4] - _last_pipes[4]])
+	_last_vmem = vmem
+	_last_nodes = int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
+	_last_resources = int(Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT))
+	if not headless:
+		_last_pipes = _pipeline_counts()
 	if args.has("open_pause") and active_minigame != null and _pause == null and not headless and _shot_timer > 1.5:
 		_open_pause()
 	if args.has("screenshot") and (active_minigame != null or board != null or args.has("screenshot_any")) and not _shot_done and (not args.has("screenshot_event") or _shot_armed):
@@ -473,6 +519,35 @@ func _process(delta: float) -> void:
 		if _soak_elapsed >= soak_seconds:
 			Log.info("game", "Soak time reached (%.1fs)" % _soak_elapsed)
 			_finish_soak()
+
+
+## Load and hold the scenes and shaders every scene switch would otherwise load on its frame.
+func _preload_resources() -> void:
+	var t0 := Time.get_ticks_msec()
+	var paths: Array[String] = [MENU_SCENE, HUD_SCENE, RESULTS_SCENE, "res://ui/board/board_hud.tscn",
+		"res://fps/player/player.tscn", CelMaterial.SHADER_PATH, CelMaterial.VIEWMODEL_SHADER_PATH,
+		PostStack.SHADER_PATH, "res://art/shaders/sky_clouds.gdshader", "res://art/shaders/swirl.gdshader"]
+	for id in MinigameRegistry.ids():
+		var m := MinigameRegistry.get_manifest(str(id))
+		if m != null:
+			paths.append(m.scene_path)
+	for p in paths:
+		if ResourceLoader.exists(p):
+			var r := load(p)
+			if r != null:
+				_held.append(r)
+	Log.info("perf", "Preloaded %d scenes and shaders in %d ms" % [_held.size(), Time.get_ticks_msec() - t0])
+
+
+## Pipeline compilations so far by source (canvas, mesh load, surface, draw call, specialization):
+## the "draw" ones are the stalls, a pipeline built on the frame that first needed it.
+func _pipeline_counts() -> PackedInt64Array:
+	return PackedInt64Array([
+		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_CANVAS),
+		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_MESH),
+		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_SURFACE),
+		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_DRAW),
+		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_SPECIALIZATION)])
 
 
 func finish_soak() -> void:

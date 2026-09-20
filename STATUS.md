@@ -395,3 +395,61 @@ on one machine with `tools/soak.sh`-style flags. Try, in this order:
    viewmodels.
 5. Choose the display face (OFL candidates: Bowlby One, Rubik Mono One, Titan One, Chango,
    Bungee) and build the type styles once.
+
+## 2026-09-19 — session 5: first session on Sean's Windows desktop
+
+Machine: RTX 5090 (driver 32.0.16.1088), Ryzen 7 9800X3D, 62 GB, one 5120×2160 display at
+165 Hz, Godot 4.7.2 at `C:\Users\Shoon\Tools\Godot`, no Python installed. Everything below was
+run on it.
+
+- **Setup**: `core.autocrlf=true` had checked every shell script out as CRLF, so none of the
+  harness ran (`$'\r': command not found`). `.gitattributes` now keeps every text file LF on
+  every machine. Git identity set; the editor's rewrite of `project.godot` (uid autoload paths,
+  default keys dropped) accepted, no setting changed.
+- **Harness without Python**: `tools/report.gd` (traj_diff, soak_report, shot_diff, remote_diff)
+  replaces the four Python tools, same output line for line; checked with identical trajectories
+  (PASS, exit 0), three altered rows (listed, exit 1) and a real soak.
+  `tools/check_all.sh`: 3 of 3 PASS in 1 min 41 s (74 tests, 10018 assertions, 90 scripts
+  compiled, 2400 trajectory rows identical at 60 vs 240 fps, board 'main' 4 seats 2 rounds 0
+  warnings); the M4 took 3 min 11 s. `tools/determinism.sh` alone: 22.8 s.
+- **Soak on Windows** (`PORT=27077 LOG=1 tools/soak.sh bad 45 1 1`, 3 seats): client RTT
+  131.1 ms mean, rollback 16.0 mean / 54 max, misprediction 1.7 mm mean (82 mm including one
+  death), 12 of 14 predicted hits confirmed (0.86), death→client lag 7 ticks, 0 outages, 57 of
+  57 shots agree between client and host, remote view error 2.9 cm and 6.3 cm mean (every
+  sample over 30 cm is a respawn teleport), host upload 42.5 KB/s (1913 KB over 45 s; the M4
+  measured 40.4 KB/s in session 3). Same behaviour as the Mac.
+- **Frame rate** (`FPS at soak end`, vsync off, host + 2 bots, render scale 1.5 unless noted):
+
+  | Scene | Window | FPS |
+  |---|---|---|
+  | board | 1600×900 | 162 |
+  | arena | 1600×900 | 162 |
+  | board | 5120×2160 fullscreen | 162 |
+  | arena | 5120×2160 fullscreen | 158 |
+  | arena | 5120×2160 fullscreen, scale 2.0 | 149 |
+
+  162 in every windowed case is the 165 Hz refresh, so those are floors, not the GPU's limit.
+  At native 5K with the default 1.5× supersampling the arena renders at the display's rate;
+  RENDER SCALE can stay at 1.5 here.
+- **Sean's stalls reproduce on this machine** (the M4 never showed them) and are mostly gone.
+  Before: boot first frame 1.5–1.7 s, board start 704 ms with a cold shader cache and 162–184 ms
+  warm, arena start 811 + 255 ms cold and 313–381 ms warm, board → minigame 278–292 ms. The
+  hitch log now prints what the slow frame did (GPU memory change, script and physics time,
+  nodes and resources created, pipeline compilations by source), which ruled out the 635 MB
+  first-frame allocation (a 247 MB variant stalled the same) and pipeline compilation (0 at draw
+  time) and pinned it on the switch frame's own work: first load of the FPS script graph
+  106 ms, HUD scene 31 ms, match build 76–83 ms. Fixes at boot behind the boot colour:
+  `Game._preload_resources()` (221 ms) and `PipelineWarmup` (125–186 ms, three frames of every
+  material kind). `--no_warmup` skips both.
+
+  | Frame | Before (warm cache) | After |
+  |---|---|---|
+  | board start | 162–184 ms | under 150 ms, not logged |
+  | arena start from boot | 313–381 ms | 100–160 ms |
+  | board → minigame switch | 278–292 ms | 150–161 ms |
+  | results screen | 190 ms | under 150 ms, not logged |
+  | boot first frame | 1.53–1.65 s | 1.83–1.88 s |
+
+  What remains is the switch frame's build (match build 75–83 ms of which map 1 ms, HUD
+  15 ms, freeing the old scene) under the wipe's cover. A shared primitive-mesh cache was tried
+  and reverted (no change).

@@ -9,14 +9,18 @@ Read `DESIGN.md` first. It is the single source of truth. Then `STYLE.md` (visua
 
 ## Running
 
-Open the folder in Godot 4.7 and press play, or from a shell (`GODOT` defaults to the macOS app):
+Open the folder in Godot 4.7 and press play, or from a shell. `GODOT` is the executable: the
+scripts default to the macOS app; on Windows run them from Git Bash with the console build:
 
 ```sh
+# Windows (Git Bash). macOS: GODOT=/Applications/Godot.app/Contents/MacOS/Godot
+export GODOT=/c/Users/Shoon/Tools/Godot/Godot_v4.7.2-stable_win64_console.exe
+
 # Host with two bots and start the arena straight away
-/Applications/Godot.app/Contents/MacOS/Godot --path . -- --host --bots=2 --start
+"$GODOT" --path . -- --host --bots=2 --start
 
 # Join a host, routed through the "bad" network profile (120 ms RTT, 30 ms jitter, 3 % loss)
-/Applications/Godot.app/Contents/MacOS/Godot --path . -- --join=127.0.0.1:27015 --conditioner=bad
+"$GODOT" --path . -- --join=127.0.0.1:27015 --conditioner=bad
 ```
 
 With no arguments the main menu opens: HOST LAN, HOST ONLINE (a friend code through the noray
@@ -56,18 +60,25 @@ an event; `--give_item=bomb` and `--board_auto_roll` exercise the board UI from 
 scale; the SETTINGS slider is the player's version, default 1.5 supersampling),
 `--spectate` (fixed showcase camera,
 no local player), `--rounds=N` (host rematches N times), `--scripted` (seeded per-tick inputs for
-every seat this peer owns; the determinism harness uses it).
+every seat this peer owns; the determinism harness uses it), `--no_warmup` (skip the boot
+preload and pipeline warm-up, for A/B runs of the start-of-scene hitch). Frames over 150 ms are
+logged as `Frame hitch` with what the frame did.
 
 ## Verifying
 
 ```sh
-tools/check_all.sh       # everything below except the soak, PASS/FAIL per stage, ~3 min (SOAK=1 adds it)
+tools/check_all.sh       # everything below except the soak, PASS/FAIL per stage, ~2 min (SOAK=1 adds it)
 tools/test.sh            # unit tests + compile-all (re-imports first)
 tools/determinism.sh     # same seeded input log at 60 and 240 fps must give identical trajectories
 tools/soak.sh bad 45 1 1 # host + 1 client through a profile + 1 bot, 45 s; prints NETPLAN §11 numbers
-python3 tools/shot_diff.py reports/soak_bad_host.log reports/soak_bad_client1.log   # needs LOG=1
-python3 tools/remote_diff.py reports/soak_bad_host_traj.csv reports/soak_bad_client1_remote.csv
+LOG=1 tools/soak.sh bad 45 1 1   # also prints the shot and remote-view diffs below
+"$GODOT" --headless --path . --script tools/report.gd -- shot_diff reports/soak_bad_host.log reports/soak_bad_client1.log
+"$GODOT" --headless --path . --script tools/report.gd -- remote_diff reports/soak_bad_host_traj.csv reports/soak_bad_client1_remote.csv
 ```
+
+Nothing needs Python: the report tools (`tools/report.gd`: `traj_diff`, `soak_report`, `shot_diff`,
+`remote_diff`) run in Godot. Only `tools/gen_board.py`, which regenerates the board, is Python. The
+harnesses use their own ports (27077, 27101, 27103) so a running game on 27015 never fails a check.
 
 ## Layout
 
