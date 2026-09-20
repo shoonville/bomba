@@ -49,6 +49,12 @@ func _ready() -> void:
 		Audio.play("hitmarker", -4.0)
 	))
 	col.add_child(_slider("INTERFACE", 0.0, 1.0, Settings.volume_ui, 0.01, func(v: float): Settings.set_value("volume_ui", v)))
+	col.add_child(_cycle("WINDOW", ["WINDOWED", "FULLSCREEN"], 1 if Settings.window_mode == "fullscreen" else 0, func(i: int):
+		Settings.set_value("window_mode", "fullscreen" if i == 1 else "windowed")
+		Game.apply_window_settings(true)))
+	col.add_child(_toggle("VSYNC", Settings.vsync, func(on: bool):
+		Settings.set_value("vsync", on)
+		Game.apply_window_settings(true)))
 	col.add_child(_slider("RENDER SCALE", 0.5, 2.0, Settings.render_scale, 0.25, func(v: float):
 		Settings.set_value("render_scale", v)
 		Game.apply_render_scale()
@@ -66,6 +72,36 @@ func _ready() -> void:
 		Settings.save()
 		closed.emit()
 	))
+
+
+## A labelled button that cycles through options (WINDOWED / FULLSCREEN); on_change gets the index.
+func _cycle(label: String, options: Array[String], index: int, on_change: Callable) -> Control:
+	var row := HBoxContainer.new()
+	var l := UiStyle.label(label, 18)
+	l.custom_minimum_size = Vector2(230, 36)
+	row.add_child(l)
+	var state := [index]
+	var b: Button = UiStyle.button(options[index], func(): pass, 18)
+	b.custom_minimum_size = Vector2(240, 36)
+	b.pressed.connect(func():
+		state[0] = (state[0] + 1) % options.size()
+		b.text = options[state[0]]
+		on_change.call(state[0]))
+	row.add_child(b)
+	return row
+
+
+## A labelled on/off switch in the panel's type (like INVERT LOOK).
+func _toggle(label: String, on: bool, on_change: Callable) -> Control:
+	var c := CheckButton.new()
+	c.text = label
+	c.button_pressed = on
+	c.add_theme_font_size_override("font_size", 20)
+	c.add_theme_color_override("font_color", UiStyle.paper())
+	c.add_theme_color_override("font_outline_color", UiStyle.ink())
+	c.add_theme_constant_override("outline_size", 6)
+	c.toggled.connect(on_change)
+	return c
 
 
 func _slider(label: String, lo: float, hi: float, value: float, step: float, on_change: Callable) -> Control:

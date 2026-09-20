@@ -271,8 +271,26 @@ func _before_rollback_loop() -> void:
 	_notify_resim()
 
 func _on_prepare_tick(tick: int) -> void:
+	# BOMBA patch #7 (see addons/netfox/PATCHES.md): a node this peer owns neither input nor
+	# state for, and that nobody mutated, is pure playback here (every other player on a client
+	# with input broadcast off). Its state was applied for every resimulated tick although nothing
+	# simulates it: with six seats a client applied 5 nodes × ~12 ticks × 34 properties a loop.
+	# Skip that; the display state is still applied at the end of the loop.
+	if _is_playback_only(tick):
+		_history_recorder.set_latest_state_tick(_history_transmitter._latest_state_tick)
+		_simset.clear()
+		_skipset.clear()
+		return
 	_history_recorder.apply_tick(tick)
 	_prepare_tick_process(tick)
+
+func _is_playback_only(tick: int) -> bool:
+	if not _get_owned_state_props().is_empty() or not _get_owned_input_props().is_empty():
+		return false
+	for node in _nodes:
+		if NetworkRollback.is_mutated(node, tick):
+			return false
+	return true
 
 func _process_tick(tick: int) -> void:
 	_run_rollback_tick(tick)

@@ -32,6 +32,34 @@ var _last_nodes: int = 0
 var _last_resources: int = 0
 var _last_pipes := PackedInt64Array([0, 0, 0, 0, 0])
 var _held: Array[Resource] = []
+var quality: AutoQuality
+var _perf_gpu: PackedFloat32Array = []
+var _perf_cpu: PackedFloat32Array = []
+var _perf_frame: PackedFloat32Array = []
+
+
+static func _mean(v: PackedFloat32Array) -> float:
+	if v.is_empty():
+		return 0.0
+	var s := 0.0
+	for x in v:
+		s += x
+	return s / v.size()
+
+
+static func _p95(v: PackedFloat32Array) -> float:
+	if v.is_empty():
+		return 0.0
+	var s := v.duplicate()
+	s.sort()
+	return s[int(0.95 * (s.size() - 1))]
+
+
+static func _max(v: PackedFloat32Array) -> float:
+	var m := 0.0
+	for x in v:
+		m = maxf(m, x)
+	return m
 
 
 func _ready() -> void:
@@ -48,6 +76,10 @@ func _ready() -> void:
 	if args.has("seed"):
 		Rng.set_match_seed(int(args["seed"]))
 	apply_render_scale()
+	apply_window_settings()
+	if not headless:
+		# Per-frame render times for --perf and the hitch log (two GPU timestamps a frame).
+		RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
 	if args.has("soak"):
 		soak_seconds = float(args["soak"])
 	rounds_left = int(args.get("rounds", 1))
@@ -229,7 +261,14 @@ func _on_net_left() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if headless or (active_minigame == null and board == null):
+	if headless:
+		return
+	if event is InputEventKey and event.pressed and not event.echo and (event as InputEventKey).keycode == KEY_F11:
+		Settings.window_mode = "windowed" if Settings.window_mode == "fullscreen" else "fullscreen"
+		Settings.save()
+		apply_window_settings(true)
+		return
+	if active_minigame == null and board == null:
 		return
 	if event.is_action_pressed("pause"):
 		if _pause == null:
@@ -244,10 +283,35 @@ func _unhandled_input(event: InputEvent) -> void:
 func apply_render_scale() -> void:
 	if headless:
 		return
+	var pinned := args.has("render_scale")
 	var scale := clampf(float(args.get("render_scale", Settings.render_scale)), 0.5, 2.0)
 	get_viewport().scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
 	get_viewport().scaling_3d_scale = scale
-	Log.info("perf", "Render scale %.2f" % scale)
+	if quality == null:
+		quality = AutoQuality.new()
+		quality.name = "AutoQuality"
+		add_child(quality)
+	quality.enabled = not pinned
+	if args.has("gpu_budget_ms"):
+		quality.budget_ms = float(args["gpu_budget_ms"])
+	quality.set_cap(scale)
+	Log.info("perf", "Render scale %.2f %s" % [scale, "(pinned)" if pinned else "cap, auto quality on (GPU budget %.1f ms)" % quality.budget_ms])
+
+
+## Window mode and vsync from settings, or --window=fullscreen|windowed and --vsync=0|1 for the
+## harness. At boot a window Godot's own --fullscreen already made is left alone unless the
+## setting says fullscreen; from the panel (or F11) the setting always wins.
+func apply_window_settings(from_panel: bool = false) -> void:
+	if headless:
+		return
+	var mode := str(args.get("window", Settings.window_mode))
+	var want := DisplayServer.WINDOW_MODE_FULLSCREEN if mode == "fullscreen" else DisplayServer.WINDOW_MODE_WINDOWED
+	var have := DisplayServer.window_get_mode()
+	if have != want and (from_panel or mode == "fullscreen" or args.has("window")):
+		DisplayServer.window_set_mode(want)
+	var vs := int(args.get("vsync", 1 if Settings.vsync else 0)) != 0
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if vs else DisplayServer.VSYNC_DISABLED)
+	Log.info("perf", "Window %s, vsync %s" % [mode, "on" if vs else "off"])
 
 
 ## --ads_progress=0..1 pins the scope-in animation for screenshots (presentation only).
@@ -524,6 +588,13 @@ func _process(delta: float) -> void:
 			_take_screenshot(str(args["screenshot"]))
 	if soak_seconds > 0.0 and (active_minigame != null or board != null):
 		_soak_elapsed += delta
+		if args.has("perf") and not headless and _soak_elapsed > 2.0:
+			# --perf: sample the renderer's own CPU and GPU time per frame (the previous frame's)
+			# and the wall-clock frame time, after a 2 s settle; summarised at soak end.
+			var rid := get_viewport().get_viewport_rid()
+			_perf_gpu.append(RenderingServer.viewport_get_measured_render_time_gpu(rid))
+			_perf_cpu.append(RenderingServer.viewport_get_measured_render_time_cpu(rid))
+			_perf_frame.append(float(gap))
 		if _soak_elapsed >= soak_seconds:
 			Log.info("game", "Soak time reached (%.1fs)" % _soak_elapsed)
 			_finish_soak()
@@ -569,6 +640,13 @@ func _finish_soak() -> void:
 	if not headless:
 		Log.info("perf", "FPS at soak end: %d (window %dx%d, render scale %.2f)" % [Engine.get_frames_per_second(),
 			get_viewport().size.x, get_viewport().size.y, get_viewport().scaling_3d_scale])
+		if not _perf_gpu.is_empty():
+			var vp := get_viewport()
+			Log.info("perf", "PERF window %dx%d scale %.2f (3D %dx%d) msaa %d shadow %d | frames %d | gpu ms mean %.2f p95 %.2f max %.2f | render cpu ms mean %.2f p95 %.2f | frame ms mean %.2f p95 %.2f" % [
+				vp.size.x, vp.size.y, vp.scaling_3d_scale, int(vp.size.x * vp.scaling_3d_scale), int(vp.size.y * vp.scaling_3d_scale),
+				int(vp.msaa_3d), int(ProjectSettings.get_setting("rendering/lights_and_shadows/directional_shadow/size", 0)),
+				_perf_gpu.size(), _mean(_perf_gpu), _p95(_perf_gpu), _max(_perf_gpu),
+				_mean(_perf_cpu), _p95(_perf_cpu), _mean(_perf_frame), _p95(_perf_frame)])
 	soak_seconds = 0.0
 	var recorder := get_node_or_null("/root/SoakRecorder")
 	if recorder != null and recorder.has_method("write_report"):

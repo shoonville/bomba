@@ -56,13 +56,18 @@ Useful flags after `--`: `--autoplay` (a bot drives your seat), `--seed=N`, `--s
 `--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results` to start the timer on
 an event; `--give_item=bomb` and `--board_auto_roll` exercise the board UI from a fresh match),
 `--ads_progress=0..1` (pins the scope-in for a frame), `--board_overview` (whole board),
-`--board_cam=x,y,z:tx,ty,tz` (camera anywhere on the board), `--render_scale=N` (3D render
-scale; the SETTINGS slider is the player's version, default 1.5 supersampling),
+`--board_cam=x,y,z:tx,ty,tz` (camera anywhere on the board), `--render_scale=N` (pins the 3D
+render scale; the SETTINGS slider is the player's cap, default 1.5 supersampling, and the game
+steps the scale down and back up on its own to keep the GPU under a 60 Hz budget,
+`--gpu_budget_ms=N` to force it),
 `--spectate` (fixed showcase camera,
 no local player), `--rounds=N` (host rematches N times), `--scripted` (seeded per-tick inputs for
 every seat this peer owns; the determinism harness uses it), `--no_warmup` (skip the boot
-preload and pipeline warm-up, for A/B runs of the start-of-scene hitch). Frames over 150 ms are
-logged as `Frame hitch` with what the frame did.
+preload and pipeline warm-up, for A/B runs of the start-of-scene hitch), `--perf` (with `--soak`:
+GPU, render-CPU and frame milliseconds, mean and p95, printed at the end), `--vsync=0|1` and
+`--window=fullscreen|windowed` (override the settings for a run; Godot's own `--resolution WxH`
+sets the window size). Frames over 150 ms are logged as `Frame hitch` with what the frame did.
+In the game, F11 toggles fullscreen; SETTINGS has WINDOW, VSYNC and RENDER SCALE.
 
 ## Verifying
 

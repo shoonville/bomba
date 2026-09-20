@@ -44,9 +44,14 @@ that travels with the repo.
   `--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results|shield|roll|move` to arm on an
   event. Handy flags: `--board_overview`, `--board_map`, `--board_cam=x,y,z:tx,ty,tz`, `--hover_fork=left`,
   `--social_test`, `--show_scoreboard`, `--figure_test`, `--ads_progress=0..1`, `--force_weapon=0|1`,
-  `--force_ads`, `--give_item=ID`, `--minigame=ID`, `--render_scale=N`, `--port=N`, `--no_warmup`.
+  `--force_ads`, `--give_item=ID`, `--minigame=ID`, `--render_scale=N`, `--port=N`, `--no_warmup`,
+  `--perf` (GPU/CPU ms summary at soak end), `--vsync=0|1`, `--window=fullscreen|windowed`, and
+  Godot's own `--resolution 1920x1080` (the friends' resolution: judge looks and cost there, not at
+  Sean's 5120×2160; his monitor "doesn't matter").
 - Windowed runs: wrap them in `timeout 90` so a broken build cannot sit at a window forever; grep
-  the output for `Frame hitch` (any frame over 150 ms, with what it did) and `Minigame build`.
+  the output for `Frame hitch` (any frame over 150 ms, with what it did), `Minigame build` and
+  `PERF` (with `--perf`). An `override.cfg` in the project root overrides project settings for an
+  experiment (shadow size, MSAA); delete it afterwards, it is not tracked.
 - Harness runs must not use port 27015 while his own game is open; pass `--port=27077`.
 - Never run two soaks, or a soak and a windowed run, at once (contention ruins the numbers).
 

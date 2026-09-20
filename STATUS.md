@@ -487,3 +487,38 @@ run on it.
    nothing platform-specific has been written.
 3. Then the older list: a third-person or objective minigame, the real map pass and proper
    viewmodels, the display face.
+
+## 2026-09-20 — session 6: for the friends' machines
+
+Sean: his resolution doesn't matter (ultrawide 5K); his friends play 16:9 at 1080p or 1440p
+on ordinary PCs. "Just make the game look really good and run well." Everything below is
+measured at 1920×1080 unless noted, on the 5090, and extrapolated.
+
+- **Client CPU** (netfox patch #7, no per-tick state apply for the players a client only
+  watches): six-seat client tick loop p95 11–13 ms → 5–6 ms; hit confirmation 0.67–0.90,
+  death lag ≤ 5 ticks, 0 outages, 0 warnings. Host unchanged (7.0 ms mean, it simulates all).
+- **GPU** (`--perf`, host + 2 bots, 12 s, mean / p95 ms on the RTX 5090):
+
+  | Scene, window, settings | GPU ms |
+  |---|---|
+  | arena 1080p, scale 1.5, MSAA 2, shadow 8192 (default) | 0.64 / 0.96 |
+  | board 1080p, default | 0.63 / 0.64 |
+  | arena 1080p, scale 1.0 | 0.36 / 0.38 |
+  | board 1080p, scale 1.0 | 0.36 / 0.38 |
+  | arena 1080p, shadow 4096 | 0.64 / 0.96 |
+  | board 1080p, shadow 4096 | 0.60 / 0.62 |
+  | arena 1080p, MSAA off | 0.42 / 0.43 |
+  | arena 1440p, default | 1.04 / 1.35 |
+  | arena 5120×2160 fullscreen, default | 2.90 / 3.24 |
+
+  Render CPU 0.15–0.41 ms. A mid-range GPU is 8–20× slower, so 1080p at the default lands
+  at 5–13 ms: fine on an RTX 3060 or GTX 1660, over a 60 Hz frame on a GTX 1060 or a laptop.
+- **Auto quality** (`core/quality.gd`): RENDER SCALE is the cap; the game steps the 3D scale
+  down (to 0.75) when measured GPU time exceeds 11.7 ms p90 and back up when there is room,
+  one step per 3 s. Forced test at 1080p with a 0.5 ms budget: 1.5 → 1.25 → 1.0 three
+  seconds apart, then held; the real budget never moves it here.
+- **Window and vsync**: SETTINGS → WINDOW (WINDOWED / FULLSCREEN), VSYNC; F11 toggles
+  fullscreen. Vsync on by default. `--window`, `--vsync`, `--resolution` for the harness.
+- **1080p frames checked** (menu, board turn, sniper hip, AR ADS): ink lines and hard shadows
+  crisp, HUD fits 16:9. Seen: a pawn's projected name tag can print over the player rows at
+  the top-left of the board HUD; and the arena is still the gray-box, the largest look item left.

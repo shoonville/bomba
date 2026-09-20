@@ -485,10 +485,19 @@ func _draw_name_tags(st: BoardState) -> void:
 					var gap := (float(upper["size"]) + float(lower["size"])) * 0.5 + 8.0
 					if float(lower["pos"].y) - float(upper["pos"].y) < gap:
 						upper["pos"] = Vector2(ux, float(lower["pos"].y) - gap)
+	# The player rows own the top-left; a tag that would print over them (a pawn under that
+	# corner of the screen, seen at 1080p) drops just below the panel instead.
+	var panel := Rect2()
+	for r in _row_rects:
+		panel = r.grow(8.0) if panel.size == Vector2.ZERO else panel.merge(r.grow(8.0))
 	for t in tags:
 		var pos: Vector2 = t["pos"]
+		var w := float(t["w"])
+		var fs := int(t["size"])
+		if panel.size != Vector2.ZERO and panel.intersects(Rect2(pos.x - w * 0.5, pos.y - fs, w, fs + 4.0)):
+			pos.y = panel.end.y + fs + 4.0
 		var col: Color = UiStyle.accent() if bool(t["active"]) else Color(t["col"]).lightened(0.35)
-		_text(Vector2(pos.x - float(t["w"]) * 0.5, pos.y), str(t["text"]), int(t["size"]), col, 4.0, -0.12)
+		_text(Vector2(pos.x - w * 0.5, pos.y), str(t["text"]), fs, col, 4.0, -0.12)
 
 
 func _card(pos: Vector2, size: Vector2, alpha: float) -> void:

@@ -3,6 +3,7 @@
 *.import
 export/
 export_presets.cfg
+override.cfg
 # OS
 .DS_Store
 # Local reports and logs

@@ -58,3 +58,13 @@ Keep this list current. Re-apply when upgrading netfox, or drop a patch once ups
    removed from the set) sends at once, and otherwise every 4th loop (15 Hz) keeps the peers'
    "last known tick" moving so a prediction the authority never confirmed still cancels within
    ~70 ms. Candidate for upstream.
+
+7. **Synchronizer: no per-tick state apply for pure-playback nodes** — `rollback/rollback-synchronizer.gd`
+   (`_on_prepare_tick`, `_is_playback_only`). Unpatched, every synchronizer applies its node's
+   state (and input) history for every tick of the rollback loop, including nodes this peer
+   owns nothing of and never simulates: on a client with input broadcast off that is every
+   other player. With six seats a client applied 5 nodes × ~12 resimulated ticks × 34
+   properties per loop through `set_indexed`, and its tick loop measured 11–13 ms p95 on a
+   Ryzen 9800X3D. Such a node now skips the per-tick apply (and the simset gathering, which
+   was empty for it anyway) and only gets the display state at the end of the loop, as before.
+   A mutated node (predicted damage on the authority) is never skipped. Candidate for upstream.
