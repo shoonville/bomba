@@ -475,3 +475,15 @@ run on it.
 - **Soak harness**: host outlives its clients by 3 s, a headless client whose host leaves
   finishes its soak or quits (one had sat for 5 min 48 s), reports keep the peer id from the
   start, `remote_diff` prints the mean without respawn teleports.
+
+### Next (after session 5)
+
+1. Sean plays on this machine: the §8 checklist above, plus a board turn with the mouse, a
+   LAST STAND death and the spectator camera, and a friend joining by code. The stalls he
+   reported should be gone at the board and 100–160 ms under the wipe elsewhere; his log will
+   say (`Frame hitch` lines name what the frame did).
+2. Windows export for friends: install the 4.7.2 export templates (Editor → Manage Export
+   Templates; `%APPDATA%\Godot\export_templates` is empty) and add a Windows Desktop preset;
+   nothing platform-specific has been written.
+3. Then the older list: a third-person or objective minigame, the real map pass and proper
+   viewmodels, the display face.
