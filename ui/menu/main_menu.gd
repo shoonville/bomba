@@ -13,6 +13,7 @@ var _code_row: HBoxContainer
 var _start_btn: Button
 var _arena_btn: Button
 var _bots_label: Label
+var _match_col: VBoxContainer
 var _host_btn: Button
 var _online_btn: Button
 var _join_btn: Button
@@ -132,10 +133,43 @@ func _build() -> void:
 	lobby_col.add_child(_start_btn)
 	_arena_btn = UiStyle.button("QUICK ARENA", func(): Session.start_minigame("arena"), 20)
 	lobby_col.add_child(_arena_btn)
+	# MATCH SETTINGS: what the host can turn before starting (sent to everyone with the start).
+	_match_col = VBoxContainer.new()
+	_match_col.add_theme_constant_override("separation", 4)
+	lobby_col.add_child(_match_col)
+	_match_col.add_child(UiStyle.label("MATCH SETTINGS", 22, UiStyle.accent()))
+	_match_col.add_child(_stepper("FIRST TO", func(): return Session.config.toys_to_win,
+		func(v: int): Session.config.toys_to_win = v, 1, 1, 10, func(v: int): return "%d TOYS" % v))
+	_match_col.add_child(_stepper("TURN TIME", func(): return Session.config.turn_seconds,
+		func(v: int): Session.config.turn_seconds = v, 5, 10, 60, func(v: int): return "%d S" % v))
+	_match_col.add_child(_stepper("ROUND CAP", func(): return Session.config.rounds,
+		func(v: int): Session.config.rounds = v, 1, 0, 20, func(v: int): return "NONE" if v == 0 else "%d" % v))
+	_match_col.add_child(_stepper("TOY PRICE", func(): return Session.config.toy_price,
+		func(v: int): Session.config.toy_price = v, 1, 3, 25, func(v: int): return "%d COINS" % v))
 
 	var hint := UiStyle.label("WASD MOVE · SPACE JUMP · LMB FIRE · RMB SCOPE · 1/2/Q WEAPONS · R RELOAD · ESC PAUSE", 15)
 	hint.position = Vector2(80, 840)
 	add_child(hint)
+
+
+## A labelled value with − and + buttons, in the lobby's type. `show` formats the value.
+func _stepper(label: String, get_value: Callable, set_value: Callable, step: int, lo: int, hi: int, show: Callable) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	var l := UiStyle.label(label, 18)
+	l.custom_minimum_size = Vector2(130, 0)
+	row.add_child(l)
+	var val := UiStyle.label(str(show.call(get_value.call())), 18, UiStyle.accent())
+	val.custom_minimum_size = Vector2(110, 0)
+	val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	row.add_child(UiStyle.button("−", func():
+		set_value.call(clampi(int(get_value.call()) - step, lo, hi))
+		val.text = str(show.call(get_value.call())), 16))
+	row.add_child(val)
+	row.add_child(UiStyle.button("+", func():
+		set_value.call(clampi(int(get_value.call()) + step, lo, hi))
+		val.text = str(show.call(get_value.call())), 16))
+	return row
 
 
 func _set_status(text: String) -> void:
@@ -250,6 +284,8 @@ func _refresh() -> void:
 	_leave_btn.disabled = not online
 	_start_btn.visible = host
 	_arena_btn.visible = host
+	if _match_col != null:
+		_match_col.visible = host
 	_bot_plus.visible = host
 	_bot_minus.visible = host
 	_code_row.visible = online and Net.host_code != ""

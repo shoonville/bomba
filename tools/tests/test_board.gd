@@ -115,42 +115,42 @@ func test_landing_effects() -> void:
 	assert_true(got, "some seed rolls a 1")
 
 
-func test_goal_claim_and_move() -> void:
+func test_toy_purchase_moves_the_machine() -> void:
 	var s := _fresh(9)
 	var p := s.players[0]
 	var goal := s.goal
 	var prev := graph.prev_of(goal)[0]
 	p.space = prev
-	p.coins = int(cfg["goal_cost"]) + 2
+	p.coins = int(cfg["toy_price"]) + 2
 	var claimed := false
 	for seed_try in 60:
 		var t := _fresh(seed_try)
 		var q := t.players[0]
 		var g := t.goal
 		q.space = graph.prev_of(g)[0]
-		q.coins = int(cfg["goal_cost"]) + 2
+		q.coins = int(cfg["toy_price"]) + 2
 		var ev := BoardRules.roll(t, graph, cfg)
 		var goal_event: Dictionary = {}
 		for e in ev:
-			if e["kind"] == "goal":
+			if e["kind"] == "toy":
 				goal_event = e
 		if not goal_event.is_empty():
-			assert_eq(q.bombas, 1)
-			assert_eq(int(goal_event["coins"]), 2, "paid the goal cost at the moment of claiming")
-			assert_ne(t.goal, g, "goal moved")
+			assert_eq(q.toys, 1)
+			assert_eq(int(goal_event["coins"]), 2, "paid the toy price at the moment of buying")
+			assert_ne(t.goal, g, "the machine moved")
 			claimed = true
 			break
-	assert_true(claimed, "passing the goal with enough coins claims it")
+	assert_true(claimed, "passing the machine with enough coins buys a toy")
 
 
-func test_goal_needs_coins() -> void:
+func test_toy_needs_coins() -> void:
 	var t := _fresh(9)
 	var q := t.players[0]
 	q.space = graph.prev_of(t.goal)[0]
 	q.coins = 1
 	var g := t.goal
 	BoardRules.roll(t, graph, cfg)
-	assert_eq(q.bombas, 0)
+	assert_eq(q.toys, 0)
 	assert_eq(t.goal, g)
 
 
@@ -202,7 +202,7 @@ func test_round_minigame_and_finish() -> void:
 	assert_eq(s.phase, BoardState.PHASE_FINISHED)
 	var order := s.standings()
 	assert_eq(order.size(), 3)
-	assert_true(order[0].bombas >= order[1].bombas)
+	assert_true(order[0].toys >= order[1].toys)
 
 
 func _coins_from_board(s: BoardState, peer: int) -> int:
@@ -234,7 +234,7 @@ func test_bots_pick_toward_goal_and_items() -> void:
 	assert_eq(BoardRules.bot_choose(s, graph), 0)
 	var me := s.active_player()
 	me.items = ["bomb"]
-	s.players[1].bombas = 1
+	s.players[1].toys = 1
 	var pick := BoardRules.bot_item(s)
 	assert_eq(pick.size(), 2)
 	assert_eq(str(pick[0]), "bomb")
@@ -312,7 +312,7 @@ func test_main_board_shape() -> void:
 		if g.is_fork(sid):
 			forks += 1
 	assert_true(forks >= 4, "%d forks" % forks)
-	assert_true(g.goal_candidates().size() >= 8, "%d goal candidates" % g.goal_candidates().size())
+	assert_true(g.goal_candidates().size() >= 4, "%d machine spots" % g.goal_candidates().size())
 	var shields := 0
 	for sid in g.ids():
 		if g.get_space(sid).type == "shield":
@@ -366,3 +366,84 @@ func test_d8_faces() -> void:
 		assert_true(BoardDice.face_normal(9 - v).is_equal_approx(-n), "faces %d and %d are opposite" % [v, 9 - v])
 		var up := BoardDice.face_up_basis(v) * n
 		assert_true(up.is_equal_approx(Vector3.UP), "face %d rolls to the top: %s" % [v, str(up)])
+
+
+func test_first_to_toys_ends_the_match() -> void:
+	# toys_to_win 1: the first toy bought ends the match on the spot, with the buyer first.
+	var cfg1 := cfg.duplicate(true)
+	cfg1["toys_to_win"] = 1
+	var ended := false
+	for seed_try in 60:
+		var t := BoardState.new()
+		BoardRules.setup(t, graph, _players(3), seed_try, cfg1)
+		var q := t.players[0]
+		q.space = graph.prev_of(t.goal)[0]
+		q.coins = int(cfg1["toy_price"]) + 1
+		var ev := BoardRules.roll(t, graph, cfg1)
+		var kinds := []
+		for e in ev:
+			kinds.append(e["kind"])
+		if kinds.has("toy"):
+			assert_true(kinds.has("finished"), "the winning toy ends the match")
+			assert_eq(t.phase, BoardState.PHASE_FINISHED)
+			assert_eq(t.standings()[0].peer_id, q.peer_id, "the buyer wins")
+			assert_eq(t.steps_left, 0, "no more steps after the win")
+			assert_false(kinds.has("turn"), "no next turn after the finish")
+			ended = true
+			break
+	assert_true(ended, "some seed bought the toy")
+	# toys_to_win 0: toys never end it, only the round cap does.
+	var cfg0 := cfg.duplicate(true)
+	cfg0["toys_to_win"] = 0
+	var s := BoardState.new()
+	BoardRules.setup(s, graph, _players(2), 3, cfg0)
+	var p := s.players[0]
+	p.toys = 99
+	p.space = graph.prev_of(s.goal)[0]
+	p.coins = 50
+	BoardRules.roll(s, graph, cfg0)
+	assert_ne(s.phase, BoardState.PHASE_FINISHED, "no toy limit")
+
+
+func test_machine_spot_is_far_from_the_players() -> void:
+	# The chosen spot has the greatest mean hop distance from the players among candidates at
+	# least 3 hops from everyone (when any such candidate exists), never the spot just bought.
+	var s := _fresh(5, 3)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	var spaces := []
+	for p in s.players:
+		spaces.append(p.space)
+	var ids := graph.ids()
+	spaces[1] = ids[ids.size() / 2]
+	var chosen := graph.machine_spot(spaces, rng, s.goal)
+	assert_ne(chosen, s.goal, "never the spot just bought")
+	var best_mean := -1.0
+	var any_fair := false
+	for c in graph.goal_candidates():
+		if c == s.goal:
+			continue
+		var total := 0.0
+		var nearest := 1 << 30
+		for f in spaces:
+			var d := graph.distance(str(f), c)
+			total += d
+			nearest = mini(nearest, d)
+		if nearest >= BoardGraph.MACHINE_MIN_HOPS:
+			any_fair = true
+	for c in graph.goal_candidates():
+		if c == s.goal:
+			continue
+		var total := 0.0
+		var nearest := 1 << 30
+		for f in spaces:
+			var d := graph.distance(str(f), c)
+			total += d
+			nearest = mini(nearest, d)
+		if any_fair and nearest < BoardGraph.MACHINE_MIN_HOPS:
+			continue
+		best_mean = maxf(best_mean, total / spaces.size())
+	var total_c := 0.0
+	for f in spaces:
+		total_c += graph.distance(str(f), chosen)
+	assert_eq(int(round(total_c / spaces.size() * 100.0)), int(round(best_mean * 100.0)), "farthest on average")

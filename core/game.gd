@@ -400,16 +400,16 @@ func _end_board() -> void:
 
 
 func _on_board_finished(final_state: BoardState) -> void:
-	Log.info("game", "Board match finished: %s" % ", ".join(final_state.standings().map(func(p): return "%s %d bombas %d coins" % [p.display_name, p.bombas, p.coins])))
+	Log.info("game", "Board match finished: %s" % ", ".join(final_state.standings().map(func(p): return "%s %d toys %d coins" % [p.display_name, p.toys, p.coins])))
 	var result := MinigameResult.new()
 	result.minigame_id = "board"
 	for p in final_state.standings():
-		result.add(p.peer_id, p.bombas * 1000 + p.coins, p.display_name)
+		result.add(p.peer_id, p.toys * 1000 + p.coins, p.display_name)
 	result.finalize()
 	for r in result.rankings:
 		var p := final_state.player(int(r["peer_id"]))
 		if p != null:
-			r["label"] = "◆ %d   ·   %d COINS" % [p.bombas, p.coins]
+			r["label"] = "%d %s   ·   %d COINS" % [p.toys, "TOY" if p.toys == 1 else "TOYS", p.coins]
 	_clear_hud()
 	_end_board()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE

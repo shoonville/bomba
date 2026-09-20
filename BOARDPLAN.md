@@ -18,9 +18,12 @@ A match is `rounds` rounds (tuning `board.rounds`, 5 for now). A round is:
    winner also draws an item.
 3. Back to the board for the next round.
 
-The board has one **GOAL** space. Passing through or landing on it with at least
-`board.goal_cost` coins pays the cost, awards a **Bomba**, and moves the goal to a far space.
-After the last round the player with the most Bombas wins; coins break ties.
+The board has one live **vending machine** spot (a space flagged `goal` in the board file; five of
+them ring the rim, each with a bridge to a pad). Passing through or landing on it with at least
+`board.toy_price` coins pays, awards a **toy**, and moves the machine to the candidate farthest on
+average from every player (never within 3 hops of anyone while another exists). The first player to
+`board.toys_to_win` toys wins on the spot; otherwise, after the round cap, most toys wins and
+coins break ties. The host sets toys to win, turn time, round cap and price in the lobby.
 
 ## 2. State and authority
 

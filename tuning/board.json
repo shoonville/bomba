@@ -1,8 +1,9 @@
 {
   "_comment": "The board loop. Ticks are not used here; times are seconds.",
-  "rounds": 5,
+  "rounds": 10,
   "minigame_round_seconds": 90,
-  "goal_cost": 10,
+  "toy_price": 10,
+  "toys_to_win": 4,
   "start_coins": 5,
   "turn_timeout_seconds": 20.0,
   "choice_timeout_seconds": 8.0,

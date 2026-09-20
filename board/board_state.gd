@@ -16,13 +16,13 @@ class PlayerState:
 	var is_bot: bool = false
 	var space: String = ""
 	var coins: int = 0
-	var bombas: int = 0
+	var toys: int = 0
 	var items: Array = []
 	var roll_bonus: int = 0
 
 	func to_dict() -> Dictionary:
 		return {"peer_id": peer_id, "display_name": display_name, "colour_index": colour_index,
-			"is_bot": is_bot, "space": space, "coins": coins, "bombas": bombas,
+			"is_bot": is_bot, "space": space, "coins": coins, "toys": toys,
 			"items": items.duplicate(), "roll_bonus": roll_bonus}
 
 	static func from_dict(d: Dictionary) -> PlayerState:
@@ -33,7 +33,7 @@ class PlayerState:
 		p.is_bot = bool(d.get("is_bot", false))
 		p.space = str(d.get("space", ""))
 		p.coins = int(d.get("coins", 0))
-		p.bombas = int(d.get("bombas", 0))
+		p.toys = int(d.get("toys", 0))
 		p.items = Array(d.get("items", []))
 		p.roll_bonus = int(d.get("roll_bonus", 0))
 		return p
@@ -75,12 +75,12 @@ func index_of(peer_id: int) -> int:
 	return -1
 
 
-## Bombas first, coins second, then name so ties are stable on every peer.
+## Toys first, coins second, then name so ties are stable on every peer.
 func standings() -> Array[PlayerState]:
 	var out := players.duplicate()
 	out.sort_custom(func(a: PlayerState, b: PlayerState):
-		if a.bombas != b.bombas:
-			return a.bombas > b.bombas
+		if a.toys != b.toys:
+			return a.toys > b.toys
 		if a.coins != b.coins:
 			return a.coins > b.coins
 		return a.display_name < b.display_name)

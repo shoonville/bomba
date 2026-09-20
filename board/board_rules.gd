@@ -25,11 +25,11 @@ static func setup(state: BoardState, graph: BoardGraph, players_data: Array, see
 		var p := BoardState.PlayerState.from_dict(d)
 		p.space = graph.start_id
 		p.coins = int(cfg.get("start_coins", 5))
-		p.bombas = 0
+		p.toys = 0
 		p.items = []
 		p.roll_bonus = 0
 		state.players.append(p)
-	state.goal = graph.farthest_goal([graph.start_id], rng(state))
+	state.goal = graph.machine_spot([graph.start_id], rng(state))
 	state.phase = BoardState.PHASE_TURNS
 	state.active = 0
 	state.dice = 0
@@ -137,22 +137,41 @@ static func choose(state: BoardState, graph: BoardGraph, cfg: Dictionary, option
 	state.pending_options.clear()
 	state.phase = BoardState.PHASE_TURNS
 	_enter(state, graph, cfg, ap, dest, events)
+	if state.phase == BoardState.PHASE_FINISHED:
+		return events
 	state.steps_left -= 1
 	_move_continue(state, graph, cfg, events)
 	return events
 
 
+## The vending machine (state.goal is the space it stands beside): passing it or landing on it
+## with at least `toy_price` coins pays, hands out a toy, and moves the machine to the spot
+## farthest from where everyone is. The first player to `toys_to_win` toys ends the match there
+## and then (0 means never: only the round cap ends it).
 static func _enter(state: BoardState, graph: BoardGraph, cfg: Dictionary, p: BoardState.PlayerState, space_id: String, events: Array) -> void:
 	p.space = space_id
 	_append_move(events, p.peer_id, space_id)
-	if space_id == state.goal and p.coins >= int(cfg.get("goal_cost", 10)):
-		p.coins -= int(cfg.get("goal_cost", 10))
-		p.bombas += 1
+	if space_id == state.goal and p.coins >= int(cfg.get("toy_price", 10)):
+		p.coins -= int(cfg.get("toy_price", 10))
+		p.toys += 1
 		var occupied := []
 		for q in state.players:
 			occupied.append(q.space)
-		state.goal = graph.farthest_goal(occupied, rng(state), space_id)
-		events.append({"kind": "goal", "peer": p.peer_id, "bombas": p.bombas, "coins": p.coins, "new_goal": state.goal})
+		state.goal = graph.machine_spot(occupied, rng(state), space_id)
+		events.append({"kind": "toy", "peer": p.peer_id, "toys": p.toys, "coins": p.coins, "new_spot": state.goal})
+		var to_win := int(cfg.get("toys_to_win", 4))
+		if to_win > 0 and p.toys >= to_win:
+			_finish(state, events)
+
+
+static func _finish(state: BoardState, events: Array) -> void:
+	state.phase = BoardState.PHASE_FINISHED
+	state.steps_left = 0
+	state.pending_options.clear()
+	var order := []
+	for q in state.standings():
+		order.append(q.peer_id)
+	events.append({"kind": "finished", "order": order})
 
 
 static func _append_move(events: Array, peer_id: int, space_id: String) -> void:
@@ -177,6 +196,8 @@ static func _move_continue(state: BoardState, graph: BoardGraph, cfg: Dictionary
 			events.append({"kind": "choose", "peer": ap.peer_id, "options": Array(options)})
 			return
 		_enter(state, graph, cfg, ap, options[0], events)
+		if state.phase == BoardState.PHASE_FINISHED:
+			return   # the winning toy ends the match where it was bought
 		state.steps_left -= 1
 	_land(state, graph, cfg, events)
 	_end_turn(state, events)
@@ -264,12 +285,8 @@ static func apply_minigame(state: BoardState, cfg: Dictionary, ranked_peer_ids: 
 				p.items.append(item)
 				events.append({"kind": "item", "peer": p.peer_id, "item": item})
 	state.round += 1
-	if state.round > state.rounds:
-		state.phase = BoardState.PHASE_FINISHED
-		var order := []
-		for p in state.standings():
-			order.append(p.peer_id)
-		events.append({"kind": "finished", "order": order})
+	if state.rounds > 0 and state.round > state.rounds:
+		_finish(state, events)
 		return events
 	state.phase = BoardState.PHASE_TURNS
 	state.active = 0
@@ -300,7 +317,7 @@ static func bot_item(state: BoardState, graph: BoardGraph = null) -> Array:
 	if me.items.has("bomb"):
 		var standings := state.standings()
 		for p in standings:
-			if p != me and (p.bombas > me.bombas or p.coins > me.coins + 4):
+			if p != me and (p.toys > me.toys or p.coins > me.coins + 4):
 				return ["bomb", p.peer_id]
 	if me.items.has("swap") and graph != null and state.goal != "":
 		# Swap with whoever stands clearly nearer the goal than we do.

@@ -139,11 +139,14 @@ func step_back(space_id: String, n: int) -> PackedStringArray:
 	return path
 
 
-## The goal candidate whose distance from the nearest of the given spaces is largest; ties broken
-## by the generator so every peer that shares the seed picks the same one.
-func farthest_goal(from_ids: Array, rng: RandomNumberGenerator, exclude: String = "") -> String:
-	var best := ""
-	var best_d := -1
+## Where the vending machine goes next: the candidate (a space flagged "goal" in the board file)
+## farthest from where the players are on average, measured in hops from each player and
+## averaged; a candidate within 3 hops of anyone is skipped while another exists, so a spot far
+## from the average is never next door to one player. Ties are broken by the seeded generator,
+## so every peer that shares the seed picks the same one. `exclude` is the spot just bought from.
+const MACHINE_MIN_HOPS := 3
+
+func machine_spot(from_ids: Array, rng: RandomNumberGenerator, exclude: String = "") -> String:
 	var cands := goal_candidates()
 	var order := []
 	for c in cands:
@@ -153,18 +156,26 @@ func farthest_goal(from_ids: Array, rng: RandomNumberGenerator, exclude: String 
 		var tmp = order[i]
 		order[i] = order[j]
 		order[j] = tmp
+	var best := ""
+	var best_mean := -1.0
+	var best_fair := false
 	for c in order:
-		if c == exclude:
+		if c == exclude and order.size() > 1:
 			continue
-		var d_min := 1 << 30
+		var total := 0.0
+		var nearest := 1 << 30
 		for f in from_ids:
 			var d := distance(str(f), c)
 			if d < 0:
 				d = 1 << 20
-			d_min = mini(d_min, d)
-		if d_min > best_d:
-			best_d = d_min
+			total += d
+			nearest = mini(nearest, d)
+		var mean := total / maxf(1.0, from_ids.size())
+		var fair := nearest >= MACHINE_MIN_HOPS
+		if (fair and not best_fair) or (fair == best_fair and mean > best_mean):
 			best = c
+			best_mean = mean
+			best_fair = fair
 	if best == "" and not cands.is_empty():
 		best = cands[0]
 	return best

@@ -10,6 +10,11 @@ signal result_received(result: MinigameResult)
 
 var players: Dictionary = {}
 var config := MatchConfig.new()
+
+
+func _ready() -> void:
+	# The lobby's starting match settings come from tuning; the host turns them in MATCH SETTINGS.
+	config = MatchConfig.from_tuning()
 var local_name: String = "Player"
 var last_result: MinigameResult
 

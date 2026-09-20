@@ -906,36 +906,33 @@ func _build_tiles() -> void:
 	goal_ring.mesh = tm
 	goal_ring.material_override = CelMaterial.for_colour(Palette.hud_colour("paper"), shadow, 1.0)
 	add_child(goal_ring)
-	# The Bomba beacon: a bomb with a lit fuse floating over the goal, visible from anywhere.
+	# The toy beacon: a capsule floating over the space the vending machine stands beside, visible
+	# from anywhere (the machine itself is on the pad past the rim, lit when it is the live one).
 	goal_beacon = Node3D.new()
-	var bomb := MeshInstance3D.new()
-	var bsm := SphereMesh.new()
-	bsm.radius = 0.42
-	bsm.height = 0.84
-	bsm.radial_segments = 16
-	bsm.rings = 8
-	bomb.mesh = bsm
-	bomb.material_override = CelMaterial.for_colour(Color.from_hsv(Palette.map_colour("board", "line").h, 0.45, 0.2), shadow)
-	goal_beacon.add_child(bomb)
-	var cap := MeshInstance3D.new()
-	var cpm := CylinderMesh.new()
-	cpm.top_radius = 0.12
-	cpm.bottom_radius = 0.14
-	cpm.height = 0.14
-	cap.mesh = cpm
-	cap.position = Vector3(0, 0.44, 0)
-	cap.material_override = CelMaterial.for_colour(Palette.map_colour("board", "counter"), shadow)
-	goal_beacon.add_child(cap)
-	var fuse := MeshInstance3D.new()
-	var fm := CylinderMesh.new()
-	fm.top_radius = 0.03
-	fm.bottom_radius = 0.03
-	fm.height = 0.34
-	fuse.mesh = fm
-	fuse.position = Vector3(0.08, 0.64, 0)
-	fuse.rotation.z = -0.5
-	fuse.material_override = CelMaterial.for_colour(Palette.hud_colour("paper"), shadow)
-	goal_beacon.add_child(fuse)
+	var top := MeshInstance3D.new()
+	var tsm := SphereMesh.new()
+	tsm.radius = 0.42
+	tsm.height = 0.84
+	tsm.radial_segments = 16
+	tsm.rings = 8
+	tsm.is_hemisphere = true
+	top.mesh = tsm
+	top.material_override = CelMaterial.for_colour(Palette.hud_colour("score"), shadow, 0.4)
+	goal_beacon.add_child(top)
+	var bottom := MeshInstance3D.new()
+	bottom.mesh = tsm
+	bottom.rotation.x = PI
+	bottom.material_override = CelMaterial.for_colour(Palette.hud_colour("paper"), shadow)
+	goal_beacon.add_child(bottom)
+	var seam := MeshInstance3D.new()
+	var ssm := TorusMesh.new()
+	ssm.inner_radius = 0.4
+	ssm.outer_radius = 0.46
+	ssm.rings = 24
+	ssm.ring_segments = 6
+	seam.mesh = ssm
+	seam.material_override = CelMaterial.for_colour(Color.from_hsv(Palette.map_colour("board", "line").h, 0.45, 0.24), shadow)
+	goal_beacon.add_child(seam)
 	_spark = MeshInstance3D.new()
 	var spm := SphereMesh.new()
 	spm.radius = 0.11
@@ -943,17 +940,19 @@ func _build_tiles() -> void:
 	spm.radial_segments = 8
 	spm.rings = 4
 	_spark.mesh = spm
-	_spark.position = Vector3(0.17, 0.79, 0)
+	_spark.position = Vector3(0, 0.62, 0)
 	_spark.material_override = CelMaterial.for_colour(Palette.hud_colour("score"), shadow, 1.6)
 	goal_beacon.add_child(_spark)
 	var badge := Label3D.new()
-	badge.text = "◆"
-	badge.font_size = 96
+	badge.text = "TOY"
+	badge.font_size = 64
 	badge.pixel_size = 0.006
-	badge.outline_size = 0
-	badge.modulate = Palette.hud_colour("score")
+	badge.outline_size = 8
+	badge.modulate = Palette.hud_colour("paper")
+	badge.outline_modulate = Palette.map_colour("board", "line")
 	badge.alpha_cut = Label3D.ALPHA_CUT_DISCARD
-	badge.position = Vector3(0, 0.0, -0.43)
+	badge.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	badge.position = Vector3(0, -0.72, 0)
 	goal_beacon.add_child(badge)
 	add_child(goal_beacon)
 	# Pulse under whoever's turn it is.
@@ -1036,6 +1035,8 @@ func _on_state(state: BoardState) -> void:
 	# end-of-events snap reconciles instead.
 	if goal_ring != null and state.goal != "" and (first or not _playing):
 		_place_goal(director.space_position(state.goal))
+		if _dressing != null:
+			_dressing.set_active_machine(state.goal)
 	var ap := state.active_player()
 	if ap != null and first:
 		_focus(director.space_position(ap.space))
@@ -1133,14 +1134,22 @@ func _play_next() -> void:
 			_float_label(int(e["peer"]), str(e["item"]).to_upper() + "!", Palette.hud_colour("danger"))
 			Audio.play("dice", 0.0)
 			wait = 0.5
-		"goal":
+		"toy":
 			var pawn: BoardPawn = pawns.get(int(e["peer"]), null)
+			var col := Palette.hud_colour("score")
+			var buyer := director.state.player(int(e["peer"])) if director.state != null else null
+			if buyer != null:
+				col = Palette.player_colour(buyer.colour_index)
 			if pawn != null and not Game.headless:
 				Burst.spawn(self, pawn.global_position + Vector3(0, 1.0, 0), Palette.hud_colour("score"), 1.2, 0.5, 10)
-			_float_label(int(e["peer"]), "BOMBA!", Palette.hud_colour("score"))
+			_float_label(int(e["peer"]), "TOY!", Palette.hud_colour("score"))
 			Audio.play("kill", 0.0)
+			if _dressing != null and pawn != null:
+				_dressing.vend(pawn.global_position, col)
 			if goal_ring != null:
-				_place_goal(director.space_position(str(e["new_goal"])))
+				_place_goal(director.space_position(str(e["new_spot"])))
+			if _dressing != null:
+				_dressing.set_active_machine(str(e["new_spot"]))
 			wait = 1.0
 		"shield":
 			var pawn: BoardPawn = pawns.get(int(e["peer"]), null)

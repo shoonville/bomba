@@ -39,10 +39,13 @@ func is_server() -> bool:
 
 func start(players_data: Array, seed_value: int, p_board_id: String) -> void:
 	board_id = p_board_id
-	cfg = Tuning.table("board")
+	# Tuning with the host's MATCH SETTINGS laid over it (toys to win, turn time, round cap,
+	# toy price); the config arrived with the start RPC on every peer.
+	cfg = Session.config.apply_to(Tuning.table("board"))
 	if Game.args.has("board_rounds"):
-		cfg = cfg.duplicate(true)
 		cfg["rounds"] = int(Game.args["board_rounds"])
+	if Game.args.has("toys_to_win"):
+		cfg["toys_to_win"] = int(Game.args["toys_to_win"])
 	graph = BoardGraph.load_file("res://board/boards/%s.json" % board_id)
 	if graph == null:
 		Log.error("board", "Board '%s' missing" % board_id)
@@ -312,7 +315,7 @@ func _estimate_pause(events: Array) -> float:
 			"roll": t += 0.7
 			"move": t += hop * (e["path"] as Array).size()
 			"coins", "item", "item_used": t += 0.55
-			"goal", "teleport": t += 1.1
+			"toy", "teleport": t += 1.1
 			"turn": t += 0.35
 			"minigame": t += 2.4
 			"finished": t += 1.0

@@ -376,12 +376,12 @@ func _draw() -> void:
 			draw_polyline(PackedVector2Array([Vector2(x + skew, y), Vector2(x + w, y), Vector2(x + w - skew, y + h), Vector2(x, y + h), Vector2(x + skew, y)]), Palette.hud_colour("danger") if targeted else accent, 3.0)
 		_text(Vector2(x + 48, y + 29), p.display_name.to_upper(), 20, paper if p != lp else accent)
 		_text(Vector2(x + 220, y + 29), "%d" % p.coins, 20, Palette.player_colour(3))
-		_text(Vector2(x + 268, y + 29), "◆ %d" % p.bombas, 20, Palette.hud_colour("score"))
-		# Steps to the goal, so everyone can plan; the leader's distance is what matters.
+		_text(Vector2(x + 268, y + 29), "● %d" % p.toys, 20, Palette.hud_colour("score"))
+		# Steps to the vending machine, so everyone can plan; the leader's distance is what matters.
 		if st.goal != "" and director.graph != null:
 			var d := director.graph.distance(p.space, st.goal)
 			if d >= 0:
-				_text(Vector2(x + 325, y + 29), "%d TO ◆" % d, 14, Color(paper, 0.85))
+				_text(Vector2(x + 325, y + 29), "%d TO ●" % d, 14, Color(paper, 0.85))
 		var chips := ""
 		for it in p.items:
 			chips += str(it).substr(0, 2).to_upper() + " "
@@ -398,7 +398,8 @@ func _draw() -> void:
 		y += h + 8.0
 	_draw_name_tags(st)
 	_text(Vector2(size.x - 250, 52), "ROUND %d / %d" % [mini(st.round, st.rounds), st.rounds], 26, paper)
-	_text(Vector2(size.x - 250, 84), "GOAL COSTS %d" % int(director.cfg.get("goal_cost", 10)), 18, Palette.hud_colour("score"))
+	var to_win := int(director.cfg.get("toys_to_win", 4))
+	_text(Vector2(size.x - 250, 84), "TOY COSTS %d%s" % [int(director.cfg.get("toy_price", 10)), ("  ·  FIRST TO %d" % to_win) if to_win > 0 else ""], 18, Palette.hud_colour("score"))
 	_text(Vector2(size.x - 250, 112), "HOLD TAB · MAP", 14, Color(paper, 0.7))
 	_text(Vector2(size.x - 250, 134), "E · PING    F1-F4 · EMOTE", 14, Color(paper, 0.7))
 	if _dice_t > 0.0:
