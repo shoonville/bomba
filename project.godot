@@ -1,5 +1,10 @@
 ; Engine configuration file.
-; BOMBA — Godot 4.7-stable. See DESIGN.md, NETPLAN.md, STYLE.md.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
 
 config_version=5
 
@@ -10,21 +15,19 @@ config/description="A 2-6 player party game that keeps dropping everyone into fi
 config/version="0.1.0"
 run/main_scene="res://core/boot.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
-run/max_fps=0
-run/low_processor_mode=false
 boot_splash/show_image=false
 
 [autoload]
 
-NetworkTime="*res://addons/netfox/network-time.gd"
-NetworkTimeSynchronizer="*res://addons/netfox/network-time-synchronizer.gd"
-NetworkRollback="*res://addons/netfox/rollback/network-rollback.gd"
-NetworkEvents="*res://addons/netfox/network-events.gd"
-NetworkPerformance="*res://addons/netfox/network-performance.gd"
-Noray="*res://addons/netfox.noray/noray.gd"
-PacketHandshake="*res://addons/netfox.noray/packet-handshake.gd"
-WindowTiler="*res://addons/netfox.extras/window-tiler.gd"
-NetworkSimulator="*res://addons/netfox.extras/network-simulator.gd"
+NetworkTime="*uid://dph65inmhfr21"
+NetworkTimeSynchronizer="*uid://dqasabw1q3r1p"
+NetworkRollback="*uid://cib5t4a0jd3lw"
+NetworkEvents="*uid://cyatjq1a164ut"
+NetworkPerformance="*uid://cwu37cwidck0v"
+Noray="*uid://3gmc53nff5gv"
+PacketHandshake="*uid://cdec2bhqhrwyk"
+WindowTiler="*uid://cm0xh8b4n7pfn"
+NetworkSimulator="*uid://ds8mq21a1cjks"
 Log="*res://core/log.gd"
 Tuning="*res://core/tuning.gd"
 Settings="*res://core/settings.gd"
@@ -37,14 +40,12 @@ Audio="*res://audio/audio.gd"
 
 [debug]
 
-gdscript/warnings/untyped_declaration=0
 gdscript/warnings/unused_parameter=0
 
 [display]
 
 window/size/viewport_width=1600
 window/size/viewport_height=900
-window/size/resizable=true
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/vsync/vsync_mode=0
@@ -55,8 +56,8 @@ enabled=PackedStringArray("res://addons/netfox.internals/plugin.cfg", "res://add
 
 [filesystem]
 
-import/blender/enabled=false
 import/fbx2gltf/enabled=false
+import/blender/enabled=false
 
 [input]
 
@@ -135,34 +136,39 @@ tuning_reload={
 "events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":4194336,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)
 ]
 }
-
 ping={
 "deadzone": 0.2,
-"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":69,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null), Object(InputEventMouseButton,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"button_mask":0,"position":Vector2(0, 0),"global_position":Vector2(0, 0),"factor":1.0,"button_index":3,"canceled":false,"pressed":false,"double_click":false,"script":null)]
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":69,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)
+, Object(InputEventMouseButton,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"button_mask":0,"position":Vector2(0, 0),"global_position":Vector2(0, 0),"factor":1.0,"button_index":3,"canceled":false,"pressed":false,"double_click":false,"script":null)
+]
 }
 emote_1={
 "deadzone": 0.2,
-"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":4194332,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)]
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":4194332,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)
+]
 }
 emote_2={
 "deadzone": 0.2,
-"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":4194333,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)]
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":4194333,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)
+]
 }
 emote_3={
 "deadzone": 0.2,
-"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":4194334,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)]
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":4194334,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)
+]
 }
 emote_4={
 "deadzone": 0.2,
-"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":4194335,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)]
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":4194335,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)
+]
 }
 
 [layer_names]
 
-3d_physics/layer_1="world"
-3d_physics/layer_2="players"
 3d_render/layer_1="world"
 3d_render/layer_2="viewmodel"
+3d_physics/layer_1="world"
+3d_physics/layer_2="players"
 
 [netfox]
 
@@ -184,19 +190,16 @@ autoconnect/enabled=false
 
 [physics]
 
-common/physics_ticks_per_second=60
 3d/physics_engine="Jolt Physics"
 3d/default_gravity=12.5
 
 [rendering]
 
-renderer/rendering_method="forward_plus"
-scaling_3d/scale=1.5
-anti_aliasing/quality/msaa_3d=2
-anti_aliasing/quality/screen_space_aa=0
 lights_and_shadows/directional_shadow/size=8192
-lights_and_shadows/directional_shadow/16_bits=false
 lights_and_shadows/directional_shadow/soft_shadow_filter_quality=0
+lights_and_shadows/directional_shadow/16_bits=false
 lights_and_shadows/positional_shadow/soft_shadow_filter_quality=0
-environment/defaults/default_clear_color=Color(0.72, 0.62, 0.48, 1)
 textures/default_filters/anisotropic_filtering_level=0
+anti_aliasing/quality/msaa_3d=2
+scaling_3d/scale=1.5
+environment/defaults/default_clear_color=Color(0.72, 0.62, 0.48, 1)

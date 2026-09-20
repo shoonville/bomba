@@ -1,0 +1,10 @@
+# Godot writes LF and the tools are sh scripts run from Git Bash on Windows: every text file
+# stays LF in the working tree on every machine, whatever core.autocrlf says.
+* text=auto eol=lf
+*.png binary
+*.webp binary
+*.jpg binary
+*.jpeg binary
+*.ttf binary
+*.wav binary
+*.ogg binary

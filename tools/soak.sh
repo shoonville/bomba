@@ -9,7 +9,7 @@ PROFILE="${1:-bad}"
 SECONDS_="${2:-30}"
 CLIENTS="${3:-1}"
 BOTS="${4:-1}"
-PORT="${PORT:-27015}"
+PORT="${PORT:-27077}"   # its own port: a running game on 27015 must not fail a soak
 SEED="${SEED:-7}"
 OUT="${OUT:-reports}"
 LABEL="${LABEL:-soak_$PROFILE}"
@@ -32,12 +32,12 @@ while [ "$i" -le "$CLIENTS" ]; do
 done
 wait $HOST_PID
 for p in $PIDS; do wait "$p" || true; done
-python3 tools/soak_report.py "$OUT" "$LABEL"
+"$GODOT" --headless --path . --script tools/report.gd -- soak_report "$OUT" "$LABEL" 2>&1 | grep -E "^(==|host:|  |client #)"
 if [ "$LOG" -le 1 ]; then
   i=1
   while [ "$i" -le "$CLIENTS" ]; do
-    python3 tools/shot_diff.py "$OUT/${LABEL}_host.log" "$OUT/${LABEL}_client$i.log" | head -1
-    python3 tools/remote_diff.py "$OUT/${LABEL}_host_traj.csv" "$OUT/${LABEL}_client${i}_remote.csv" 2>/dev/null | grep -E "^peer"
+    "$GODOT" --headless --path . --script tools/report.gd -- shot_diff "$OUT/${LABEL}_host.log" "$OUT/${LABEL}_client$i.log" 2>/dev/null | grep -E "^peer" | head -1
+    "$GODOT" --headless --path . --script tools/report.gd -- remote_diff "$OUT/${LABEL}_host_traj.csv" "$OUT/${LABEL}_client${i}_remote.csv" 2>/dev/null | grep -E "^peer"
     i=$((i + 1))
   done
 fi
