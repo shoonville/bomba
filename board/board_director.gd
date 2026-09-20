@@ -46,6 +46,8 @@ func start(players_data: Array, seed_value: int, p_board_id: String) -> void:
 		cfg["rounds"] = int(Game.args["board_rounds"])
 	if Game.args.has("toys_to_win"):
 		cfg["toys_to_win"] = int(Game.args["toys_to_win"])
+	if Game.args.has("toy_price"):
+		cfg["toy_price"] = int(Game.args["toy_price"])
 	graph = BoardGraph.load_file("res://board/boards/%s.json" % board_id)
 	if graph == null:
 		Log.error("board", "Board '%s' missing" % board_id)
@@ -68,6 +70,11 @@ func start(players_data: Array, seed_value: int, p_board_id: String) -> void:
 			for p in state.players:
 				if p.is_bot:
 					p.items.append(str(Game.args["give_bots_item"]))
+		if Game.args.has("machine_at"):
+			# Harness: pin the first machine spot so a purchase can be framed from a fresh match.
+			for c in graph.goal_candidates():
+				if str(c) == str(Game.args["machine_at"]):
+					state.goal = str(c)
 		_broadcast(events)
 	else:
 		state = null
@@ -316,7 +323,8 @@ func _estimate_pause(events: Array) -> float:
 			"roll": t += 0.7
 			"move": t += hop * (e["path"] as Array).size()
 			"coins", "item", "item_used": t += 0.55
-			"toy", "teleport": t += 1.1
+			"toy": t += 1.4
+			"teleport": t += 1.1
 			"turn": t += 0.35
 			"minigame": t += 2.4
 			"finished": t += 1.0

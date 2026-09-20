@@ -158,7 +158,7 @@ static func _enter(state: BoardState, graph: BoardGraph, cfg: Dictionary, p: Boa
 		for q in state.players:
 			occupied.append(q.space)
 		state.goal = graph.machine_spot(occupied, rng(state), space_id)
-		events.append({"kind": "toy", "peer": p.peer_id, "toys": p.toys, "coins": p.coins, "new_spot": state.goal})
+		events.append({"kind": "toy", "peer": p.peer_id, "toys": p.toys, "coins": p.coins, "spot": space_id, "new_spot": state.goal})
 		var to_win := int(cfg.get("toys_to_win", 4))
 		if to_win > 0 and p.toys >= to_win:
 			_finish(state, events)

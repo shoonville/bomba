@@ -35,6 +35,7 @@ var _cam_yaw_target: float = 0.0
 var _cam_fast: bool = false        # tighter follow while a pawn is moving
 var _queue: Array = []
 var _playing: bool = false
+var _goal_spot: String = ""     # the spot the ring and the lit machine show
 var _hop: float = 0.32
 var _fork_focus: Array = []
 
@@ -368,6 +369,15 @@ func show_emote(peer_id: int, text: String) -> void:
 	root.add_child(label)
 	root.scale = Vector3.ONE * 0.2
 	_socials.append({"node": root, "t": 0.0, "life": 2.4, "base_y": 2.7, "kind": "emote"})
+
+
+## The ring and the lit machine move to `spot` together.
+func _show_goal(spot: String) -> void:
+	_goal_spot = spot
+	if goal_ring != null:
+		_place_goal(director.space_position(spot))
+	if _dressing != null:
+		_dressing.set_active_machine(spot)
 
 
 func _place_goal(pos: Vector3) -> void:
@@ -1033,10 +1043,11 @@ func _on_state(state: BoardState) -> void:
 	# Existing pawns are moved by the events that follow this state. Snapping them here showed
 	# every pawn at its destination for a frame before the hop (Sean's note 2); the queue's
 	# end-of-events snap reconciles instead.
-	if goal_ring != null and state.goal != "" and (first or not _playing):
-		_place_goal(director.space_position(state.goal))
-		if _dressing != null:
-			_dressing.set_active_machine(state.goal)
+	# The goal moves with the toy event that follows this state (the state lands first, and the
+	# machine that sold must stay lit until the capsule has landed); the first state and the end of
+	# a playback place it from the state.
+	if goal_ring != null and state.goal != "" and first:
+		_show_goal(state.goal)
 	var ap := state.active_player()
 	if ap != null and first:
 		_focus(director.space_position(ap.space))
@@ -1066,6 +1077,9 @@ func _play_next() -> void:
 	if _queue.is_empty():
 		_playing = false
 		_snap_all()
+		# A goal the events did not move (a reconnect, a state without a toy) is placed now.
+		if director.state != null and director.state.goal != "" and director.state.goal != _goal_spot:
+			_show_goal(director.state.goal)
 		return
 	_playing = true
 	var e: Dictionary = _queue.pop_front()
@@ -1145,12 +1159,13 @@ func _play_next() -> void:
 			_float_label(int(e["peer"]), "TOY!", Palette.hud_colour("score"))
 			Audio.play("kill", 0.0)
 			if _dressing != null and pawn != null:
-				_dressing.vend(pawn.global_position, col)
-			if goal_ring != null:
-				_place_goal(director.space_position(str(e["new_spot"])))
-			if _dressing != null:
-				_dressing.set_active_machine(str(e["new_spot"]))
-			wait = 1.0
+				_dressing.vend(str(e.get("spot", "")), pawn.global_position, col)
+			# The machine that sold stays lit until the capsule has landed, then the goal moves.
+			var new_spot := str(e["new_spot"])
+			get_tree().create_timer(1.25).timeout.connect(func() -> void:
+				if is_inside_tree():
+					_show_goal(new_spot))
+			wait = 1.3
 		"shield":
 			var pawn: BoardPawn = pawns.get(int(e["peer"]), null)
 			if pawn != null:

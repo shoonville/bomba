@@ -550,4 +550,5 @@ measured at 1920×1080 unless noted, on the 5090, and extrapolated.
   TURN TIME, ROUND CAP, TOY PRICE. 76 tests (two new), a headless first-to-one match ended in
   round 3. Props, signs and landmarks keep out of the bridge corridors. Frames:
   `board_machine.png` (the live pad), `board_overview.png`, `board_map.png`, `board_turn.png`,
-  `lobby.png`. His verdict pending.
+  `lobby.png`, `board_toy.png` (a purchase: the capsule mid-arc, the machine lit until it lands).
+  His verdict pending.

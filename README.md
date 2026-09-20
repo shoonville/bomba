@@ -49,7 +49,8 @@ skips the board. The board is BOMBA BAY, 65 spaces with four branches, generated
 machine: five machine spots ring the rim (`tools/mark_spots.gd` flags them), each with a bridge to
 a pad; pass or land on the live one with 10 coins and a toy pops out, then the machine moves to the
 spot farthest on average from everyone. First to 4 toys wins on the spot (the host sets FIRST TO,
-TURN TIME, ROUND CAP and TOY PRICE in the lobby's MATCH SETTINGS; `--toys_to_win=N` in the
+TURN TIME, ROUND CAP and TOY PRICE in the lobby's MATCH SETTINGS; `--toys_to_win=N`, `--toy_price=N`
+and `--machine_at=ID` in the
 harness). Spots: coin (+3),
 item (a random item), damage (−3 coins, a spiked ball), event (teleport, "?"), and one safe
 spot (cyan dome) that hands out a SHIELD which eats the next bomb or damage spot.

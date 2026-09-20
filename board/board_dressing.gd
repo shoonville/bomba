@@ -624,12 +624,13 @@ func set_active_machine(space_id: String) -> void:
 		(mach["beam"] as Node3D).visible = on
 
 
-## A purchase: the active machine's knob turns and a capsule in the buyer's colour pops out of
-## the tray and arcs to the pawn.
-func vend(to: Vector3, colour: Color) -> void:
-	if not _machines.has(_active_machine):
+## A purchase at the machine on `spot` (the one lit before the state moved on): its knob turns and
+## a capsule in the buyer's colour pops out of the tray and arcs to the pawn.
+func vend(spot: String, to: Vector3, colour: Color) -> void:
+	var key := spot if _machines.has(spot) else _active_machine
+	if not _machines.has(key):
 		return
-	var mach: Dictionary = _machines[_active_machine]
+	var mach: Dictionary = _machines[key]
 	var knob: Node3D = mach["knob"]
 	var tw := create_tween()
 	tw.tween_property(knob, "rotation:z", knob.rotation.z + PI, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
