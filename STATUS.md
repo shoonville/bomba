@@ -522,3 +522,11 @@ measured at 1920×1080 unless noted, on the 5090, and extrapolated.
 - **1080p frames checked** (menu, board turn, sniper hip, AR ADS): ink lines and hard shadows
   crisp, HUD fits 16:9. Seen: a pawn's projected name tag can print over the player rows at
   the top-left of the board HUD; and the arena is still the gray-box, the largest look item left.
+- **Arena dressing** (`fps/match/map_dressing.gd`, decor only, play untouched): a skyline of
+  two block bands with lit windows, a crane and a mast outside the walls; windows, doors, a
+  cornice, pipes and two billboards on the walls; windows and roof units on the buildings,
+  straps on the crates, a beacon on the tower, a plaza, sidewalks and grates on the floor,
+  barrels and a dumpster at the edges. The pit gets the same city in its dusk tones. Cost at
+  1080p: 409 → 744 objects, GPU 0.64 → 0.66 ms, build 1 → 9 ms. Frames retaken:
+  `arena_hip_sniper.png`, `arena_hip_ar.png`, `arena_spectator_sky.png`, `last_stand_pit.png`.
+  His verdict on the look is pending.

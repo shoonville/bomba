@@ -25,6 +25,10 @@ static func build(parent: Node3D, layout: Dictionary, map_id: String) -> void:
 		mi.position = dcr["pos"]
 		if dcr.has("yaw"):
 			mi.rotation.y = float(dcr["yaw"])
+		if dcr.has("roll"):
+			mi.rotation.z = float(dcr["roll"])   # a cylinder rolled onto its side, its length along X (a pipe)
+		if not bool(dcr.get("shadow", true)):
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF   # skyline, thin façade details
 		mi.material_override = materials[tone]
 		mi.layers = 1
 		parent.add_child(mi)

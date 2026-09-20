@@ -88,6 +88,7 @@ func _on_setup() -> void:
 
 	var t0 := Time.get_ticks_usec()
 	layout = _layout()
+	MapDressing.dress(layout, _palette_map())   # decor only: boxes, spawns and the bot graph untouched
 	MapBuilder.build(map_root, layout, _palette_map())
 	var t_map := Time.get_ticks_usec()
 	_build_environment()
