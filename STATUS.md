@@ -532,7 +532,8 @@ measured at 1920×1080 unless noted, on the 5090, and extrapolated.
   His verdict on the look is pending.
 - **Board detail pass** (`board/board_dressing.gd`; Sean: "add a bunch of detail... make it look
   great"): tile insets, post collars, plank stripes and cables, 11 lamps, a pennant start line;
-  12 hatches, 10 rock clusters, pebbles, dust, cracks, rim rock; two annex platforms with bridges
+  9 small props beside the path (cones, bins, kiosks, a spool, crates); 12 hatches, 10 rock
+  clusters, pebbles, dust, cracks, rim rock; two annex platforms with bridges
   (the base: habitat domes, corridors, greenhouse, cargo, oxygen; the works: fuel tanks, solar
   array, telescope, antenna); on the slab solar arrays, cargo, a comms mast, antennas, a drill
   rig, landing lights, three signs; alive: a patrol drone, a driving buggy with tracks, blinking

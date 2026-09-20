@@ -69,6 +69,7 @@ func build(view: Node3D, g: BoardGraph, centre: Vector3, rx: float, rz: float, t
 	for sp in landmarks:
 		_occupied.append(Vector3(sp.x, sp.y, 4.6))
 	_path_details()
+	_path_props()
 	_build_annexes()
 	_plan_road()
 	_ground_details()
@@ -344,6 +345,61 @@ func _path_details() -> void:
 				_box(lamp, Vector3(0.52, 0.08, 0.52), Vector3(0, 3.36, 0), "counter_dark")
 				_box(lamp, Vector3(0.52, 0.06, 0.52), Vector3(0, 2.97, 0), "counter_dark")
 				_count("lamp")
+
+
+## Small props beside the walkway every fourth space, cycling through five kinds, alternating
+## the outer and inner side, so the close camera always has something next to the path.
+func _path_props() -> void:
+	var g := _graph
+	var ids := g.ids()
+	for i in ids.size():
+		if i % 4 != 0:
+			continue
+		var s := g.get_space(ids[i])
+		if s.next.is_empty():
+			continue
+		var p := s.position
+		var q := g.get_space(s.next[0]).position
+		var dir := Vector2(q.x - p.x, q.z - p.z).normalized()
+		var side := Vector2(-dir.y, dir.x)
+		var out := Vector2(p.x - _centre.x, p.z - _centre.z).normalized()
+		if side.dot(out) < 0.0:
+			side = -side
+		if (i / 4) % 2 == 1:
+			side = -side
+		var pp := Vector2(p.x, p.z) + side * 2.4
+		if not (_tile_clear(pp.x, pp.y, 1.9) and _prop_clear(pp.x, pp.y, 0.7) and _inside(pp.x, pp.y, 0.96)):
+			continue
+		_occupied.append(Vector3(pp.x, pp.y, 0.7))
+		var n := _node(Vector3(pp.x, _top, pp.y), _rng.randf_range(0.0, TAU))
+		match (i / 4) % 5:
+			0:   # two traffic cones with white bands
+				for cx: float in [-0.35, 0.35]:
+					_cyl(n, 0.03, 0.22, 0.6, Vector3(cx, 0.3, 0), "accent_lit", Vector3.ZERO, 8)
+					_box(n, Vector3(0.5, 0.04, 0.5), Vector3(cx, 0.02, 0), "ink")
+					_torus(n, 0.1, 0.16, Vector3(cx, 0.36, 0), "paper", Vector3.ZERO, Vector3(1, 0.4, 1))
+				_count("cones")
+			1:   # a bin with a lid and a glowing slot
+				_cyl(n, 0.3, 0.28, 0.8, Vector3(0, 0.4, 0), "counter_dark", Vector3.ZERO, 10)
+				_cyl(n, 0.34, 0.34, 0.08, Vector3(0, 0.84, 0), "metal", Vector3.ZERO, 10)
+				_box(n, Vector3(0.3, 0.06, 0.04), Vector3(0, 0.66, 0.29), "glow_cyan")
+				_count("bin")
+			2:   # an info kiosk: a post, a screen, a little dish
+				_cyl(n, 0.06, 0.08, 1.7, Vector3(0, 0.85, 0), "counter_dark")
+				_box(n, Vector3(0.7, 0.5, 0.08), Vector3(0, 1.5, 0), "ink")
+				_box(n, Vector3(0.6, 0.4, 0.04), Vector3(0, 1.5, 0.04), "glass")
+				_cyl(n, 0.2, 0.05, 0.1, Vector3(0.1, 1.95, 0), "paper", Vector3(-0.6, 0, 0), 8)
+				_count("kiosk")
+			3:   # a cable spool on its side
+				_cyl(n, 0.5, 0.5, 0.08, Vector3(-0.3, 0.5, 0), "paper", Vector3(0, 0, PI * 0.5), 12)
+				_cyl(n, 0.5, 0.5, 0.08, Vector3(0.3, 0.5, 0), "paper", Vector3(0, 0, PI * 0.5), 12)
+				_cyl(n, 0.3, 0.3, 0.56, Vector3(0, 0.5, 0), "counter_dark", Vector3(0, 0, PI * 0.5), 10)
+				_box(n, Vector3(0.9, 0.06, 0.06), Vector3(0, 0.45, 0.3), "ink")
+				_count("spool")
+			_:   # a lone crate with a strap
+				_box(n, Vector3(0.9, 0.9, 0.9), Vector3(0, 0.45, 0), "field_dark" if i % 8 == 0 else "accent_lit")
+				_box(n, Vector3(0.94, 0.14, 0.94), Vector3(0, 0.45, 0), "counter_dark")
+				_count("crate")
 
 
 # --- on the ground ------------------------------------------------------------------------------------
