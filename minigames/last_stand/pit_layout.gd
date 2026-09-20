@@ -72,4 +72,7 @@ static func build() -> Dictionary:
 	GrayboxLayout.poster(decor, Vector3(-W / 2, 3.0, -3), Vector3(1, 0, 0), 2.6, 3.2, "accent", "poster_b")
 	for lp in [Vector3(-12.2, 0, 9.5), Vector3(12.2, 0, -9.5)]:
 		GrayboxLayout.lamp(decor, lp)
-	return {"boxes": boxes, "spawns": spawns, "waypoints": wp, "edges": edges, "size": Vector2(W, D), "decor": decor}
+	# The showcase camera (--spectate) stands inside the SW corner over the pit; the arena's
+	# default vantage would be 13 m outside these walls.
+	var showcase := {"pos": Vector3(-10.0, 7.5, 9.0), "look": Vector3(2.0, 1.5, -3.0)}
+	return {"boxes": boxes, "spawns": spawns, "waypoints": wp, "edges": edges, "size": Vector2(W, D), "decor": decor, "showcase": showcase}

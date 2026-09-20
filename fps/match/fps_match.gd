@@ -304,8 +304,11 @@ func _attach_camera() -> void:
 		cam.name = "SpectatorCamera"
 		cam.fov = 55.0
 		add_child(cam)
-		cam.global_position = Vector3(-14.0, 11.0, 24.0)
-		cam.look_at(Vector3(1.0, 2.5, -2.0), Vector3.UP)
+		# A layout may carry its own vantage ("showcase": {pos, look}); the default suits the
+		# 48 × 40 m arena and sits outside a smaller map's walls.
+		var show: Dictionary = layout.get("showcase", {})
+		cam.global_position = show.get("pos", Vector3(-14.0, 11.0, 24.0))
+		cam.look_at(show.get("look", Vector3(1.0, 2.5, -2.0)), Vector3.UP)
 		cam.current = true
 		var post := PostStack.new()
 		cam.add_child(post)

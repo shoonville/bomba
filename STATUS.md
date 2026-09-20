@@ -485,8 +485,8 @@ run on it.
 2. Windows export for friends: install the 4.7.2 export templates (Editor → Manage Export
    Templates; `%APPDATA%\Godot\export_templates` is empty) and add a Windows Desktop preset;
    nothing platform-specific has been written.
-3. Then the older list: a third-person or objective minigame, the real map pass and proper
-   viewmodels, the display face.
+3. Then: a third-person or objective minigame, proper viewmodels, the display face (the map
+   pass is in as dressing, pending his verdict).
 
 ## 2026-09-20 — session 6: for the friends' machines
 
