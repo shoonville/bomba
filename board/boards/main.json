@@ -82,7 +82,7 @@
       "type": "blank"
     },
     {
-      "goal": true,
+      "goal": false,
       "id": "L6",
       "next": [
         "L7"
@@ -122,7 +122,7 @@
       "type": "blank"
     },
     {
-      "goal": false,
+      "goal": true,
       "id": "L9",
       "next": [
         "L10"
@@ -266,7 +266,7 @@
       "type": "item"
     },
     {
-      "goal": false,
+      "goal": true,
       "id": "L20",
       "next": [
         "L21"
@@ -384,7 +384,7 @@
       "type": "blank"
     },
     {
-      "goal": true,
+      "goal": false,
       "id": "L29",
       "next": [
         "L30"
@@ -410,7 +410,7 @@
       "type": "lose"
     },
     {
-      "goal": false,
+      "goal": true,
       "id": "L31",
       "next": [
         "L32"
@@ -657,7 +657,7 @@
       "type": "blank"
     },
     {
-      "goal": true,
+      "goal": false,
       "id": "B5",
       "next": [
         "L14"

@@ -72,7 +72,8 @@ func start(players_data: Array, seed_value: int, p_board_id: String) -> void:
 	else:
 		state = null
 	_show_board()
-	Log.info("board", "Board match on '%s' with %d players (server=%s)" % [board_id, players_data.size(), is_server()])
+	Log.info("board", "Board match on '%s' with %d players (server=%s), machine at %s, first to %d toys at %d coins" % [
+		board_id, players_data.size(), is_server(), state.goal if state != null else "?", int(cfg.get("toys_to_win", 0)), int(cfg.get("toy_price", 0))])
 
 
 func _show_board() -> void:

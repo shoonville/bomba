@@ -1,14 +1,16 @@
 extends SceneTree
 ## Marks the vending machine spots on a board file (the spaces flagged "goal"): in each of K
-## equal sectors around the board's centre, the blank, non-fork space standing farthest out,
-## preferring one with a clear corridor outward for its bridge. Rewrites the file in place.
-##   GODOT --headless --path . --script tools/mark_spots.gd -- board/boards/main.json 5
+## equal sectors around the board's centre, the blank, non-fork space standing farthest out
+## whose corridor outward to the rim is clear of every other space (the bridge must not cross
+## the walkway); a sector with no such space gets none. Rewrites the file in place.
+##   GODOT --headless --path . --script tools/mark_spots.gd -- board/boards/main.json 6
+## BOMBA BAY: six sectors give its five spots (L2, L9, L20, L23, L31); one sector has no clear space.
 
 
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	var path: String = args[0] if args.size() > 0 else "board/boards/main.json"
-	var k: int = int(args[1]) if args.size() > 1 else 5
+	var k: int = int(args[1]) if args.size() > 1 else 6
 	if not path.is_absolute_path() and not path.begins_with("res://"):
 		path = "res://" + path
 	var d: Dictionary = TuningLoader.load_file(path)
@@ -46,17 +48,21 @@ func _initialize() -> void:
 				continue
 			var out := (v - centre).normalized()
 			var radial := Vector2((v.x - centre.x) / rx, (v.y - centre.y) / rz).length()
-			# Corridor outward: nothing within 1.6 m of the line from the space to the rim.
+			# Corridor outward: nothing within 2.4 m of the line from the space to the rim, or the
+			# bridge would cross another space.
+			var half := 2.4
 			var clear := true
 			var rim_d := (Vector2(cos(a) * rx, sin(a) * rz)).length() - (v - centre).length()
 			var t := 1.6
 			while t < rim_d + 1.0:
 				var q := v + out * t
 				for other in pos:
-					if other != sid and (pos[other] as Vector2).distance_to(q) < 1.6:
+					if other != sid and (pos[other] as Vector2).distance_to(q) < half:
 						clear = false
 				t += 1.0
-			var score := radial + (1.0 if clear else 0.0)
+			if not clear:
+				continue
+			var score := radial
 			if score > best_score:
 				best_score = score
 				best = sid

@@ -531,6 +531,12 @@ func _machine_pads() -> void:
 		var to := pad + Vector3(0, deck_y - _top, 0) - o3 * 3.2
 		var mid := (from + to) * 0.5
 		var length := (to - from).length()
+		# The bridge's corridor is off limits to props, signs and landmarks (a crate and the welcome
+		# sign were standing in its rails): a chain of 1.4 m circles from the space to the pad.
+		var corridor := maxi(2, int(length) + 2)
+		for k in corridor:
+			var c := (from - o3 * 0.6).lerp(to, float(k) / float(corridor - 1))
+			_occupied.append(Vector3(c.x, c.z, 1.4))
 		_box(self, Vector3(1.7, 0.16, length), mid, "metal", Vector3(0, yaw, 0))
 		var plates := maxi(1, int(length / 1.0))
 		for k in plates:
@@ -579,7 +585,19 @@ func _machine_pads() -> void:
 		_box(m, Vector3(0.6, 0.22, 0.1), Vector3(0, 0.5, -0.56), "ink")
 		var globe := _node(m.position + Vector3(0, 2.62, 0), yaw)
 		_cyl(m, 0.5, 0.55, 0.16, Vector3(0, 2.08, 0), "counter_dark", Vector3.ZERO, 12)
-		_sphere(globe, 0.62, Vector3.ZERO, "glass", Vector3.ONE, false, 14)
+		# The globe is real glass (the one translucent material on the board, like the sniper's
+		# lens): the capsules inside are the whole point of a capsule machine.
+		var glass := _sphere(globe, 0.62, Vector3.ZERO, "glass", Vector3.ONE, false, 16)
+		var gm := StandardMaterial3D.new()
+		gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		var tint := Palette.hud_colour("meter")
+		gm.albedo_color = Color(tint.r, tint.g, tint.b, 0.28)
+		gm.metallic = 0.6
+		gm.roughness = 0.15
+		gm.cull_mode = BaseMaterial3D.CULL_BACK
+		gm.render_priority = 4
+		glass.material_override = gm
+		glass.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		for c in 7:
 			var ca := c * 2.4
 			var cr := 0.28 + 0.1 * (c % 3)
@@ -643,8 +661,9 @@ func _build_annexes() -> void:
 		var d := 1e9
 		for p in _tile_positions:
 			d = minf(d, Vector2(p.x - rim.x, p.z - rim.y).length())
+		# An annex (8 m) at rim + 11 m spans about 13° of arc, a machine pad about 7°: keep 22° clear.
 		for ma in _machine_angles:
-			if absf(wrapf(a - float(ma), -PI, PI)) < deg_to_rad(38.0):
+			if absf(wrapf(a - float(ma), -PI, PI)) < deg_to_rad(22.0):
 				d = -1.0
 		clearance.append(d)
 	var best_a := 0.0
@@ -653,12 +672,14 @@ func _build_annexes() -> void:
 		if clearance[i] > best_d:
 			best_d = clearance[i]
 			best_a = i * TAU / 36.0
+	if best_d < 0.0:
+		return   # every angle is a machine's: no annexes on this board
 	var second_a := best_a + PI
 	var second_d := -1.0
 	for i in 36:
 		var a := i * TAU / 36.0
 		var apart := absf(wrapf(a - best_a, -PI, PI))
-		if apart >= deg_to_rad(110.0) and clearance[i] > second_d:
+		if apart >= deg_to_rad(90.0) and clearance[i] > second_d:
 			second_d = clearance[i]
 			second_a = a
 	var base := _annex_platform(best_a, 8.0)
@@ -669,6 +690,8 @@ func _build_annexes() -> void:
 	_habitat(_annex, best_a + PI)
 	_greenhouse(_annex + Vector3(side.x, 0, side.y) * 4.6 + Vector3(dir.x, 0, dir.y) * 1.0, best_a + PI * 0.5)
 	_cargo(_annex - Vector3(side.x, 0, side.y) * 5.2 + Vector3(dir.x, 0, dir.y) * 2.0, best_a, 4)
+	if second_d < 0.0:
+		return   # room for one annex only
 	var works := _annex_platform(second_a, 7.5)
 	var wc: Vector3 = works["centre"]
 	var wd: Vector2 = works["dir"]
