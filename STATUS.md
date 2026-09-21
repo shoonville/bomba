@@ -540,15 +540,15 @@ measured at 1920×1080 unless noted, on the 5090, and extrapolated.
   lights, a shooting star, a space station, a freighter. Built in 25 ms; board GPU at 1080p
   0.63 ms (unchanged), render CPU 0.41 → 0.84 ms. Frames retaken: `board_turn.png`,
   `board_overview.png`, `board_map.png`. His verdict pending.
-- **The vending machine** (Sean's new goal): five machine spots at the rim (`tools/mark_spots.gd`
-  flags them in the board file: L2, L9, L20, L23, L31, each with a corridor to the rim clear of
-  every other space), each with a bridge to a raised pad, a capsule machine and a dome hut; the
-  live one is lit (L31 at the start). Pass or land on its space with 10 coins and a toy pops out
-  and flies to you; the machine moves to the spot farthest, on average, from everyone (never
-  within 3 hops of anyone). First to 4 toys ends the match at once; the round cap (10) ends it
-  otherwise. Bombas are gone from state, HUD, results. Lobby MATCH SETTINGS (host): FIRST TO,
-  TURN TIME, ROUND CAP, TOY PRICE. 76 tests (two new), a headless first-to-one match ended in
-  round 3. Props, signs and landmarks keep out of the bridge corridors. Frames:
-  `board_machine.png` (the live pad), `board_overview.png`, `board_map.png`, `board_turn.png`,
-  `lobby.png`, `board_toy.png` (a purchase: the capsule mid-arc, the machine lit until it lands).
-  His verdict pending.
+- **The vending machine** (Sean's new goal): the two annexes carry it (his correction: "just those
+  original two spots that you made originally", not five new pads). `tools/mark_spots.gd` flags the
+  walkway space nearest each annex (L20 for the habitat annex, L9 for the works), a level plated
+  bridge runs from the space to the annex, and the machine stands on the annex facing it; the live
+  one is lit (L20 at the start, the farther from L0). Pass or land on its space with 10 coins and a
+  toy pops out and flies to you; the machine moves to the other annex (the rule still picks the
+  candidate farthest on average from everyone, never the one just used). First to 4 toys ends the
+  match at once; the round cap (10) ends it otherwise. Bombas are gone from state, HUD, results.
+  Lobby MATCH SETTINGS (host): FIRST TO, TURN TIME, ROUND CAP, TOY PRICE. 76 tests, a headless
+  first-to-one match ended in round 3. Props, signs and landmarks keep out of the bridge corridors.
+  Frames: `board_machine.png` (the live annex), `board_toy.png` (a purchase), `board_overview.png`,
+  `board_map.png`, `board_turn.png`, `lobby.png`. His verdict pending.

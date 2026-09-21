@@ -7,8 +7,10 @@ extends Node3D
 ##   On the path: an inset on every tile, collars on the posts, a stripe on every plank, cables
 ##     slung under the planks, a lamp beside every fifth space, a pennant banner over the start.
 ##   On the ground: hatches, rock clusters with pebbles, dust patches, cracks, rim rock.
-##   Around: an annex platform off the rim carrying the habitat domes with tube corridors and
-##     the greenhouse; on the slab a solar farm, fuel tanks, cargo stacks, a comms mast,
+##   Around: two annexes off the rim, the machine spots, each with a bridge from its space and a
+##     vending machine facing it: the habitat domes with tube corridors and the greenhouse on
+##     one, fuel tanks, a solar array and the telescope dome on the other; on the slab a solar
+##     farm, cargo stacks, a comms mast,
 ##     antenna masts, a telescope dome, a drill rig over a crater, oxygen tanks, landing lights
 ##     around the pad, a welcome sign, a pad sign, an arrow post.
 ##   Alive: a patrol drone flying the loop, a buggy driving the longest clear stretch of rim,
@@ -49,10 +51,9 @@ var _star_next: float = 9.0
 var _station: Node3D
 var _freighter: Node3D
 var _anim_t: float = 0.0
-# The vending machines: one per machine spot (a space flagged "goal"), on a raised pad past the
-# rim, reached by a bridge from the space. space id → {node, sign, beam, knob, globe, tray}
+# The vending machines: one per machine spot (a space flagged "goal"), on the annex off the rim
+# that a bridge joins to the space. space id → {node, sign, beam, knob, globe, tray}
 var _machines: Dictionary = {}
-var _machine_angles: Array = []
 var _active_machine: String = ""
 var counts: Dictionary = {}      # what was placed, for the log
 
@@ -74,9 +75,8 @@ func build(view: Node3D, g: BoardGraph, centre: Vector3, rx: float, rz: float, t
 	for sp in landmarks:
 		_occupied.append(Vector3(sp.x, sp.y, 4.6))
 	_path_details()
-	_machine_pads()
-	_path_props()
 	_build_annexes()
+	_path_props()
 	_plan_road()
 	_ground_details()
 	_structures(craters, landmarks)
@@ -498,120 +498,57 @@ func _ground_details() -> void:
 
 # --- the annex: a second, smaller chunk off the rim, joined by a bridge ------------------------------
 
-## The vending machine spots: every space flagged "goal" gets a raised pad past the rim, a level
-## bridge to it from the space, and a machine on the pad in front of a small dome hut. Only the
-## active machine is lit; the others stand dark until the machine moves to them.
-func _machine_pads() -> void:
-	for sid in _graph.goal_candidates():
-		var p: Vector3 = _graph.get_space(sid).position
-		var out := Vector2(p.x - _centre.x, p.z - _centre.z).normalized()
-		var a := atan2(out.y, out.x)
-		_machine_angles.append(a)
-		var rim := Vector2(_centre.x + cos(a) * _rx, _centre.z + sin(a) * _rz)
-		var pc := rim + out * 5.0
-		var pad := Vector3(pc.x, _top, pc.y)
-		var deck_y := p.y - 0.2   # the pad's deck at tile level, so the bridge is flat
-		var o3 := Vector3(out.x, 0, out.y)
-		var yaw := atan2(out.x, out.y)   # a node's -Z then faces the bridge
-		_occupied.append(Vector3(pc.x, pc.y, 4.6))
-		_occupied.append(Vector3(rim.x, rim.y, 2.4))
-		# The chunk: a raised 8-sided deck on a rock root, rim chunks round it.
-		var h := deck_y - (_top - 1.3)
-		_cyl(self, 3.4, 3.1, h, Vector3(pad.x, _top - 1.3 + h * 0.5, pad.z), "moon", Vector3(0, a, 0), 8)
-		_cyl(self, 3.6, 3.6, 0.24, Vector3(pad.x, deck_y - 0.12, pad.z), "metal", Vector3(0, a, 0), 8)
-		_cyl(self, 3.0, 0.6, 7.0, Vector3(pad.x, _top - 2.6 - 3.5, pad.z), "moon_dark", Vector3(0, a + 0.4, 0), 8)
-		for k in 7:
-			var ca := k * TAU / 7.0 + 0.3
-			var r := _rng.randf_range(0.4, 0.9)
-			_sphere(self, r, Vector3(pad.x + cos(ca) * 3.4, deck_y - _rng.randf_range(0.6, 1.6), pad.z + sin(ca) * 3.4),
-				"rock" if k % 3 != 0 else "moon_dark", Vector3(1.2, 0.7, 1.1), false, 7)
-		# The bridge: a level walkway from the space's outer edge to the pad, plated, with rails
-		# and a lamp at the pad end.
-		var from := p + o3 * 1.25 + Vector3(0, -0.12, 0)
-		var to := pad + Vector3(0, deck_y - _top, 0) - o3 * 3.2
-		var mid := (from + to) * 0.5
-		var length := (to - from).length()
-		# The bridge's corridor is off limits to props, signs and landmarks (a crate and the welcome
-		# sign were standing in its rails): a chain of 1.4 m circles from the space to the pad.
-		var corridor := maxi(2, int(length) + 2)
-		for k in corridor:
-			var c := (from - o3 * 0.6).lerp(to, float(k) / float(corridor - 1))
-			_occupied.append(Vector3(c.x, c.z, 1.4))
-		_box(self, Vector3(1.7, 0.16, length), mid, "metal", Vector3(0, yaw, 0))
-		var plates := maxi(1, int(length / 1.0))
-		for k in plates:
-			var t := (k + 0.5) / plates
-			_box(self, Vector3(1.6, 0.03, 0.12), from.lerp(to, t) + Vector3(0, 0.1, 0), "counter_dark", Vector3(0, yaw, 0))
-		for side: float in [-1.0, 1.0]:
-			var rail_off := Vector3(-out.y, 0, out.x) * side * 0.8
-			_box(self, Vector3(0.08, 0.08, length), mid + rail_off + Vector3(0, 0.9, 0), "counter_dark", Vector3(0, yaw, 0))
-			var posts := maxi(2, int(length / 1.5) + 1)
-			for k in posts:
-				var t := (k + 0.5) / posts
-				_box(self, Vector3(0.07, 0.9, 0.07), from.lerp(to, t) + rail_off + Vector3(0, 0.45, 0), "counter_dark")
-		var lamp := _node(to + Vector3(-out.y, 0, out.x) * 1.1)
-		_cyl(lamp, 0.06, 0.08, 2.0, Vector3(0, 1.0, 0), "counter_dark")
-		_box(lamp, Vector3(0.3, 0.26, 0.3), Vector3(0, 2.1, 0), "glass")
-		_box(lamp, Vector3(0.36, 0.06, 0.36), Vector3(0, 2.26, 0), "counter_dark")
-		# The dome hut behind the machine, its door toward it.
-		var hut := _node(pad + Vector3(0, deck_y - _top, 0) + o3 * 1.5, yaw)
-		_cyl(hut, 1.55, 1.6, 0.4, Vector3(0, 0.2, 0), "metal", Vector3.ZERO, 14)
-		_sphere(hut, 1.5, Vector3(0, 0.4, 0), "paper", Vector3.ONE, true, 14)
-		_torus(hut, 1.48, 1.6, Vector3(0, 0.4, 0), "counter_dark", Vector3.ZERO, Vector3(1, 0.45, 1))
-		_box(hut, Vector3(0.9, 1.3, 0.3), Vector3(0, 0.85, -1.4), "counter_dark")
-		_box(hut, Vector3(0.6, 1.0, 0.1), Vector3(0, 0.8, -1.52), "metal")
-		_cyl(hut, 0.3, 0.34, 0.2, Vector3(0, 1.95, 0), "counter_dark", Vector3.ZERO, 8)
-		for w in 3:
-			var wa := w * TAU / 3.0 + 1.6
-			var win := _cyl(hut, 0.22, 0.22, 0.08, Vector3(cos(wa) * 1.35, 0.95, sin(wa) * 1.35), "glass", Vector3.ZERO, 8)
-			win.look_at(hut.to_global(Vector3(0, 0.95, 0)), Vector3.UP)
-			win.rotate_object_local(Vector3.RIGHT, PI * 0.5)
-		# The machine itself, in front of the hut, facing the bridge.
-		var m := _node(pad + Vector3(0, deck_y - _top, 0) - o3 * 0.9, yaw)
-		_box(m, Vector3(1.3, 2.0, 1.0), Vector3(0, 1.0, 0), "metal")
-		_box(m, Vector3(1.34, 0.1, 1.04), Vector3(0, 0.05, 0), "counter_dark")
-		_box(m, Vector3(1.34, 0.1, 1.04), Vector3(0, 2.0, 0), "counter_dark")
-		for sx: float in [-0.67, 0.67]:
-			_box(m, Vector3(0.04, 1.6, 0.8), Vector3(sx, 1.05, 0), "accent_lit")
-		_box(m, Vector3(1.1, 0.9, 0.04), Vector3(0, 1.45, -0.51), "ink")   # the front panel
-		_box(m, Vector3(0.16, 0.05, 0.06), Vector3(0.38, 1.7, -0.53), "glow_yellow")   # coin slot
-		_label(m, "¥", Vector3(0.38, 1.85, -0.54), 40, Palette.hud_colour("paper"), PI, 0)
-		var knob := Node3D.new()
-		knob.position = Vector3(-0.28, 1.3, -0.52)
-		m.add_child(knob)
-		_cyl(knob, 0.17, 0.17, 0.12, Vector3.ZERO, "accent_lit", Vector3(PI * 0.5, 0, 0), 12)
-		_box(knob, Vector3(0.28, 0.05, 0.06), Vector3(0, 0, -0.06), "ink")
-		_box(m, Vector3(0.8, 0.36, 0.3), Vector3(0, 0.5, -0.45), "counter_dark")   # the tray
-		_box(m, Vector3(0.6, 0.22, 0.1), Vector3(0, 0.5, -0.56), "ink")
-		var globe := _node(m.position + Vector3(0, 2.62, 0), yaw)
-		_cyl(m, 0.5, 0.55, 0.16, Vector3(0, 2.08, 0), "counter_dark", Vector3.ZERO, 12)
-		# The globe is real glass (the one translucent material on the board, like the sniper's
-		# lens): the capsules inside are the whole point of a capsule machine.
-		var glass := _sphere(globe, 0.62, Vector3.ZERO, "glass", Vector3.ONE, false, 16)
-		var gm := StandardMaterial3D.new()
-		gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		var tint := Palette.hud_colour("meter")
-		gm.albedo_color = Color(tint.r, tint.g, tint.b, 0.28)
-		gm.metallic = 0.6
-		gm.roughness = 0.15
-		gm.cull_mode = BaseMaterial3D.CULL_BACK
-		gm.render_priority = 4
-		glass.material_override = gm
-		glass.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		for c in 7:
-			var ca := c * 2.4
-			var cr := 0.28 + 0.1 * (c % 3)
-			var cap := _sphere(globe, 0.12, Vector3(cos(ca) * cr * 0.9, -0.3 + 0.13 * (c % 4), sin(ca) * cr * 0.9), "player%d" % (c % 6), Vector3.ONE, false, 8)
-			cap.scale = Vector3(1, 0.8, 1)
-		_cyl(globe, 0.16, 0.16, 0.2, Vector3(0, 0.65, 0), "counter_dark", Vector3.ZERO, 8)
-		var sign := _box(m, Vector3(1.5, 0.4, 0.34), Vector3(0, 3.55, 0), "counter_dark")
-		_label(m, "TOYS", Vector3(0, 3.6, -0.18), 56, Palette.hud_colour("paper"), PI, 0)
-		var beam := _cyl(m, 0.2, 0.3, 14.0, Vector3(0, 3.8 + 7.0, 0), "glass", Vector3.ZERO, 8)
-		beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		beam.visible = false
-		_machines[sid] = {"node": m, "sign": sign, "beam": beam, "knob": knob, "globe": globe,
-			"tray": m.position + Vector3(0, 0.6, 0) - o3 * 0.6}
-		_count("vending machine")
+## The vending machine on an annex, facing the bridge (a node's -Z looks down the bridge when
+## `dir` is the annex's outward direction): a coin slot, a knob, a tray, a glass globe of capsules,
+## a TOYS marquee and a light beam that only the live one shows.
+func _machine(sid: String, at: Vector3, dir: Vector2) -> void:
+	var yaw := atan2(dir.x, dir.y)
+	var m := _node(at, yaw)
+	_box(m, Vector3(1.3, 2.0, 1.0), Vector3(0, 1.0, 0), "metal")
+	_box(m, Vector3(1.34, 0.1, 1.04), Vector3(0, 0.05, 0), "counter_dark")
+	_box(m, Vector3(1.34, 0.1, 1.04), Vector3(0, 2.0, 0), "counter_dark")
+	for sx: float in [-0.67, 0.67]:
+		_box(m, Vector3(0.04, 1.6, 0.8), Vector3(sx, 1.05, 0), "accent_lit")
+	_box(m, Vector3(1.1, 0.9, 0.04), Vector3(0, 1.45, -0.51), "ink")   # the front panel
+	_box(m, Vector3(0.16, 0.05, 0.06), Vector3(0.38, 1.7, -0.53), "glow_yellow")   # coin slot
+	_label(m, "¥", Vector3(0.38, 1.85, -0.54), 40, Palette.hud_colour("paper"), PI, 0)
+	var knob := Node3D.new()
+	knob.position = Vector3(-0.28, 1.3, -0.52)
+	m.add_child(knob)
+	_cyl(knob, 0.17, 0.17, 0.12, Vector3.ZERO, "accent_lit", Vector3(PI * 0.5, 0, 0), 12)
+	_box(knob, Vector3(0.28, 0.05, 0.06), Vector3(0, 0, -0.06), "ink")
+	_box(m, Vector3(0.8, 0.36, 0.3), Vector3(0, 0.5, -0.45), "counter_dark")   # the tray
+	_box(m, Vector3(0.6, 0.22, 0.1), Vector3(0, 0.5, -0.56), "ink")
+	var globe := _node(m.position + Vector3(0, 2.62, 0), yaw)
+	_cyl(m, 0.5, 0.55, 0.16, Vector3(0, 2.08, 0), "counter_dark", Vector3.ZERO, 12)
+	# The globe is real glass (the one translucent material on the board, like the sniper's
+	# lens): the capsules inside are the whole point of a capsule machine.
+	var glass := _sphere(globe, 0.62, Vector3.ZERO, "glass", Vector3.ONE, false, 16)
+	var gm := StandardMaterial3D.new()
+	gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	var tint := Palette.hud_colour("meter")
+	gm.albedo_color = Color(tint.r, tint.g, tint.b, 0.28)
+	gm.metallic = 0.6
+	gm.roughness = 0.15
+	gm.cull_mode = BaseMaterial3D.CULL_BACK
+	gm.render_priority = 4
+	glass.material_override = gm
+	glass.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for c in 7:
+		var ca := c * 2.4
+		var cr := 0.28 + 0.1 * (c % 3)
+		var cap := _sphere(globe, 0.12, Vector3(cos(ca) * cr * 0.9, -0.3 + 0.13 * (c % 4), sin(ca) * cr * 0.9), "player%d" % (c % 6), Vector3.ONE, false, 8)
+		cap.scale = Vector3(1, 0.8, 1)
+	_cyl(globe, 0.16, 0.16, 0.2, Vector3(0, 0.65, 0), "counter_dark", Vector3.ZERO, 8)
+	var sign := _box(m, Vector3(1.5, 0.4, 0.34), Vector3(0, 3.55, 0), "counter_dark")
+	_label(m, "TOYS", Vector3(0, 3.6, -0.18), 56, Palette.hud_colour("paper"), PI, 0)
+	var beam := _cyl(m, 0.2, 0.3, 14.0, Vector3(0, 3.8 + 7.0, 0), "glass", Vector3.ZERO, 8)
+	beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	beam.visible = false
+	_occupied.append(Vector3(at.x, at.z, 1.6))
+	_machines[sid] = {"node": m, "sign": sign, "beam": beam, "knob": knob, "globe": globe,
+		"tray": m.position + Vector3(0, 0.6, 0) - Vector3(dir.x, 0, dir.y) * 0.6}
+	_count("vending machine")
 
 
 ## Light the machine the players can buy from; the rest stand dark.
@@ -651,73 +588,87 @@ func vend(spot: String, to: Vector3, colour: Color) -> void:
 	flight.tween_callback(capsule.queue_free)
 
 
-## Two annex platforms off the rim, where the tiles sit farthest from it and at least 110° apart,
-## and clear of the machine pads: the base (habitat, greenhouse, cargo) and the works (fuel tanks,
-## solar array, telescope).
+## The two annexes off the rim carry the vending machines (Sean: "those original two spots",
+## never more). Each stands straight out from a machine spot, the spaces flagged "goal" in the
+## board file: `tools/mark_spots.gd` flags the space nearest each angle where the walkway sits
+## farthest from the rim (`AnnexPlan.angles`, the search that placed the annexes before they
+## carried anything), and the same search pairs them here so the habitat domes stay on the first
+## and the works on the second. A level plated bridge joins the space to the chunk; the machine
+## stands on the chunk facing the bridge with the decor behind it. A board with more machine
+## spots gets a bare chunk for each extra one.
 func _build_annexes() -> void:
-	var clearance: Array = []
-	for i in 36:
-		var a := i * TAU / 36.0
+	var spots: Array = []
+	for sid in _graph.goal_candidates():
+		spots.append(str(sid))
+	if spots.is_empty():
+		return
+	var plan: Array = []   # [angle, space id] per annex, the searched angles first
+	for a in AnnexPlan.angles(_tile_positions, _centre, _rx, _rz):
 		var rim := Vector2(_centre.x + cos(a) * _rx, _centre.z + sin(a) * _rz)
-		var d := 1e9
-		for p in _tile_positions:
-			d = minf(d, Vector2(p.x - rim.x, p.z - rim.y).length())
-		# An annex (8 m) at rim + 11 m spans about 13° of arc, a machine pad about 7°: keep 22° clear.
-		for ma in _machine_angles:
-			if absf(wrapf(a - float(ma), -PI, PI)) < deg_to_rad(22.0):
-				d = -1.0
-		clearance.append(d)
-	var best_a := 0.0
-	var best_d := -1.0
-	for i in 36:
-		if clearance[i] > best_d:
-			best_d = clearance[i]
-			best_a = i * TAU / 36.0
-	if best_d < 0.0:
-		return   # every angle is a machine's: no annexes on this board
-	var second_a := best_a + PI
-	var second_d := -1.0
-	for i in 36:
-		var a := i * TAU / 36.0
-		var apart := absf(wrapf(a - best_a, -PI, PI))
-		if apart >= deg_to_rad(90.0) and clearance[i] > second_d:
-			second_d = clearance[i]
-			second_a = a
-	var base := _annex_platform(best_a, 8.0)
-	_annex = base["centre"]
-	_annex_r = 8.0
-	var dir: Vector2 = base["dir"]
-	var side := Vector2(-dir.y, dir.x)
-	_habitat(_annex, best_a + PI)
-	_greenhouse(_annex + Vector3(side.x, 0, side.y) * 4.6 + Vector3(dir.x, 0, dir.y) * 1.0, best_a + PI * 0.5)
-	_cargo(_annex - Vector3(side.x, 0, side.y) * 5.2 + Vector3(dir.x, 0, dir.y) * 2.0, best_a, 4)
-	if second_d < 0.0:
-		return   # room for one annex only
-	var works := _annex_platform(second_a, 7.5)
-	var wc: Vector3 = works["centre"]
-	var wd: Vector2 = works["dir"]
-	var ws := Vector2(-wd.y, wd.x)
-	_fuel_tanks(wc + Vector3(wd.x, 0, wd.y) * 1.2, second_a + PI * 0.5)
-	_solar_array(wc + Vector3(ws.x, 0, ws.y) * 4.2 - Vector3(wd.x, 0, wd.y) * 1.6, second_a, 2)
-	_telescope(wc - Vector3(ws.x, 0, ws.y) * 4.4 - Vector3(wd.x, 0, wd.y) * 1.2, second_a + 0.6)
-	var an := _node(wc + Vector3(wd.x, 0, wd.y) * 5.6 + Vector3(ws.x, 0, ws.y) * 2.5)
-	_cyl(an, 0.3, 0.3, 0.3, Vector3(0, 0.15, 0), "metal")
-	_cyl(an, 0.04, 0.06, 3.4, Vector3(0, 2.0, 0), "ink")
-	var b := _sphere(an, 0.12, Vector3(0, 3.8, 0), "glow_cyan", Vector3.ONE, false, 8)
-	_blinkers.append({"node": b, "period": 1.6, "phase": 0.4})
+		var best := ""
+		var best_d := 1e9
+		for sid in spots:
+			var p: Vector3 = _graph.get_space(sid).position
+			var d := Vector2(p.x - rim.x, p.z - rim.y).length()
+			if d < best_d:
+				best_d = d
+				best = sid
+		if best != "":
+			# The annex stands straight out from its space (a level, straight bridge): the step from
+			# the searched angle to the space's own ray is a few degrees.
+			var bp: Vector3 = _graph.get_space(best).position
+			plan.append([atan2((bp.z - _centre.z) / _rz, (bp.x - _centre.x) / _rx), best])
+			spots.erase(best)
+	for sid in spots:
+		var p: Vector3 = _graph.get_space(sid).position
+		plan.append([atan2((p.z - _centre.z) / _rz, (p.x - _centre.x) / _rx), sid])
+	var k := 0
+	for entry in plan:
+		var a: float = entry[0]
+		var sid: String = entry[1]
+		var p: Vector3 = _graph.get_space(sid).position
+		var radius := 8.0 if k == 0 else 7.5
+		var base := _annex_platform(a, radius, p)
+		var centre: Vector3 = base["centre"]
+		var dir: Vector2 = base["dir"]   # along the bridge, outward
+		var d3 := Vector3(dir.x, 0, dir.y)
+		var s3 := Vector3(-dir.y, 0, dir.x)
+		_machine(sid, centre - d3 * (radius - 3.6), dir)
+		if k == 0:
+			_annex = centre
+			_annex_r = radius
+			_habitat(centre + d3 * 1.8, a + PI)
+			_greenhouse(centre + s3 * 4.6 + d3 * 1.6, a + PI * 0.5)
+			_cargo(centre - s3 * 5.2 + d3 * 2.4, a, 4)
+		elif k == 1:
+			_fuel_tanks(centre + d3 * 1.8, a + PI * 0.5)
+			_solar_array(centre + s3 * 4.2 - d3 * 0.6, a, 2)
+			_telescope(centre - s3 * 4.4 + d3 * 0.2, a + 0.6)
+			var an := _node(centre + d3 * 5.6 + s3 * 2.5)
+			_cyl(an, 0.3, 0.3, 0.3, Vector3(0, 0.15, 0), "metal")
+			_cyl(an, 0.04, 0.06, 3.4, Vector3(0, 2.0, 0), "ink")
+			var b := _sphere(an, 0.12, Vector3(0, 3.8, 0), "glow_cyan", Vector3.ONE, false, 8)
+			_blinkers.append({"node": b, "period": 1.6, "phase": 0.4})
+		k += 1
 
 
-## A smaller chunk off the rim at angle `a`, joined to it by a plated bridge with rails. Returns
-## its centre and the outward direction; reserves the bridge mouth so the road and props keep off.
-func _annex_platform(a: float, radius: float) -> Dictionary:
-	var dir := Vector2(cos(a) * _rx, sin(a) * _rz).normalized()
+## A chunk off the rim at angle `a`, its deck at the tile height of `from_space`, joined to that
+## space by a level plated bridge with rails, lamps at both ends and posts to the ground where it
+## runs over the slab. Returns its centre and the bridge's outward direction; reserves the bridge
+## and the rim mouth so the road, props and landmarks keep off.
+func _annex_platform(a: float, radius: float, from_space: Vector3) -> Dictionary:
 	var rim_pt := Vector2(_centre.x + cos(a) * _rx, _centre.z + sin(a) * _rz)
-	var c2 := rim_pt + dir * (radius + 3.0)
-	var centre := Vector3(c2.x, _top, c2.y)
+	var out := Vector2(cos(a) * _rx, sin(a) * _rz).normalized()
+	var c2 := rim_pt + out * (radius + 3.0)
+	var deck_y := from_space.y - 0.2
+	var centre := Vector3(c2.x, deck_y, c2.y)
+	var dir := (c2 - Vector2(from_space.x, from_space.z)).normalized()
+	var d3 := Vector3(dir.x, 0, dir.y)
 	_occupied.append(Vector3(rim_pt.x, rim_pt.y, 3.2))
-	var slab := _cyl(self, radius, radius * 0.94, 2.6, centre + Vector3(0, -1.3, 0), "moon", Vector3.ZERO, 9)
+	var h := deck_y - (_top - 2.6)
+	var slab := _cyl(self, radius, radius * 0.94, h, centre + Vector3(0, -h * 0.5, 0), "moon", Vector3.ZERO, 9)
 	slab.rotation.y = a
-	var root := _cyl(self, radius * 0.9, radius * 0.2, 8.0, centre + Vector3(0, -2.6 - 4.0, 0), "moon_dark", Vector3.ZERO, 9)
+	var root := _cyl(self, radius * 0.9, radius * 0.2, 8.0, centre + Vector3(0, -h - 4.0, 0), "moon_dark", Vector3.ZERO, 9)
 	root.rotation.y = a + 0.3
 	for k in 10:
 		var ca := k * TAU / 10.0
@@ -731,12 +682,17 @@ func _annex_platform(a: float, radius: float) -> Dictionary:
 		var pr := _rng.randf_range(0.0, radius * 0.9)
 		var r := _rng.randf_range(0.07, 0.14)
 		_sphere(self, r, centre + Vector3(cos(pa) * pr, r * 0.5, sin(pa) * pr), "moon_dark" if k % 2 == 0 else "crater", Vector3(1.3, 0.6, 1.0), false, 6)
-	# The bridge: a plated walkway from rim to rim with rails and lamps at both ends.
-	var from := Vector3(rim_pt.x, _top + 0.1, rim_pt.y) - Vector3(dir.x, 0, dir.y) * 1.2
-	var to := centre - Vector3(dir.x, 0, dir.y) * (radius - 1.0) + Vector3(0, 0.1, 0)
+	# The bridge: a plated walkway from the space's outer edge to the chunk, level at tile height,
+	# with rails and lamps at both ends. Its corridor is off limits to props, signs and landmarks.
+	var from := from_space + d3 * 1.25 + Vector3(0, -0.12, 0)
+	var to := centre - d3 * (radius - 1.0) + Vector3(0, 0.1, 0)
 	var mid := (from + to) * 0.5
 	var length := (to - from).length()
 	var yaw := atan2(dir.x, dir.y)
+	var corridor := maxi(2, int(length) + 2)
+	for k in corridor:
+		var c := (from - d3 * 0.6).lerp(to, float(k) / float(corridor - 1))
+		_occupied.append(Vector3(c.x, c.z, 2.2))
 	_box(self, Vector3(3.2, 0.2, length), mid, "metal", Vector3(0, yaw, 0))
 	for side: float in [-1.0, 1.0]:
 		var rail_off := Vector3(-dir.y, 0, dir.x) * side * 1.5
@@ -754,6 +710,13 @@ func _annex_platform(a: float, radius: float) -> Dictionary:
 	for k in plates:
 		var t := (k + 0.5) / plates
 		_box(self, Vector3(3.0, 0.03, 0.14), from.lerp(to, t) + Vector3(0, 0.12, 0), "counter_dark", Vector3(0, yaw, 0))
+	# Posts to the ground under the stretch over the slab; the rest hangs over the drop.
+	var supports := maxi(1, int(length / 2.4))
+	for k in supports:
+		var sp := from.lerp(to, (k + 0.5) / supports)
+		var hgt := sp.y - 0.1 - _top
+		if hgt > 0.3 and _inside(sp.x, sp.z, 0.985):
+			_cyl(self, 0.1, 0.14, hgt, Vector3(sp.x, _top + hgt * 0.5, sp.z), "counter_dark", Vector3.ZERO, 8)
 	_count("annex")
 	return {"centre": centre, "dir": dir}
 

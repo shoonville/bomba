@@ -293,7 +293,7 @@ func test_every_board_validates_and_loops() -> void:
 		var g := BoardGraph.load_file("res://board/boards/%s.json" % id)
 		assert_true(g != null, id)
 		assert_eq(g.validate().size(), 0, "%s: %s" % [id, str(g.validate())])
-		assert_true(g.goal_candidates().size() >= 4, "%s goal candidates" % id)
+		assert_eq(g.goal_candidates().size(), 2, "%s: the two annexes are the machine spots" % id)
 		var forks := 0
 		for sid in g.ids():
 			if g.is_fork(sid):
@@ -312,7 +312,7 @@ func test_main_board_shape() -> void:
 		if g.is_fork(sid):
 			forks += 1
 	assert_true(forks >= 4, "%d forks" % forks)
-	assert_true(g.goal_candidates().size() >= 4, "%d machine spots" % g.goal_candidates().size())
+	assert_eq(g.goal_candidates().size(), 2, "the two annexes are the machine spots (Sean: the original two)")
 	var shields := 0
 	for sid in g.ids():
 		if g.get_space(sid).type == "shield":

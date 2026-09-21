@@ -31,6 +31,8 @@ that travels with the repo.
   screen (a translucent pane at ADS), crisp snap sound, untouched otherwise.
 - Board: one board (BOMBA BAY, `tools/gen_board.py`), pink sky kept, moon-base theme under it, floating
   spinning markers (flat stamps were "ugly"), close Pummel-Party camera, eight-sided die, no water.
+  The vending machine lives on the two annexes only (his "original two spots", the bridges to the
+  egg domes); never add machine pads or more spots.
 - Hitmarker: low woody click, not high-pitched. Music: off (`Audio.MUSIC_ENABLED`).
 
 ## Verify before claiming

@@ -1,16 +1,19 @@
 extends SceneTree
-## Marks the vending machine spots on a board file (the spaces flagged "goal"): in each of K
-## equal sectors around the board's centre, the blank, non-fork space standing farthest out
-## whose corridor outward to the rim is clear of every other space (the bridge must not cross
-## the walkway); a sector with no such space gets none. Rewrites the file in place.
-##   GODOT --headless --path . --script tools/mark_spots.gd -- board/boards/main.json 6
-## BOMBA BAY: six sectors give its five spots (L2, L9, L20, L23, L31); one sector has no clear space.
+## Flags the vending machine spots on a board file (the spaces flagged "goal"): the two walkway
+## spaces nearest the board's two annexes. The annexes stand off the rim where the walkway sits
+## farthest from it, at least 110° apart (`AnnexPlan.angles`, the search that placed
+## them before they carried the machines); each gets the blank, non-fork, non-start space nearest
+## its rim point whose corridor out to the annex is clear of every other space, so the bridge
+## crosses nothing. Sean: the machine lives on "those original two spots", never more. Rewrites
+## the file in place.
+##   GODOT --headless --path . --script tools/mark_spots.gd -- board/boards/main.json
+
+const CORRIDOR_HALF := 2.6   # the annex bridge is 3.2 m wide
 
 
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	var path: String = args[0] if args.size() > 0 else "board/boards/main.json"
-	var k: int = int(args[1]) if args.size() > 1 else 6
 	if not path.is_absolute_path() and not path.begins_with("res://"):
 		path = "res://" + path
 	var d: Dictionary = TuningLoader.load_file(path)
@@ -21,6 +24,7 @@ func _initialize() -> void:
 	var spaces: Array = d["spaces"]
 	var pos := {}
 	var fork := {}
+	var tiles: Array = []
 	var lo := Vector2(1e9, 1e9)
 	var hi := Vector2(-1e9, -1e9)
 	for sd in spaces:
@@ -28,6 +32,7 @@ func _initialize() -> void:
 		var v := Vector2(float(p[0]), float(p[2]))
 		pos[str(sd["id"])] = v
 		fork[str(sd["id"])] = (sd.get("next", []) as Array).size() > 1
+		tiles.append(Vector3(v.x, 0.0, v.y))
 		lo = Vector2(minf(lo.x, v.x), minf(lo.y, v.y))
 		hi = Vector2(maxf(hi.x, v.x), maxf(hi.y, v.y))
 	var centre := (lo + hi) * 0.5
@@ -35,45 +40,45 @@ func _initialize() -> void:
 	var rz := (hi.y - lo.y) * 0.5 + 7.0
 	var start := str(d.get("start", ""))
 	var chosen := {}
-	for sector in k:
+	var report := []
+	for a_v in AnnexPlan.angles(tiles, Vector3(centre.x, 0.0, centre.y), rx, rz):
+		var a: float = a_v
+		var rim := Vector2(centre.x + cos(a) * rx, centre.y + sin(a) * rz)
 		var best := ""
-		var best_score := -1e9
+		var best_d := 1e9
 		for sd in spaces:
 			var sid := str(sd["id"])
-			if sid == start or bool(fork[sid]) or str(sd.get("type", "blank")) != "blank":
+			if sid == start or bool(fork[sid]) or str(sd.get("type", "blank")) != "blank" or chosen.has(sid):
 				continue
 			var v: Vector2 = pos[sid]
-			var a := atan2(v.y - centre.y, v.x - centre.x)
-			if int(floor((a + PI) / (TAU / k))) % k != sector:
-				continue
-			var out := (v - centre).normalized()
-			var radial := Vector2((v.x - centre.x) / rx, (v.y - centre.y) / rz).length()
-			# Corridor outward: nothing within 2.4 m of the line from the space to the rim, or the
-			# bridge would cross another space.
-			var half := 2.4
+			# The annex stands straight out from the space (the ellipse's own ray through it) and
+			# the bridge runs along that ray; its corridor to the rim must be clear of every other
+			# space.
+			var t := atan2((v.y - centre.y) / rz, (v.x - centre.x) / rx)
+			var out_pt := Vector2(centre.x + cos(t) * rx, centre.y + sin(t) * rz)
+			var dir := (out_pt - v).normalized()
+			var span := v.distance_to(out_pt) + 1.0
 			var clear := true
-			var rim_d := (Vector2(cos(a) * rx, sin(a) * rz)).length() - (v - centre).length()
-			var t := 1.6
-			while t < rim_d + 1.0:
-				var q := v + out * t
+			var s := 1.6
+			while s < span:
+				var q := v + dir * s
 				for other in pos:
-					if other != sid and (pos[other] as Vector2).distance_to(q) < half:
+					if other != sid and (pos[other] as Vector2).distance_to(q) < CORRIDOR_HALF:
 						clear = false
-				t += 1.0
+				s += 1.0
 			if not clear:
 				continue
-			var score := radial
-			if score > best_score:
-				best_score = score
+			var dd := v.distance_to(rim)
+			if dd < best_d:
+				best_d = dd
 				best = sid
 		if best != "":
 			chosen[best] = true
+			report.append("%s (annex at %d°, %.1f m from its rim point)" % [best, roundi(rad_to_deg(a)), best_d])
 	for sd in spaces:
 		sd["goal"] = chosen.has(str(sd["id"]))
 	var f := FileAccess.open(path, FileAccess.WRITE)
 	f.store_string(JSON.stringify(d, "  ") + "\n")
 	f.close()
-	var ids := chosen.keys()
-	ids.sort()
-	print("marked %d machine spots on %s: %s" % [ids.size(), path, ", ".join(ids)])
+	print("marked %d machine spots on %s: %s" % [chosen.size(), path, ", ".join(report)])
 	quit(0)
