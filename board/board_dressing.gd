@@ -130,6 +130,7 @@ func _mat(key: String) -> Material:
 		"glow_green": m = CelMaterial.for_colour(Palette.map_colour("board", "alien"), _shadow, 1.2)
 		"glass": m = CelMaterial.for_colour(Palette.hud_colour("meter"), _shadow, 0.45)
 		"accent_lit": m = CelMaterial.for_colour(Palette.map_colour("board", "accent"), _shadow, 0.3)
+		"moon": m = CelMaterial.with_print(CelMaterial.for_colour(Palette.map_colour("board", "moon"), _shadow), "moon", Palette.map_colour("board", "line"))
 		"moon_light": m = CelMaterial.for_colour(Palette.map_colour("board", "moon").lightened(0.12), _shadow)
 		_:
 			if key.begins_with("player"):

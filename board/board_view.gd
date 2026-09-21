@@ -413,7 +413,7 @@ func _build_moon(g: BoardGraph, shadow: Color) -> void:
 	var c := (lo + hi) * 0.5
 	var rx := (hi.x - lo.x) * 0.5 + 7.0
 	var rz := (hi.z - lo.z) * 0.5 + 7.0
-	var moon_mat := CelMaterial.for_colour(Palette.map_colour("board", "moon"), shadow)
+	var moon_mat := CelMaterial.with_print(CelMaterial.for_colour(Palette.map_colour("board", "moon"), shadow), "moon", Palette.map_colour("board", "line"))
 	var moon_dark_mat := CelMaterial.for_colour(Palette.map_colour("board", "moon_dark"), shadow)
 	var crater_mat := CelMaterial.for_colour(Palette.map_colour("board", "crater"), shadow)
 	var rock_mat := CelMaterial.for_colour(Palette.map_colour("board", "rock"), shadow)

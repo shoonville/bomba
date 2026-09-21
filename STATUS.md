@@ -552,3 +552,14 @@ measured at 1920×1080 unless noted, on the 5090, and extrapolated.
   first-to-one match ended in round 3. Props, signs and landmarks keep out of the bridge corridors.
   Frames: `board_machine.png` (the live annex), `board_toy.png` (a purchase), `board_overview.png`,
   `board_map.png`, `board_turn.png`, `lobby.png`. His verdict pending.
+- **Visual pass** (Sean: "is it possible for you to make the visuals look better?"): (1) both
+  cel shaders multiplied by ALBEDO inside light(), which Godot does again afterwards, so every
+  surface rendered as albedo squared: lit planes clamped at the ceiling, shadows near black
+  (last_stand_pit 82 % of pixels under V 0.25, the references 5–19 %). Fixed; shadow band 0.7;
+  the palettes retuned so the accepted look holds (S up a fifth, V up 0.06–0.12 on the field,
+  counter and skyline tones). (2) A print layer on the big planes: ink seams on a metre grid
+  (paving, wall panels, storeys) with a flat value step per cell, hard-edged mottle on the moon;
+  numbers in `tuning/palette.json` "print". (3) `tools/report.gd -- frame_stats` measures frames
+  the way STYLE.md measured the references. At 1080p: arena spectator saturated 47 % (reference
+  22–52 %), mean S 0.57 (0.56–0.71), dark 11 % (5–19 %); the pit dark 82 → 14 %. GPU 0.71 ms
+  arena, 0.69 board (was 0.64 / 0.63). Ten doc frames retaken. His verdict pending.

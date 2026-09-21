@@ -49,7 +49,8 @@ that travels with the repo.
   `--force_ads`, `--give_item=ID`, `--minigame=ID`, `--render_scale=N`, `--port=N`, `--no_warmup`,
   `--perf` (GPU/CPU ms summary at soak end), `--vsync=0|1`, `--window=fullscreen|windowed`, and
   Godot's own `--resolution 1920x1080` (the friends' resolution: judge looks and cost there, not at
-  Sean's 5120×2160; his monitor "doesn't matter").
+  Sean's 5120×2160; his monitor "doesn't matter"). `tools/report.gd -- frame_stats IMAGE...` prints the
+  STYLE.md appendix numbers (saturated, grey, dark, v95) for a frame; judge a visual pass by them.
 - Windowed runs: wrap them in `timeout 90` so a broken build cannot sit at a window forever; grep
   the output for `Frame hitch` (any frame over 150 ms, with what it did), `Minigame build` and
   `PERF` (with `--perf`). An `override.cfg` in the project root overrides project settings for an

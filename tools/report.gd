@@ -6,11 +6,12 @@ extends SceneTree
 ##   GODOT --headless --path . --script tools/report.gd -- soak_report DIR LABEL
 ##   GODOT --headless --path . --script tools/report.gd -- shot_diff HOST.log CLIENT.log [peer]
 ##   GODOT --headless --path . --script tools/report.gd -- remote_diff HOST_traj.csv CLIENT_remote.csv
+##   GODOT --headless --path . --script tools/report.gd -- frame_stats IMAGE... (STYLE.md appendix numbers)
 ## Relative paths are taken from the project folder. Exit 1 when traj_diff finds a differing
 ## row, 2 on a usage or file error, 0 otherwise.
 
 const TRAJ_COLS := ["x", "y", "z", "health", "kills", "deaths", "yaw"]
-const USAGE := "usage: report.gd -- traj_diff A B [show] | soak_report DIR LABEL | shot_diff HOST.log CLIENT.log [peer] | remote_diff HOST_traj.csv CLIENT_remote.csv"
+const USAGE := "usage: report.gd -- traj_diff A B [show] | soak_report DIR LABEL | shot_diff HOST.log CLIENT.log [peer] | remote_diff HOST_traj.csv CLIENT_remote.csv | frame_stats IMAGE..."
 
 
 func _initialize() -> void:
@@ -26,6 +27,8 @@ func _initialize() -> void:
 				code = _soak_report(args.slice(1))
 			"shot_diff":
 				code = _shot_diff(args.slice(1))
+			"frame_stats":
+				code = _frame_stats(args.slice(1))
 			"remote_diff":
 				code = _remote_diff(args.slice(1))
 			_:
@@ -364,3 +367,62 @@ func _p95(v: Array[float]) -> float:
 	var s := v.duplicate()
 	s.sort()
 	return s[int(0.95 * (s.size() - 1))]
+
+
+# --- frame_stats ---------------------------------------------------------------------------------
+
+## The STYLE.md appendix measurement, for our own frames: each image is scaled to 240 px wide and
+## read in HSV. "saturated" = S >= 0.45 and V >= 0.25, "grey" = S < 0.12 and 0.2 < V < 0.9,
+## "dark" = V < 0.25; v99 / v95 = value percentiles; hues = the top 30° bins among the saturated
+## pixels. Reference rows to compare against are in STYLE.md (BRC: saturated 20–47 %, grey 0–12 %,
+## v95 0.84–0.89 in the busy shots).
+func _frame_stats(a: Array) -> int:
+	if a.is_empty():
+		printerr("frame_stats needs at least one image")
+		return 2
+	print("| image | saturated | grey | dark | v99 | v95 | mean S (sat) | hues |")
+	print("|---|---|---|---|---|---|---|---|")
+	var code := 0
+	for path in a:
+		var img := Image.load_from_file(_abs(str(path)))
+		if img == null:
+			printerr("cannot load %s" % path)
+			code = 2
+			continue
+		var w := 240
+		var h := maxi(1, int(round(img.get_height() * 240.0 / img.get_width())))
+		img.resize(w, h, Image.INTERPOLATE_BILINEAR)
+		var n := 0
+		var sat := 0
+		var grey := 0
+		var dark := 0
+		var s_sum := 0.0
+		var values: Array[float] = []
+		var hues := {}
+		for y in h:
+			for x in w:
+				var c := img.get_pixel(x, y)
+				n += 1
+				values.append(c.v)
+				if c.s >= 0.45 and c.v >= 0.25:
+					sat += 1
+					s_sum += c.s
+					var bin := int(c.h * 12.0) % 12
+					hues[bin] = int(hues.get(bin, 0)) + 1
+				if c.s < 0.12 and c.v > 0.2 and c.v < 0.9:
+					grey += 1
+				if c.v < 0.25:
+					dark += 1
+		values.sort()
+		var v99: float = values[mini(values.size() - 1, int(values.size() * 0.99))]
+		var v95: float = values[mini(values.size() - 1, int(values.size() * 0.95))]
+		var bins := hues.keys()
+		bins.sort_custom(func(p, q): return int(hues[p]) > int(hues[q]))
+		var hue_text := []
+		for i in mini(3, bins.size()):
+			var b: int = bins[i]
+			hue_text.append("%d–%d° %d %%" % [b * 30, b * 30 + 30, roundi(100.0 * int(hues[b]) / maxi(1, sat))])
+		print("| %s | %d %% | %d %% | %d %% | %.2f | %.2f | %.2f | %s |" % [
+			str(path).get_file(), roundi(100.0 * sat / n), roundi(100.0 * grey / n), roundi(100.0 * dark / n),
+			v99, v95, (s_sum / sat) if sat > 0 else 0.0, ", ".join(hue_text)])
+	return code

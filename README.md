@@ -84,10 +84,11 @@ tools/soak.sh bad 45 1 1 # host + 1 client through a profile + 1 bot, 45 s; prin
 LOG=1 tools/soak.sh bad 45 1 1   # also prints the shot and remote-view diffs below
 "$GODOT" --headless --path . --script tools/report.gd -- shot_diff reports/soak_bad_host.log reports/soak_bad_client1.log
 "$GODOT" --headless --path . --script tools/report.gd -- remote_diff reports/soak_bad_host_traj.csv reports/soak_bad_client1_remote.csv
+"$GODOT" --headless --path . --script tools/report.gd -- frame_stats docs/screenshots/arena_spectator.png   # STYLE.md numbers for a frame
 ```
 
 Nothing needs Python: the report tools (`tools/report.gd`: `traj_diff`, `soak_report`, `shot_diff`,
-`remote_diff`) run in Godot. Only `tools/gen_board.py`, which regenerates the board, is Python. The
+`remote_diff`, `frame_stats`) run in Godot. Only `tools/gen_board.py`, which regenerates the board, is Python. The
 harnesses use their own ports (27077, 27101, 27103) so a running game on 27015 never fails a check.
 
 ## Layout

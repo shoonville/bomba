@@ -268,3 +268,16 @@ numerals and spark decals are Roboquest's and are not taken.
 `[observed]` BRC HUD type, from the grind shot: numerals in saturated yellow with a thick dark
 outline, heavy and italic; labels in italic outlined caps; everything edge-anchored with no boxes.
 The feedback burst (street shot) is a spiky cyan shape with a white core and an ink edge.
+
+`[measured]` The game's own frames, measured the same way (`tools/report.gd -- frame_stats`,
+2026-09-20, 1920×1080, after the cel light() fix, the palette retune and the print layer):
+
+| Frame | saturated | grey | dark (V < 0.25) | v99 | v95 | mean S of saturated |
+|---|---|---|---|---|---|---|
+| arena_spectator (before → after) | 52 → 47 % | 1 → 1 % | 14 → 11 % | 0.85 → 0.97 | 0.85 → 0.86 | 0.70 → 0.57 |
+| last_stand_pit (before → after) | 13 → 54 % | 0 → 1 % | 82 → 14 % | 0.90 → 0.90 | 0.85 → 0.80 | 0.85 → 0.57 |
+| board_turn (before → after) | 11 → 9 % | 46 → 31 % | 16 → 11 % | 0.85 → 0.85 | 0.85 → 0.83 | 0.76 → 0.65 |
+| references (range) | 22–52 % | 1–6 % | 5–19 % | 0.98–1.00 | 0.88–1.00 | 0.56–0.71 |
+
+"Before" is the shader that squared every albedo (DECISIONS 2026-09-20). The board's grey is
+the moon slab, grey on Sean's word; the tiles, planks and props carry the hue.
