@@ -55,10 +55,11 @@
       "damage_far": 10,
       "death_coin_share": 0.5
     },
-    "magnet": {
-      "_comment": "The retractable claw: pulls one item at random from a player within range_spaces steps along the walkway, either way; coins_when_empty coins when they hold nothing. A shield eats the grab.",
-      "display_name": "MAGNET",
-      "range_spaces": 3,
+    "claw": {
+      "_comment": "The retractable claw, aimed like the laser: it extends range_spaces (mean tile spacings) along its line, width metres wide, and grabs one item at random from the first player in its path, coins_when_empty coins when their bar is empty. A shield eats the grab; nothing in the path and it comes back empty, spent.",
+      "display_name": "CLAW",
+      "range_spaces": 3.0,
+      "width": 1.4,
       "coins_when_empty": 3
     }
   },

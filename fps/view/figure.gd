@@ -32,8 +32,8 @@ var _skates: bool = false
 func build(colour: Color, map_id: String, head_y: float = 1.62, with_gun: bool = false, skates: bool = false) -> void:
 	_skates = skates
 	# Built to Sean's Canti reference (FLCL's TV-headed robot, late-90s mecha lines): a boxy
-	# monitor head with a tilted cap, a dark visor band with a lit slit, an ear piece on the
-	# right; broad rounded chest armour in the identity colour over a narrow dark mechanical
+	# head shaped like an iMac G3 in profile (his second picture: a flat bezel, a big rounded dome
+	# behind it, no handle), a dark visor band with a lit slit, an ear piece on the right; broad rounded chest armour in the identity colour over a narrow dark mechanical
 	# waist, a red collar trim and a small badge, a red pelvis plate with a buckle, a backpack
 	# unit; ball shoulders under round pauldrons, dark upper arms, flared gauntlets with a pale
 	# cuff, dark gloves with fingers; armoured thighs, ball knees with red kneecaps, flared shins
@@ -86,27 +86,28 @@ func build(colour: Color, map_id: String, head_y: float = 1.62, with_gun: bool =
 	_cyl(self, 0.05, 0.14, Vector3(0, head_y - 0.14, 0), dark_mat)                           # neck
 	_cyl(self, 0.075, 0.03, Vector3(0, head_y - 0.06, 0), metal_mat)                         # neck ring
 
-	# Head: the monitor, its tilted cap, the visor band with the lit slit, the jaw, the ear piece.
+	# Head: an iMac G3 in profile (Sean's picture, the shape only, no handle): a flat bezel with
+	# the visor band and its lit slit at the front, a big rounded dome behind it that rises a
+	# touch above the bezel, the ear piece on the right, an antenna and vent slots on the left.
 	head = Node3D.new()
 	head.name = "Head"
 	head.position = Vector3(0, head_y, 0)
 	add_child(head)
-	_box(head, Vector3(0.40, 0.30, 0.34), Vector3(0, 0.07, 0.0), body_mat)                    # monitor
-	_box(head, Vector3(0.36, 0.04, 0.30), Vector3(0, -0.1, 0.0), body_dark_mat)              # jaw
-	var cap := _box(head, Vector3(0.43, 0.07, 0.37), Vector3(0, 0.245, 0.01), body_dark_mat)   # cap
-	cap.rotation.x = -0.12
-	_box(head, Vector3(0.2, 0.03, 0.12), Vector3(0, 0.29, 0.06), metal_mat)                   # cap vent
-	_box(head, Vector3(0.36, 0.11, 0.03), Vector3(0, 0.06, -0.175), screen_mat)              # visor band
-	_box(head, Vector3(0.3, 0.025, 0.01), Vector3(0, 0.065, -0.192), glow_mat)                # the lit slit
-	_box(head, Vector3(0.4, 0.02, 0.02), Vector3(0, 0.135, -0.17), body_light_mat)            # brow line
-	_box(head, Vector3(0.4, 0.02, 0.02), Vector3(0, -0.015, -0.17), body_light_mat)           # cheek line
-	_box(head, Vector3(0.07, 0.11, 0.12), Vector3(0.23, 0.05, 0.02), badge_mat)               # ear piece
-	_cyl(head, 0.02, 0.02, Vector3(0.27, 0.05, 0.02), dark_mat).rotation.z = PI * 0.5        # its stud
-	var ant := _cyl(head, 0.015, 0.14, Vector3(-0.22, 0.13, 0.02), dark_mat)                  # antenna
+	var dome := _sphere(head, 0.5, Vector3(0, 0.07, 0.06), body_mat)                          # the dome, an ellipsoid
+	dome.scale = Vector3(0.42, 0.34, 0.42)
+	_box(head, Vector3(0.40, 0.30, 0.1), Vector3(0, 0.07, -0.13), body_light_mat)             # bezel
+	_box(head, Vector3(0.36, 0.11, 0.03), Vector3(0, 0.06, -0.185), screen_mat)              # visor band
+	_box(head, Vector3(0.3, 0.025, 0.01), Vector3(0, 0.065, -0.202), glow_mat)                # the lit slit
+	_box(head, Vector3(0.4, 0.02, 0.02), Vector3(0, 0.145, -0.18), body_dark_mat)             # brow line
+	_box(head, Vector3(0.4, 0.02, 0.02), Vector3(0, -0.02, -0.18), body_dark_mat)             # cheek line
+	_box(head, Vector3(0.3, 0.04, 0.16), Vector3(0, -0.1, -0.08), body_dark_mat)              # chin plate
+	_box(head, Vector3(0.07, 0.11, 0.12), Vector3(0.22, 0.05, -0.04), badge_mat)              # ear piece
+	_cyl(head, 0.02, 0.02, Vector3(0.26, 0.05, -0.04), dark_mat).rotation.z = PI * 0.5        # its stud
+	var ant := _cyl(head, 0.015, 0.14, Vector3(-0.2, 0.15, -0.02), dark_mat)                  # antenna
 	ant.rotation.z = 0.35
-	_sphere(head, 0.025, Vector3(-0.245, 0.2, 0.02), red_mat)                                # its tip
+	_sphere(head, 0.025, Vector3(-0.225, 0.22, -0.02), red_mat)                               # its tip
 	for k in 3:
-		_box(head, Vector3(0.012, 0.05, 0.06), Vector3(-0.202, 0.02, 0.07 + 0.035 * k), body_dark_mat)   # cheek vents
+		_box(head, Vector3(0.012, 0.06, 0.05), Vector3(-0.2, 0.02, 0.03 + 0.05 * k), body_dark_mat)   # vent slots
 
 	# Arms and legs on their pivots (the animation rotates the pivots).
 	_l_arm = _arm(Vector3(-0.29, SHOULDER_Y, 0), body_mat, body_light_mat, dark_mat, metal_mat)

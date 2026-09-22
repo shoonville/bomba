@@ -60,8 +60,8 @@ forks and a shortcut, positions in metres on a 24×18 m field, some spaces raise
 |---|---|---|
 | BOMB | Thrown: a ring of range (3 spaces) round you, a reticle where it lands; everyone within a space of the landing, you included, takes 20 HP at the centre falling to 8 at the edge and is shoved 3 spaces back; at 0 HP they drop half their coins to you and respawn | Keep a space away; a SHIELD eats the hit |
 | PORTAL | Pick a player: a portal opens ahead of you, you go through it to them and push them back through it to your space (the two of you swap) | Stand somewhere nobody wants |
-| SHIELD | Passive, a glowing aura: eats the next bomb hit, damage space, laser hit or magnet grab | It is spent by the first hit |
-| MAGNET | Pick a player within 3 spaces along the walkway, either way: the claw shoots out and pulls one item at random from their bar, or 3 coins when it is empty | Keep your distance; a SHIELD eats the grab |
+| SHIELD | Passive, a glowing aura: eats the next bomb hit, damage space, laser hit or claw grab | It is spent by the first hit |
+| CLAW | Aimed like the laser: the claw extends 3 spaces along its line and grabs one item at random from the first player in its path, or 3 coins when their bar is empty; nothing in the path and it comes back empty, spent | Stay out of the line; a SHIELD eats the grab |
 | LASER | Aimed with the mouse on your turn: a straight beam 3 spaces long; everyone in it loses HP by distance (all 30 within a space, 10 at the end); at 0 HP they drop half their coins to the shooter and respawn at the other annex | Keep your distance; a SHIELD eats the hit |
 
 Players carry **HP** (`board.hp`, 30) as well as coins. HP is what the laser and the bomb take: a
@@ -70,8 +70,8 @@ player under `board.bleed_below_hp` (10) bleeds until then. Items are strings in
 `tuning/board.json`; the effect table lives in the rules. A new item is data + a rule branch + an
 icon + a playback in the view, no new nodes. The HUD shows the inventory as a hotbar: Q opens it on your turn, 1–9 or the wheel
 pick a slot, E (or a click on the slot) uses it; the laser then aims with the mouse and fires on
-a click, the bomb shows its ring of range and throws on a click, right click puts either away; the
-portal and the magnet pick a player (the magnet only among those in range).
+a click, the claw the same way and grabs, the bomb shows its ring of range and throws on a click,
+right click puts any of them away; the portal picks a player.
 
 ## 5. Presentation (STYLE.md)
 

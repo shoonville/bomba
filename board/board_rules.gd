@@ -140,16 +140,21 @@ static func use_item(state: BoardState, graph: BoardGraph, cfg: Dictionary, peer
 				(shot["hits"] as Array).append(rec)
 			events.append(shot)
 			events.append_array(shields)
-		"magnet":
-			# The retractable claw (Sean): one item pulled at random out of the bar of a player
-			# within range_spaces along the walkway, either way; coins_when_empty coins when they
-			# hold nothing, so it is never a dud; a shield eats the grab and both are spent.
-			var target := state.player(target_peer)
-			if target == null or target == user or not magnet_targets(state, graph, cfg, user).has(target):
-				user.items.append(item)
+		"claw":
+			# The retractable claw (Sean: it extends along its path and grabs what is in it): aimed
+			# like the laser; the first player in the line within range_spaces loses one item at
+			# random to the user, or coins_when_empty coins when their bar is empty; a shield eats
+			# the grab and both are spent; nobody in the path and the claw comes back empty.
+			var aim := float(payload.get("aim", 0.0))
+			events.append({"kind": "item_used", "peer": user.peer_id, "item": item, "target": 0})
+			var grab := {"kind": "claw", "peer": user.peer_id, "aim": aim, "length": claw_length(graph, cfg), "target": 0, "item": "", "coins": 0}
+			var hits := claw_hits(state, graph, cfg, user, aim)
+			if hits.is_empty():
+				events.append(grab)
 				return events
-			events.append({"kind": "item_used", "peer": user.peer_id, "item": item, "target": target.peer_id})
-			var grab := {"kind": "magnet", "peer": user.peer_id, "target": target.peer_id, "item": "", "coins": 0}
+			var target: BoardState.PlayerState = hits[0]["player"]
+			grab["target"] = target.peer_id
+			grab["along"] = float(hits[0]["along"])
 			if target.items.has("shield"):
 				target.items.erase("shield")
 				grab["shielded"] = true
@@ -250,23 +255,6 @@ static func bomb_hits(state: BoardState, graph: BoardGraph, cfg: Dictionary, at:
 	return out
 
 
-## The players the magnet can reach from `user`: within `range_spaces` steps along the walkway
-## in either direction (the loop makes the far way round very long, so the shorter way counts).
-static func magnet_targets(state: BoardState, graph: BoardGraph, cfg: Dictionary, user: BoardState.PlayerState) -> Array:
-	var out := []
-	var def: Dictionary = (cfg.get("items", {}) as Dictionary).get("magnet", {})
-	var reach := int(def.get("range_spaces", 3))
-	for p in state.players:
-		if p == user:
-			continue
-		var a := graph.distance(user.space, p.space)
-		var b := graph.distance(p.space, user.space)
-		var d := a if b < 0 else (b if a < 0 else mini(a, b))
-		if d >= 0 and d <= reach:
-			out.append(p)
-	return out
-
-
 ## The beam's reach in metres: `length_spaces` of the board's mean tile spacing.
 static func laser_length(graph: BoardGraph, cfg: Dictionary) -> float:
 	var def: Dictionary = (cfg.get("items", {}) as Dictionary).get("laser", {})
@@ -274,21 +262,47 @@ static func laser_length(graph: BoardGraph, cfg: Dictionary) -> float:
 
 
 ## Who a laser from `shooter` at `aim` (radians in the XZ plane, atan2(dz, dx)) hits, nearest
-## first: [{player, along, damage}]. A straight beam from the shooter's space, `width` wide,
-## over every other player's space; players on the shooter's own space are beside the gun, not
-## in front of it. Damage is `damage_close` out to `close_spaces`, then falls linearly to
-## `damage_far` at the end of the beam.
+## first: [{player, along, damage}]. Damage is `damage_close` out to `close_spaces`, then falls
+## linearly to `damage_far` at the end of the beam.
 static func laser_hits(state: BoardState, graph: BoardGraph, cfg: Dictionary, shooter: BoardState.PlayerState, aim: float) -> Array:
 	var out := []
 	var def: Dictionary = (cfg.get("items", {}) as Dictionary).get("laser", {})
-	var origin := graph.get_space(shooter.space)
-	if origin == null or def.is_empty():
+	if def.is_empty():
 		return out
 	var length := laser_length(graph, cfg)
-	var half_w := float(def.get("width", 1.4)) * 0.5
 	var close := float(def.get("close_spaces", 1.0)) * graph.mean_step()
 	var d_close := float(def.get("damage_close", 30))
 	var d_far := float(def.get("damage_far", 10))
+	for h in _players_in_line(state, graph, shooter, aim, length, float(def.get("width", 1.4)) * 0.5):
+		var along := float(h["along"])
+		var t := 0.0 if along <= close else clampf((along - close) / maxf(length - close, 0.001), 0.0, 1.0)
+		out.append({"player": h["player"], "along": along, "damage": int(round(lerpf(d_close, d_far, t)))})
+	return out
+
+
+## The claw's reach in metres: `range_spaces` of the board's mean tile spacing.
+static func claw_length(graph: BoardGraph, cfg: Dictionary) -> float:
+	var def: Dictionary = (cfg.get("items", {}) as Dictionary).get("claw", {})
+	return float(def.get("range_spaces", 3.0)) * graph.mean_step()
+
+
+## Who a claw from `user` at `aim` reaches, nearest first: [{player, along}]; the first is the
+## one it grabs from. The same line test as the laser's.
+static func claw_hits(state: BoardState, graph: BoardGraph, cfg: Dictionary, user: BoardState.PlayerState, aim: float) -> Array:
+	var def: Dictionary = (cfg.get("items", {}) as Dictionary).get("claw", {})
+	if def.is_empty():
+		return []
+	return _players_in_line(state, graph, user, aim, claw_length(graph, cfg), float(def.get("width", 1.4)) * 0.5)
+
+
+## The players whose space lies within `half_w` of a straight line from `shooter`'s space at
+## `aim` (radians in the XZ plane, atan2(dz, dx)), out to `length`, nearest first:
+## [{player, along}]. Players on the shooter's own space are beside the hand, not in front of it.
+static func _players_in_line(state: BoardState, graph: BoardGraph, shooter: BoardState.PlayerState, aim: float, length: float, half_w: float) -> Array:
+	var out := []
+	var origin := graph.get_space(shooter.space)
+	if origin == null:
+		return out
 	var dir := Vector2(cos(aim), sin(aim))
 	for p in state.players:
 		if p == shooter:
@@ -301,8 +315,7 @@ static func laser_hits(state: BoardState, graph: BoardGraph, cfg: Dictionary, sh
 		var across := absf(v.x * dir.y - v.y * dir.x)
 		if along < 0.3 or along > length or across > half_w:
 			continue
-		var t := 0.0 if along <= close else clampf((along - close) / maxf(length - close, 0.001), 0.0, 1.0)
-		out.append({"player": p, "along": along, "damage": int(round(lerpf(d_close, d_far, t)))})
+		out.append({"player": p, "along": along})
 	out.sort_custom(func(a, b): return float(a["along"]) < float(b["along"]))
 	return out
 
@@ -540,7 +553,7 @@ static func bot_choose(state: BoardState, graph: BoardGraph) -> int:
 
 
 ## [item, target_peer, payload] or [] when the bot passes. `cfg` is needed for the laser, the
-## bomb and the magnet (their reach is a tuning number); without it the bot only portals.
+## bomb and the claw (their reach is a tuning number); without it the bot only portals.
 static func bot_item(state: BoardState, graph: BoardGraph = null, cfg: Dictionary = {}) -> Array:
 	var me := state.active_player()
 	if me == null:
@@ -592,24 +605,37 @@ static func bot_item(state: BoardState, graph: BoardGraph = null, cfg: Dictionar
 					best_at = at
 		if best_total > 0:
 			return ["bomb", 0, {"x": snappedf(best_at.x, 0.01), "z": snappedf(best_at.z, 0.01)}]
-	if me.items.has("magnet") and graph != null and not cfg.is_empty():
-		# Grab from whoever in range has the most to lose: a laser first, then the fullest bar,
-		# then coins; never from behind a shield, which would only eat the claw.
-		var best: BoardState.PlayerState = null
+	if me.items.has("claw") and graph != null and not cfg.is_empty():
+		# Aim at each other player in turn and grab from whoever comes first in that line with the
+		# most to lose: a laser first, then the fullest bar, then coins; never a shield, which
+		# would only eat the claw.
+		var origin := graph.get_space(me.space)
 		var best_score := 0
-		for p in magnet_targets(state, graph, cfg, me):
-			var score := 0
-			if p.items.has("shield"):
-				score = 0
-			elif not p.items.is_empty():
-				score = p.items.size() * 10 + (100 if p.items.has("laser") else 0)
-			else:
-				score = mini(p.coins, 3)
-			if score > best_score:
-				best_score = score
-				best = p
-		if best != null:
-			return ["magnet", best.peer_id, {}]
+		var best_aim := 0.0
+		if origin != null:
+			for p in state.players:
+				if p == me:
+					continue
+				var sp := graph.get_space(p.space)
+				if sp == null:
+					continue
+				var aim := atan2(sp.position.z - origin.position.z, sp.position.x - origin.position.x)
+				var hits := claw_hits(state, graph, cfg, me, aim)
+				if hits.is_empty():
+					continue
+				var first: BoardState.PlayerState = hits[0]["player"]
+				var score := 0
+				if first.items.has("shield"):
+					score = 0
+				elif not first.items.is_empty():
+					score = first.items.size() * 10 + (100 if first.items.has("laser") else 0)
+				else:
+					score = mini(first.coins, 3)
+				if score > best_score:
+					best_score = score
+					best_aim = aim
+		if best_score > 0:
+			return ["claw", 0, {"aim": snappedf(best_aim, 0.001)}]
 	if me.items.has("portal") and graph != null and state.goal != "":
 		# Portal to whoever stands clearly nearer the goal than we do.
 		var my_d := graph.distance(me.space, state.goal)

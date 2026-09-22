@@ -396,7 +396,7 @@ func test_portal_and_shield() -> void:
 	# item draws can produce all five kinds
 	var names := (cfg["items"] as Dictionary).keys()
 	assert_eq(names.size(), 5)
-	assert_true(names.has("magnet") and names.has("portal") and not names.has("turbo"))
+	assert_true(names.has("claw") and names.has("portal") and not names.has("turbo"))
 
 
 
@@ -578,8 +578,9 @@ func test_machine_spot_is_far_from_the_players() -> void:
 	assert_eq(int(round(total_c / spaces.size() * 100.0)), int(round(best_mean * 100.0)), "farthest on average")
 
 
-func test_magnet() -> void:
-	# The claw reaches three spaces along the walkway either way and pulls one item, else coins.
+func test_claw() -> void:
+	# The claw extends along its aim and grabs from the first player in its path, coins from an
+	# empty bar; nobody in the path and it comes back empty, spent; a shield eats it.
 	var s := _fresh(4)
 	var me := s.players[0]
 	var near := s.players[1]
@@ -587,52 +588,66 @@ func test_magnet() -> void:
 	me.space = "1"
 	near.space = "3"
 	far.space = "9"
-	me.items = ["magnet"]
+	me.items = ["claw"]
 	near.items = ["laser"]
-	var targets := BoardRules.magnet_targets(s, graph, cfg, me)
-	assert_eq(targets.size(), 1)
-	assert_true(targets.has(near))
-	assert_eq(BoardRules.use_item(s, graph, cfg, 1, "magnet", far.peer_id).size(), 0, "out of range: nothing happens")
-	assert_true(me.items.has("magnet"), "kept")
-	var ev := BoardRules.use_item(s, graph, cfg, 1, "magnet", near.peer_id)
-	var grabs := ev.filter(func(e): return e["kind"] == "magnet")
-	assert_eq(grabs.size(), 1)
-	assert_eq(str(grabs[0]["item"]), "laser")
+	var hits := BoardRules.claw_hits(s, graph, cfg, me, 0.0)
+	assert_eq(hits.size(), 1, "along +x from 1: only 3 is in reach")
+	assert_true(hits[0]["player"] == near)
+	var ev0 := BoardRules.use_item(s, graph, cfg, 1, "claw", 0, {"aim": PI})
+	var g0: Dictionary = ev0.filter(func(e): return e["kind"] == "claw")[0]
+	assert_eq(int(g0["target"]), 0, "aimed away: nothing in the path")
+	assert_false(me.items.has("claw"), "spent all the same")
+	me.items = ["claw"]
+	var ev := BoardRules.use_item(s, graph, cfg, 1, "claw", 0, {"aim": 0.0})
+	var g: Dictionary = ev.filter(func(e): return e["kind"] == "claw")[0]
+	assert_eq(int(g["target"]), near.peer_id)
+	assert_eq(str(g["item"]), "laser")
 	assert_eq(me.items, ["laser"])
 	assert_true(near.items.is_empty())
-	# Behind counts too (the short way round), and an empty bar gives coins.
+	# Two in the line: only the nearer loses.
 	var t := _fresh(4)
-	var thief := t.players[0]
-	var mark := t.players[1]
-	thief.space = "3"
-	mark.space = "1"
-	mark.coins = 5
-	thief.items = ["magnet"]
-	assert_true(BoardRules.magnet_targets(t, graph, cfg, thief).has(mark), "two spaces back")
-	var ev2 := BoardRules.use_item(t, graph, cfg, 1, "magnet", mark.peer_id)
-	var g2: Dictionary = ev2.filter(func(e): return e["kind"] == "magnet")[0]
-	assert_eq(int(g2["coins"]), 3)
-	assert_eq(mark.coins, 2)
-	assert_eq(thief.coins, 8)
-	# A shield eats the grab: nothing stolen, the shield spent.
+	t.players[0].space = "1"
+	t.players[1].space = "2"
+	t.players[2].space = "3"
+	t.players[0].items = ["claw"]
+	t.players[1].items = ["bomb"]
+	t.players[2].items = ["laser"]
+	var ev2 := BoardRules.use_item(t, graph, cfg, 1, "claw", 0, {"aim": 0.0})
+	var g2: Dictionary = ev2.filter(func(e): return e["kind"] == "claw")[0]
+	assert_eq(int(g2["target"]), t.players[1].peer_id, "the first in the path")
+	assert_eq(t.players[0].items, ["bomb"])
+	assert_eq(t.players[2].items, ["laser"], "the one behind keeps theirs")
+	# An empty bar gives coins.
 	var u := _fresh(4)
 	u.players[0].space = "1"
-	u.players[1].space = "2"
-	u.players[0].items = ["magnet"]
-	u.players[1].items = ["shield", "laser"]
-	var ev3 := BoardRules.use_item(u, graph, cfg, 1, "magnet", u.players[1].peer_id)
-	assert_true(bool((ev3.filter(func(e): return e["kind"] == "magnet")[0] as Dictionary).get("shielded", false)))
-	assert_eq(u.players[1].items, ["laser"])
-	assert_true(u.players[0].items.is_empty())
-	assert_true(ev3.any(func(e): return e["kind"] == "shield"))
-	# The bot grabs from the one in range with the most to lose.
+	u.players[1].space = "3"
+	u.players[1].coins = 5
+	u.players[0].items = ["claw"]
+	var ev3 := BoardRules.use_item(u, graph, cfg, 1, "claw", 0, {"aim": 0.0})
+	var g3: Dictionary = ev3.filter(func(e): return e["kind"] == "claw")[0]
+	assert_eq(int(g3["coins"]), 3)
+	assert_eq(u.players[1].coins, 2)
+	assert_eq(u.players[0].coins, 8)
+	# A shield eats the grab: nothing stolen, the shield spent.
 	var v := _fresh(4)
 	v.players[0].space = "1"
-	v.players[1].space = "2"
-	v.players[2].space = "3"
-	v.players[0].items = ["magnet"]
-	v.players[1].items = ["shield"]
-	v.players[2].items = ["laser"]
-	var pick := BoardRules.bot_item(v, graph, cfg)
-	assert_eq(str(pick[0]), "magnet")
-	assert_eq(int(pick[1]), v.players[2].peer_id, "the laser, not the shield")
+	v.players[1].space = "3"
+	v.players[0].items = ["claw"]
+	v.players[1].items = ["shield", "laser"]
+	var ev4 := BoardRules.use_item(v, graph, cfg, 1, "claw", 0, {"aim": 0.0})
+	assert_true(bool((ev4.filter(func(e): return e["kind"] == "claw")[0] as Dictionary).get("shielded", false)))
+	assert_eq(v.players[1].items, ["laser"])
+	assert_true(v.players[0].items.is_empty())
+	assert_true(ev4.any(func(e): return e["kind"] == "shield"))
+	# The bot aims at whoever has the most to lose and is first in that line.
+	var w := _fresh(4)
+	w.players[0].space = "1"
+	w.players[1].space = "3"
+	w.players[2].space = "9"
+	w.players[0].items = ["claw"]
+	w.players[1].items = ["laser"]
+	var pick := BoardRules.bot_item(w, graph, cfg)
+	assert_eq(str(pick[0]), "claw")
+	assert_true(absf(float((pick[2] as Dictionary)["aim"])) < 0.15, "aimed along +x at 3")
+	w.players[1].space = "9"
+	assert_eq(BoardRules.bot_item(w, graph, cfg).size(), 0, "nobody in reach: the bot passes")

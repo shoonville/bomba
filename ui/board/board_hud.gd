@@ -126,8 +126,9 @@ func _on_events(events: Array) -> void:
 			"bomb":
 				for h in e.get("hits", []):
 					_row_flash[int(h["peer"])] = 1.0
-			"magnet":
-				_row_flash[int(e["target"])] = 1.0
+			"claw":
+				if int(e.get("target", 0)) != 0:
+					_row_flash[int(e["target"])] = 1.0
 			"coins":
 				_row_flash[int(e["peer"])] = 1.0
 				if e.has("rank"):
@@ -205,14 +206,11 @@ func _process(delta: float) -> void:
 		var lp := director.local_player()
 		if lp != null and lp.items.has("laser"):
 			_begin_aim()
-	if Game.args.has("magnet_test") and not _test_done and _can_use_items():
-		# Harness: the claw fired at the first player in range, for a screenshot of the grab.
+	if Game.args.has("claw_test") and not _aiming and _can_use_items():
+		# Harness: the claw aimed at a fixed angle (degrees) for a screenshot.
 		var lp := director.local_player()
-		if lp != null and lp.items.has("magnet"):
-			var targets: Array = BoardRules.magnet_targets(director.state, director.graph, director.cfg, lp)
-			if not targets.is_empty():
-				_test_done = true
-				director.request_item("magnet", (targets[0] as BoardState.PlayerState).peer_id)
+		if lp != null and lp.items.has("claw"):
+			_begin_aim("claw")
 	if Game.args.has("throw_test") and not _aiming and _can_use_items():
 		# Harness: the bomb's throw aimed at a fixed angle (degrees) for a screenshot.
 		var lp := director.local_player()
@@ -300,15 +298,17 @@ func _use_selected() -> void:
 	_use_item_index(_hotbar_sel)
 
 
-## The laser: the view turns the pawn with the mouse and shows the beam; a click fires.
-func _begin_aim() -> void:
+## The laser, or the claw: the view turns the pawn with the mouse and shows the line; a click
+## fires or grabs.
+func _begin_aim(kind: String = "laser") -> void:
 	var lp := director.local_player()
 	if lp == null or director.view == null or not director.view.has_method("begin_aim"):
 		return
 	_aiming = true
-	_aim_item = "laser"
+	_aim_item = kind
 	_hotbar_open = false
-	director.view.begin_aim(lp.peer_id, BoardRules.laser_length(director.graph, director.cfg))
+	var length := BoardRules.claw_length(director.graph, director.cfg) if kind == "claw" else BoardRules.laser_length(director.graph, director.cfg)
+	director.view.begin_aim(lp.peer_id, length, kind)
 
 
 ## The bomb: a ring of range round the pawn, a reticle the size of the blast under the mouse; a
@@ -340,8 +340,9 @@ func _fire() -> void:
 		director.request_item("bomb", 0, {"x": snappedf(p.x, 0.01), "z": snappedf(p.z, 0.01)})
 		return
 	var aim: float = director.view.aim_angle()
+	var kind := _aim_item
 	_end_aim()
-	director.request_item("laser", 0, {"aim": snappedf(aim, 0.001)})
+	director.request_item(kind, 0, {"aim": snappedf(aim, 0.001)})
 
 
 ## Options are space ids; map LEFT/RIGHT by where the tiles sit on screen.
@@ -413,20 +414,8 @@ func _use_item_index(idx: int) -> void:
 			_begin_aim()
 		"bomb":
 			_begin_throw()
-		"magnet":
-			# Only players within the claw's reach can be picked; one alone is grabbed at once.
-			var targets: Array = BoardRules.magnet_targets(director.state, director.graph, director.cfg, lp)
-			if targets.is_empty():
-				_hint = "NOBODY IN RANGE"
-				_hint_t = 1.4
-				Audio.play("dry", -4.0)
-				return
-			_hotbar_open = false
-			_item_target_mode = item
-			_target_index = 0
-			_cycle_target(0)
-			if targets.size() == 1:
-				_confirm_target()
+		"claw":
+			_begin_aim("claw")
 		_:
 			_hotbar_open = false
 			_item_target_mode = item
@@ -434,15 +423,12 @@ func _use_item_index(idx: int) -> void:
 			_cycle_target(0)
 
 
-## Whether row `i` can be the target of the item being aimed: never yourself, and only players
-## within reach for the magnet.
+## Whether row `i` can be the target of the item being aimed: never yourself.
 func _target_ok(i: int) -> bool:
 	var st := director.state
 	var lp := director.local_player()
 	if i < 0 or i >= st.players.size() or st.players[i] == lp:
 		return false
-	if _item_target_mode == "magnet":
-		return BoardRules.magnet_targets(st, director.graph, director.cfg, lp).has(st.players[i])
 	return true
 
 
@@ -607,14 +593,13 @@ func _draw() -> void:
 		var col := Palette.player_colour(p.colour_index)
 		var active := i == st.active
 		var targeted := _item_target_mode != "" and i == _target_index
-		var out_of_reach := _item_target_mode == "magnet" and p != lp and not _target_ok(i)
 		var w := 600.0
 		var h := 44.0
 		var x := 24.0 + (14.0 if active else 0.0)
 		var skew := 12.0
 		_row_rects.append(Rect2(x, y, w, h))
 		var flash: float = float(_row_flash.get(p.peer_id, 0.0))
-		draw_colored_polygon(PackedVector2Array([Vector2(x + skew, y), Vector2(x + w, y), Vector2(x + w - skew, y + h), Vector2(x, y + h)]), Color(ink, (0.9 if active else 0.7) * (0.4 if out_of_reach else 1.0)).lerp(Color(paper, 0.9), flash * 0.6))
+		draw_colored_polygon(PackedVector2Array([Vector2(x + skew, y), Vector2(x + w, y), Vector2(x + w - skew, y + h), Vector2(x, y + h)]), Color(ink, 0.9 if active else 0.7).lerp(Color(paper, 0.9), flash * 0.6))
 		draw_colored_polygon(PackedVector2Array([Vector2(x + skew, y), Vector2(x + skew + 34, y), Vector2(x + 34, y + h), Vector2(x, y + h)]), col)
 		if active or targeted:
 			draw_polyline(PackedVector2Array([Vector2(x + skew, y), Vector2(x + w, y), Vector2(x + w - skew, y + h), Vector2(x, y + h), Vector2(x + skew, y)]), Palette.hud_colour("danger") if targeted else accent, 3.0)
@@ -687,10 +672,11 @@ func _draw() -> void:
 	if st.phase == BoardState.PHASE_TURNS:
 		if director.is_local_turn():
 			if _aiming:
-				prompt = "AIM WITH THE MOUSE   ·   CLICK TO THROW   ·   RIGHT CLICK PUTS IT AWAY" if _aim_item == "bomb" else "AIM WITH THE MOUSE   ·   CLICK TO FIRE   ·   RIGHT CLICK PUTS IT AWAY"
+				var verb := "THROW" if _aim_item == "bomb" else ("GRAB" if _aim_item == "claw" else "FIRE")
+				prompt = "AIM WITH THE MOUSE   ·   CLICK TO %s   ·   RIGHT CLICK PUTS IT AWAY" % verb
 			elif _item_target_mode != "":
 				var target := st.players[clampi(_target_index, 0, st.players.size() - 1)]
-				prompt = "%s → %s   ·   CLICK A PLAYER%s OR A/D + ENTER   ·   SPACE CANCELS" % [_item_target_mode.to_upper(), target.display_name.to_upper(), " IN RANGE" if _item_target_mode == "magnet" else ""]
+				prompt = "%s → %s   ·   CLICK A PLAYER OR A/D + ENTER   ·   SPACE CANCELS" % [_item_target_mode.to_upper(), target.display_name.to_upper()]
 			else:
 				prompt = "YOUR TURN"
 				var left := director.turn_seconds_left()
@@ -842,7 +828,7 @@ func _draw_item_icon(kind: String, c: Vector2, s: float, alpha: float = 1.0) -> 
 			draw_colored_polygon(boss, paper)
 			draw_circle(c, s * 0.12, meter)
 			draw_line(c + Vector2(-s * 0.5, -s * 0.3), c + Vector2(-s * 0.22, -s * 0.62), Color(paper, alpha * 0.9), 3.0)
-		"magnet":
+		"claw":
 			var steel := Color(paper, alpha)
 			var accent := Color(Palette.player_colour(1), alpha)
 			draw_line(c + Vector2(0, -s * 1.15), c + Vector2(0, -s * 0.35), ink, 5.0)

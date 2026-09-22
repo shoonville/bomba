@@ -330,11 +330,14 @@ func _broadcast(events: Array) -> void:
 			var u := state.player(int(e["peer"]))
 			var m := state.player(int(e["target"]))
 			Log.info("board", "%s portals to %s: %s -> %s" % [u.display_name if u != null else "?", m.display_name if m != null else "?", str(e["from"]), str(e["to"])])
-		elif str(e.get("kind", "")) == "magnet":
+		elif str(e.get("kind", "")) == "claw":
 			var thief := state.player(int(e["peer"]))
-			var mark := state.player(int(e["target"]))
+			var mark := state.player(int(e.get("target", 0)))
 			var what := "nothing (shielded)" if bool(e.get("shielded", false)) else (str(e["item"]).to_upper() if str(e["item"]) != "" else "%d coins" % int(e["coins"]))
-			Log.info("board", "%s grabs %s from %s" % [thief.display_name if thief != null else "?", what, mark.display_name if mark != null else "?"])
+			if mark == null:
+				Log.info("board", "%s extends the claw at %.2f rad: nobody in its path" % [thief.display_name if thief != null else "?", float(e["aim"])])
+			else:
+				Log.info("board", "%s extends the claw at %.2f rad and grabs %s from %s" % [thief.display_name if thief != null else "?", float(e["aim"]), what, mark.display_name])
 	var pause := _estimate_pause(events)
 	_busy_until = _clock + pause
 	_rpc_state.rpc(state.to_dict())
@@ -361,7 +364,7 @@ func _estimate_pause(events: Array) -> float:
 				for h in e.get("hits", []):
 					t += 0.9 if bool(h.get("dead", false)) else 0.35 * (h.get("knock", []) as Array).size()
 			"portal": t += 2.8
-			"magnet": t += 1.3
+			"claw": t += 1.4
 			"teleport": t += 1.1
 			"turn": t += 0.35
 			"minigame": t += 2.4

@@ -44,6 +44,7 @@ var _aiming: bool = false
 var _aim: float = 0.0
 var _aim_len: float = 9.0
 var _aim_peer: int = 0
+var _aim_kind: String = "laser"      # what the line is for: the laser's beam or the claw's reach
 var _beam: MeshInstance3D
 var _beam_dot: MeshInstance3D
 var _throw: bool = false             # aiming the bomb: the range ring and the landing reticle
@@ -425,7 +426,7 @@ func _build_beam() -> void:
 	add_child(_beam_dot)
 
 
-func _place_beam(from: Vector3, a: float, length: float, thick: float, alpha: float) -> void:
+func _place_beam(from: Vector3, a: float, length: float, thick: float, alpha: float, col: Color = Color(0.95, 0.12, 0.1)) -> void:
 	var dir := Vector3(cos(a), 0.0, sin(a))
 	_beam.visible = true
 	_beam_dot.visible = true
@@ -434,7 +435,7 @@ func _place_beam(from: Vector3, a: float, length: float, thick: float, alpha: fl
 	_beam.look_at(from + dir * length, Vector3.UP)
 	_beam_dot.global_position = from + dir * length
 	_beam_dot.scale = Vector3.ONE * (thick / 0.07) * 0.8
-	(_beam.material_override as StandardMaterial3D).albedo_color = Color(0.95, 0.12, 0.1, alpha)
+	(_beam.material_override as StandardMaterial3D).albedo_color = Color(col, alpha)
 
 
 func _hide_beam() -> void:
@@ -443,15 +444,19 @@ func _hide_beam() -> void:
 		_beam_dot.visible = false
 
 
-## The local player draws the laser: the pawn turns to follow the mouse and the beam shows how
-## far it reaches. `length` in metres (the rules' laser_length).
-func begin_aim(peer_id: int, length: float) -> void:
+## The local player draws the laser (or the claw): the pawn turns to follow the mouse and the
+## line shows how far it reaches. `length` in metres (the rules' laser_length or claw_length).
+func begin_aim(peer_id: int, length: float, kind: String = "laser") -> void:
 	_aiming = true
 	_aim_peer = peer_id
 	_aim_len = length
+	_aim_kind = kind
 	var pawn: BoardPawn = pawns.get(peer_id, null)
 	if pawn != null:
-		pawn.show_gun(true)
+		if kind == "claw":
+			pawn.show_claw(true)
+		else:
+			pawn.show_gun(true)
 		_focus(pawn.global_position)
 
 
@@ -462,6 +467,7 @@ func end_aim() -> void:
 	var pawn: BoardPawn = pawns.get(_aim_peer, null)
 	if pawn != null and not _throw:
 		pawn.show_gun(false)
+		pawn.show_claw(false)
 	_throw = false
 	_hide_beam()
 	if _range_ring != null:
@@ -480,8 +486,8 @@ func aim_angle() -> float:
 ## Aim from the mouse: the point under the cursor on the plane at the pawn's chest height, seen
 ## from the pawn. Keeps the last aim when the cursor is off the plane. `--aim_test=DEG` pins it.
 func _update_aim(pawn: BoardPawn) -> void:
-	if Game.args.has("aim_test"):
-		_aim = deg_to_rad(float(Game.args["aim_test"]))
+	if Game.args.has("aim_test") or Game.args.has("claw_test"):
+		_aim = deg_to_rad(float(Game.args.get("aim_test", Game.args.get("claw_test", 0))))
 		return
 	if camera == null:
 		return
@@ -1518,7 +1524,7 @@ func _play_next() -> void:
 		"item_used":
 			_float_label(int(e["peer"]), str(e["item"]).to_upper() + "!", Palette.hud_colour("danger"))
 			Audio.play("dice", 0.0)
-			wait = 0.15 if str(e["item"]) in ["laser", "bomb", "magnet", "portal"] else 0.5
+			wait = 0.15 if str(e["item"]) in ["laser", "bomb", "claw", "portal"] else 0.5
 		"laser":
 			# The shooter turns to the aim and draws, the beam flashes down the line, and every
 			# player in it flinches, bleeds and loses HP; a downed one comes back at the annex.
@@ -1709,34 +1715,43 @@ func _play_next() -> void:
 				if mark != null:
 					mark.snap_to(from_pos)
 			wait = 0.4
-		"magnet":
-			# The claw: the thief turns, the arm comes up, the claw flies out on its cable to the mark,
-			# who flinches, and retracts with the item, whose icon pops over the thief's head.
+		"claw":
+			# The claw: the thief turns to the aim, the arm comes up, the claw flies out on its cable
+			# along the line to the first player in it (or to the end of its reach and back empty),
+			# who flinches; it retracts with the item, whose icon pops over the thief's head.
 			var thief: BoardPawn = pawns.get(int(e["peer"]), null)
-			var mark: BoardPawn = pawns.get(int(e["target"]), null)
-			if thief != null and mark != null:
-				var d := mark.global_position - thief.global_position
-				if Vector2(d.x, d.z).length() > 0.05:
-					thief.face_angle(atan2(d.z, d.x))
+			var mark: BoardPawn = pawns.get(int(e.get("target", 0)), null)
+			var a := float(e["aim"])
+			var length := float(e["length"])
+			if thief != null:
+				thief.face_angle(a)
 				thief.show_claw(true)
-				_focus((thief.global_position + mark.global_position) * 0.5)
+				var end := thief.global_position + Vector3(cos(a), 0.0, sin(a)) * length + Vector3(0, 1.05, 0)
+				if mark != null:
+					end = mark.global_position + Vector3(0, 1.05, 0)
+				_focus((thief.global_position + end) * 0.5)
 				await get_tree().create_timer(0.3).timeout
 				if not is_inside_tree():
 					_playing = false
 					return
 				Audio.play("claw", -4.0)
+				var fly := 0.2 + 0.02 * thief.global_position.distance_to(end)
 				if not Game.headless:
-					await thief.claw_to(mark.global_position + Vector3(0, 1.05, 0), 0.25)
+					await thief.claw_to(end, fly)
 				else:
-					await get_tree().create_timer(0.25).timeout
-				mark.flinch()
+					await get_tree().create_timer(fly).timeout
+				if mark != null:
+					mark.flinch()
+					if not Game.headless:
+						Burst.spawn(self, end, mark.colour, 0.5, 0.2, 7)
+				else:
+					_float_label(thief.peer_id, "NOTHING!", Palette.hud_colour("paper"))
 				if not Game.headless:
-					Burst.spawn(self, mark.global_position + Vector3(0, 1.0, 0), mark.colour, 0.5, 0.2, 7)
 					await thief.claw_back(0.32)
 				else:
 					await get_tree().create_timer(0.32).timeout
 				thief.show_claw(false)
-				if bool(e.get("shielded", false)):
+				if mark == null or bool(e.get("shielded", false)):
 					pass   # the shield event that follows shows it
 				elif str(e["item"]) != "":
 					Events.board_item_picked.emit(thief.peer_id, str(e["item"]), false)
@@ -2040,7 +2055,10 @@ func _process(delta: float) -> void:
 		elif pawn != null:
 			_update_aim(pawn)
 			pawn.face_angle(_aim)
-			_place_beam(pawn.gun_tip(), _aim, _aim_len, 0.07, 0.9)
+			if _aim_kind == "claw":
+				_place_beam(pawn.hand_position(), _aim, _aim_len, 0.05, 0.8, Palette.hud_colour("paper"))
+			else:
+				_place_beam(pawn.gun_tip(), _aim, _aim_len, 0.07, 0.9)
 	var desired_pos := _cam_look + Vector3(sin(_cam_yaw) * 6.8, 6.2, cos(_cam_yaw) * 6.8)
 	var look := _cam_look
 	if Game.args.has("board_overview"):
