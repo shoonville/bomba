@@ -90,7 +90,7 @@ Per player scene (`fps/player/player.tscn`):
 | `:transform` | body position and yaw |
 | `:velocity` | needed so acceleration survives a rewind |
 | `:head_pitch` | pitch (netfox cannot address a child's nested field) |
-| `:health`, `:kills`, `:deaths` | |
+| `:health` | `kills` and `deaths` are plain counters on the body, not state (2026-09-22, §6.3) |
 | `:protected_until_tick` | spawn protection |
 | `:respawn_count` | lets clients detect a respawn and `teleport()` the interpolators |
 | `Move:jump_buffer`, `Move:coyote`, `Move:on_floor` | movement bookkeeping ints/bools that must rewind |
@@ -181,8 +181,11 @@ node would make netfox record its stale state under the current tick and shadow 
 received state (measured: the victim froze on screen while being hit).
 
 Death is resolved **only by the authority**: in the victim's `_rollback_tick`, `if
-is_multiplayer_authority() and health <= 0` → `deaths += 1`, killer `kills += 1`, pick a spawn,
-teleport, restore health, set `protected_until_tick`. Clients never predict a death or a respawn;
+is_multiplayer_authority() and health <= 0` → count the death and the kill once per life (plain
+counters kept in step with the kill message, not rollback state: a partial resimulation of the
+death tick, which netfox runs for the shooter but not the victim, re-recorded rollback counters
+from their pre-death values and lost kills), pick a spawn, teleport, restore health, set
+`protected_until_tick`. Clients never predict a death or a respawn;
 the victim learns of their death when the state arrives. That is the side of the inconsistency
 players tolerate (`DESIGN.md` §3).
 

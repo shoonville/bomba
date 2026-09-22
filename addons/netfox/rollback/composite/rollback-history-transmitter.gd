@@ -32,6 +32,7 @@ var _pending_state_tick: int = -1   # BOMBA patch #5: the loop's newest simulate
 
 var _earliest_input_tick: int
 var _latest_state_tick: int
+var _last_sent_state_tick: int   # BOMBA patch #8: the decimation counts from here, not from _latest_state_tick
 
 var _is_predicted_tick: bool
 var _is_initialized: bool
@@ -83,6 +84,7 @@ func reset() -> void:
 	_ackd_state.clear()
 	_pending_state_tick = -1
 	_latest_state_tick = NetworkTime.tick - 1
+	_last_sent_state_tick = NetworkTime.tick - 1
 	_earliest_input_tick = NetworkTime.tick
 	_next_full_state_tick = NetworkTime.tick
 	_next_diff_ack_tick = NetworkTime.tick
@@ -135,6 +137,13 @@ func transmit_state(tick: int) -> void:
 	if full_state.is_empty():
 		return
 
+	# BOMBA patch #8 (see addons/netfox/PATCHES.md): on the authority, _latest_state_tick is the newest
+	# tick a state exists for, whether or not it goes out. Patches #4 and #5 had tied it to the
+	# decimated send, so it lagged the simulation by a tick on alternate loops and the host restarted
+	# every other rollback loop one tick early, re-running its newest tick for the nodes the fire
+	# actions mark mutated and re-recording the rest from their pre-tick states.
+	_latest_state_tick = maxi(_latest_state_tick, tick)
+
 	# BOMBA patch #5 (see addons/netfox/PATCHES.md): one state per node per rollback loop, the
 	# newest tick the node was simulated for. Every resimulated tick used to send its own state:
 	# with three lagged clients the host resimulated ~7 ticks a loop and sent each node's state
@@ -164,10 +173,11 @@ func _flush_state(tick: int) -> void:
 	# BOMBA patch #4: decimate to one state every _state_send_interval ticks (30 Hz at 60), counted
 	# from the last send rather than by tick parity, so a loop covering two ticks cannot starve a
 	# peer. Full states always go.
-	if not is_full_state_tick and _state_send_interval > 1 and tick - _latest_state_tick < _state_send_interval:
+	if not is_full_state_tick and _state_send_interval > 1 and tick - _last_sent_state_tick < _state_send_interval:
 		return
 
-	_latest_state_tick = max(_latest_state_tick, tick)
+	_last_sent_state_tick = maxi(_last_sent_state_tick, tick)
+	_latest_state_tick = maxi(_latest_state_tick, tick)
 
 	if is_full_state_tick:
 		# Broadcast new full state

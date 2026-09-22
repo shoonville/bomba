@@ -68,3 +68,19 @@ Keep this list current. Re-apply when upgrading netfox, or drop a patch once ups
    Ryzen 9800X3D. Such a node now skips the per-tick apply (and the simset gathering, which
    was empty for it anyway) and only gets the display state at the end of the loop, as before.
    A mutated node (predicted damage on the authority) is never skipped. Candidate for upstream.
+
+8. **Transmitter: the authority's latest state tick is the newest simulated tick, not the last
+   sent one** — `rollback/composite/rollback-history-transmitter.gd` (`transmit_state` advances
+   `_latest_state_tick`; `_flush_state` decimates from a separate `_last_sent_state_tick`).
+   Patches #4 and #5 had left `_latest_state_tick` on the last *sent* tick, so on alternate loops
+   it lagged the simulation by one tick and `_notify_resim` (which starts an input owner's
+   resimulation from its latest state) made the host restart every other rollback loop at a tick
+   it had already simulated. In that tick only the nodes netfox considers mutated run again (every
+   node whose RewindableAction has an active tick in the window, i.e. every recent shooter), the
+   others are re-applied from history: a shooter re-fired into a victim's pre-hit state, the
+   victim's death hook did not run, and the record for the next tick overwrote both players'
+   counters with pre-death values. Measured in BOMBA's headless LAST STAND stress (five bots,
+   eight rounds) as a lost kill or death in six of eight rounds, and in Sean's 2026-09-18 match as
+   a kill the feed showed and the score did not. With the patch a pure host never re-simulates a
+   tick; the kill and death counters were also taken out of the rollback state (BOMBA's own
+   change), since a host with lagging clients still re-simulates partially. Candidate for upstream.

@@ -6,8 +6,6 @@ extends CharacterBody3D
 
 # --- rollback state (see RollbackSynchronizer config in player.tscn) ---
 var health: int = 100
-var kills: int = 0
-var deaths: int = 0
 var protected_until_tick: int = 0
 var respawn_count: int = 0
 var jump_buffer: int = 0
@@ -17,6 +15,12 @@ var last_hit_info: int = 0  # hit kind * 10 + weapon slot
 var head_pitch: float = 0.0
 var yaw: float = 0.0
 var respawn_tick: int = -1000
+
+# --- plain counters, once per life, kept by the match (FpsMatch._on_player_died and _rpc_kill).
+# Not rollback state: a partial resimulation of the death tick re-recorded them from the pre-death
+# state and lost kills (2026-09-22).
+var kills: int = 0
+var deaths: int = 0
 
 # --- identity ---
 var peer_id: int = 0

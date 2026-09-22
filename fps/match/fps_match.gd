@@ -135,9 +135,9 @@ func _score_for(pl: Player) -> int:
 	return kills_for(pl.peer_id)
 
 
-## Kills and deaths as the kill feed saw them (one message per life). The rollback state
-## counters exist too, but Sean's 2026-09-18 match log had a kill in the feed that the state
-## counter lost; scoring and the HUD read the log so they always agree with what was shown.
+## Kills and deaths as the kill feed saw them (one message per life). Scoring and the HUD read
+## the log, which is identical on every peer; the body's counters are kept in step with it (they
+## were rollback state until 2026-09-22, and a partial resimulation of a kill tick lost them).
 func kills_for(peer: int) -> int:
 	var n := 0
 	for k in kill_log:
@@ -438,8 +438,7 @@ func _targets_for(shooter: Node) -> Array:
 func _on_player_died(node: Node, tick: int) -> void:
 	var victim := node as Player
 	if not _respawns():
-		# The body stays down, so this fires every tick from now on; count it at its death tick
-		# only (a rollback that re-simulates that tick counts again on the restored state).
+		# The body stays down, so this fires every tick from now on; count it at its death tick only.
 		var since: int = _dead_since.get(victim.peer_id, -1)
 		if since >= 0 and since < tick:
 			return
@@ -447,11 +446,6 @@ func _on_player_died(node: Node, tick: int) -> void:
 	var killer_id := victim.last_hit_by
 	var info := victim.last_hit_info
 	var life := victim.respawn_count  # before the respawn below bumps it
-	victim.deaths += 1
-	if killer_id != 0 and killer_id != victim.peer_id and _players.has(killer_id):
-		var killer: Player = _players[killer_id]
-		killer.kills += 1
-		NetworkRollback.mutate(killer)
 	if _respawns():
 		var enemies := []
 		for p in _players.values():
@@ -465,6 +459,13 @@ func _on_player_died(node: Node, tick: int) -> void:
 	var key := "%d_%d" % [victim.peer_id, life]
 	if not _kill_sent.has(key):
 		_kill_sent[key] = true
+		# The counters are plain, not rollback state: a partial resimulation of this tick (the shooter
+		# re-run because its fire action marks it mutated, the victim not) re-recorded both from their
+		# pre-death states and lost the kill. Counted once per life: here on the host, in _rpc_kill on
+		# the clients, so every peer's counters match the feed.
+		victim.deaths += 1
+		if killer_id != 0 and killer_id != victim.peer_id and _players.has(killer_id):
+			(_players[killer_id] as Player).kills += 1
 		var weapon_slot := info % 10
 		var kind := int(info / 10)
 		var weapon_id := weapon_defs[weapon_slot].id if weapon_slot < weapon_defs.size() else "?"
@@ -567,6 +568,14 @@ func _rpc_round(start_tick: int, end_tick: int) -> void:
 @rpc("authority", "call_local", "reliable")
 func _rpc_kill(killer_id: int, victim_id: int, weapon_id: String, headshot: bool, tick: int) -> void:
 	kill_log.append({"killer": killer_id, "victim": victim_id, "weapon": weapon_id, "headshot": headshot, "tick": tick})
+	if not is_authority():
+		# The host counted at the death tick; clients keep the same counters from the message.
+		var v := get_player(victim_id)
+		if v != null:
+			v.deaths += 1
+		var k := get_player(killer_id)
+		if k != null and killer_id != victim_id:
+			k.kills += 1
 	Events.kill.emit(killer_id, victim_id, weapon_id, headshot, tick)
 	var kn := _name_of(killer_id)
 	var vn := _name_of(victim_id)
