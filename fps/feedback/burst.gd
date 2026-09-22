@@ -66,10 +66,6 @@ static func spawn(parent: Node, at: Vector3, colour: Color, size: float = 0.35, 
 	tw.chain().tween_callback(root.queue_free)
 
 
-static func spawn_muzzle(parent: Node, at: Vector3, colour: Color) -> void:
-	spawn(parent, at, colour, 0.16, 0.07, 6, false)
-
-
 static func spawn_impact(parent: Node, at: Vector3, hit_kind: int) -> void:
 	match hit_kind:
 		HitscanResolver.HEAD:

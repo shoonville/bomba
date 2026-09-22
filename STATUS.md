@@ -572,3 +572,10 @@ measured at 1920×1080 unless noted, on the 5090, and extrapolated.
   beam hurts most. HUD: a nine-slot hotbar with drawn icons, HP bars on the rows. 78 tests; a
   headless match with lasers in every hand: 5 shots, 3 kills, no errors. Frames:
   `board_items.png` (the hotbar), `board_laser.png` (the shot). His verdict pending.
+- **Sean's five notes** (2026-09-21): the sniper's bipod hangs from the barrel (hinge block and
+  clip); the ARENA tower has three flights of 0.75 m steps to the top with rails, and the corner
+  buildings' windows and roof units sit where they should (they had the centre height added
+  twice, floating 2 m up); target mode moves the camera to the targeted pawn; an item pickup pops
+  its icon over the head instead of the name; the hitmarker is a dice tick (headshot two), and the
+  muzzle burst is gone. Frames: `arena_hip_sniper.png`, `arena_spectator.png`, `arena_hip_ar.png`,
+  `board_items.png` (target mode), `board_item_pop.png`. His verdict pending.

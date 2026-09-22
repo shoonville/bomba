@@ -65,7 +65,8 @@ Useful flags after `--`: `--autoplay` (a bot drives your seat), `--seed=N`, `--s
 `--screenshot=path.png --screenshot_at=5 --screenshot_quit` (add
 `--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results|laser` to start the timer
 on an event, `--screenshot_event_index=N` on its Nth occurrence; `--give_item=laser`,
-`--give_bots_item=laser`, `--hotbar_test` (the bar open), `--aim_test=DEG` (the laser drawn at
+`--give_bots_item=laser`, `--hotbar_test` (the bar open), `--target_test` (the bomb aimed at a
+player), `--pop_test=ITEM` (a pickup icon over your pawn), `--aim_test=DEG` (the laser drawn at
 an angle) and `--board_auto_roll` exercise the board UI from a fresh match),
 `--ads_progress=0..1` (pins the scope-in for a frame), `--board_overview` (whole board),
 `--board_cam=x,y,z:tx,ty,tz` (camera anywhere on the board), `--render_scale=N` (pins the 3D

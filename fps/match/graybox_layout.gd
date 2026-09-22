@@ -46,23 +46,20 @@ static func build() -> Dictionary:
 	boxes.append(box(Vector3(-W / 2 - 0.5, 3.0, 0), Vector3(1, 6, D + 2), "counter_dark"))
 	boxes.append(box(Vector3(W / 2 + 0.5, 3.0, 0), Vector3(1, 6, D + 2), "counter_dark"))
 
-	# Central tower: three decks, pillars, stepped access on two sides
-	boxes.append(box(Vector3(0, 2.75, 0), Vector3(7, 0.5, 7), "field_dark"))
-	boxes.append(box(Vector3(0, 5.75, 0), Vector3(6, 0.5, 6), "field_dark"))
-	boxes.append(box(Vector3(0, 8.75, 0), Vector3(4.5, 0.5, 4.5), "accent"))
+	# Central tower (Sean: it looked unfinished and unconnected, and the top must be reachable
+	# by stairs): three decks stepping in (9, 7, 5 m), four pillars, and three flights of four
+	# 0.75 m steps (a hop each, well under the 1.49 m jump) winding up it: the ground to deck 1
+	# on the south, deck 1 to deck 2 along the north edge, deck 2 to deck 3 along the east edge.
+	# Each flight sits in the 1 m ring one deck leaves round the next.
+	boxes.append(box(Vector3(0, 2.75, 0), Vector3(9, 0.5, 9), "field_dark"))
+	boxes.append(box(Vector3(0, 5.75, 0), Vector3(7, 0.5, 7), "field_dark"))
+	boxes.append(box(Vector3(0, 8.75, 0), Vector3(5, 0.5, 5), "accent"))
 	for sx: float in [-1.0, 1.0]:
 		for sz: float in [-1.0, 1.0]:
 			boxes.append(box(Vector3(sx * 3.0, 4.5, sz * 3.0), Vector3(0.6, 9, 0.6), "counter_dark"))
-	# Deck 1 access: 3 steps on the south (+z) side
-	boxes.append(box(Vector3(0, 0.5, 6.5), Vector3(3, 1, 2), "field"))
-	boxes.append(box(Vector3(0, 1.5, 5.0), Vector3(3, 1, 1.5), "field"))
-	boxes.append(box(Vector3(0, 2.5, 4.0), Vector3(3, 1, 1.0), "field"))
-	# Deck 1 → deck 2: crates on the north (-z) edge of deck 1
-	boxes.append(box(Vector3(2.0, 3.6, -2.5), Vector3(1.4, 1.2, 1.4), "field_dark"))
-	boxes.append(box(Vector3(-2.0, 4.8, -2.5), Vector3(1.4, 1.2, 1.4), "field_dark"))
-	# Deck 2 → deck 3: crate on the east edge
-	boxes.append(box(Vector3(2.4, 6.6, 1.5), Vector3(1.2, 1.2, 1.2), "field_dark"))
-	boxes.append(box(Vector3(2.4, 7.8, -0.5), Vector3(1.2, 1.2, 1.2), "field_dark"))
+	_stairs(boxes, Vector3(0, 0, 7.65), Vector3(0, 0, -1), 2.4, 0.0, "field")            # ground → deck 1
+	_stairs(boxes, Vector3(-1.95, 0, -4.0), Vector3(1, 0, 0), 1.0, 3.0, "field_dark")   # deck 1 → deck 2
+	_stairs(boxes, Vector3(3.0, 0, 1.95), Vector3(0, 0, -1), 1.0, 6.0, "field_dark")    # deck 2 → deck 3
 
 	# Two buildings (rooftops = sniper perches), opposite corners, with crate stairs
 	for s: float in [-1.0, 1.0]:
@@ -141,9 +138,10 @@ static func build() -> Dictionary:
 		Vector3(-7.5, 0, -13),   # 21 north wall, west end
 		Vector3(7.5, 0, -13),    # 22 north wall, east end
 		Vector3(-22, 0, 2),      # 23 west edge, north of the SW building
+		Vector3(0, 9.0, 0),      # 24 deck 3, the top of the tower
 	]
 	var edges := [
-		[0, 1], [1, 2], [0, 15], [0, 16], [0, 19], [0, 20], [19, 10], [20, 10], [19, 15], [20, 16],
+		[0, 1], [1, 2], [2, 24], [0, 15], [0, 16], [0, 19], [0, 20], [19, 10], [20, 10], [19, 15], [20, 16],
 		[5, 17], [5, 18], [5, 21], [5, 22], [21, 11], [22, 11], [21, 17], [22, 18],
 		[15, 3], [17, 3], [16, 4], [18, 4], [15, 17], [16, 18],
 		[3, 23], [23, 8], [17, 8], [8, 11], [3, 8],
@@ -166,4 +164,53 @@ static func build() -> Dictionary:
 		decor.append(decor_box(Vector3(x, 0.015, 0), Vector3(0.25, 0.03, 24), "paper"))
 	for i in 5:
 		decor.append(decor_box(Vector3(-2.8 + i * 1.4, 3.02, 3.4), Vector3(0.7, 0.05, 0.2), "accent" if i % 2 == 0 else "paper"))
+	# Railings (decor, no collision) so the tower reads as built: along the outer side of each
+	# flight, both sides of the wide ground flight, and round the top deck except where the
+	# stairs arrive.
+	_stair_rail(decor, Vector3(0, 0, 7.65), Vector3(0, 0, -1), Vector3(1.25, 0, 0), 0.0)
+	_stair_rail(decor, Vector3(0, 0, 7.65), Vector3(0, 0, -1), Vector3(-1.25, 0, 0), 0.0)
+	_stair_rail(decor, Vector3(-1.95, 0, -4.0), Vector3(1, 0, 0), Vector3(0, 0, -0.52), 3.0)
+	_stair_rail(decor, Vector3(3.0, 0, 1.95), Vector3(0, 0, -1), Vector3(0.52, 0, 0), 6.0)
+	_rail(decor, Vector3(-2.5, 9.0, -2.5), Vector3(2.5, 9.0, -2.5))
+	_rail(decor, Vector3(-2.5, 9.0, 2.5), Vector3(2.5, 9.0, 2.5))
+	_rail(decor, Vector3(-2.5, 9.0, -2.5), Vector3(-2.5, 9.0, 2.5))
+	_rail(decor, Vector3(2.5, 9.0, -0.3), Vector3(2.5, 9.0, 2.5))
+	_rail(decor, Vector3(2.5, 9.0, -2.5), Vector3(2.5, 9.0, -1.2))
 	return {"boxes": boxes, "spawns": spawns, "waypoints": wp, "edges": edges, "size": Vector2(W, D), "decor": decor}
+
+
+## A flight of four 0.75 m steps: `start` is the centre of the lowest step (y ignored), `dir` the
+## horizontal direction of climb, `width` across the run, `base_y` the level it starts from.
+## Each step is a solid block from that level up, so the flight has no underside to see.
+static func _stairs(boxes: Array, start: Vector3, dir: Vector3, width: float, base_y: float, tone: String) -> void:
+	for k in 4:
+		var h := 0.75 * (k + 1)
+		var c := start + dir * (0.9 * k)
+		var size := Vector3(width, h, 0.9) if absf(dir.z) > 0.5 else Vector3(0.9, h, width)
+		boxes.append(box(Vector3(c.x, base_y + h * 0.5, c.z), size, tone))
+
+
+## A stepped handrail beside a flight: a post at every step's outer corner and a rail segment
+## over each step, on the `side` of the run.
+static func _stair_rail(decor: Array, start: Vector3, dir: Vector3, side: Vector3, base_y: float) -> void:
+	for k in 4:
+		var top := base_y + 0.75 * (k + 1)
+		var c := start + dir * (0.9 * k) + side
+		decor.append(decor_box(Vector3(c.x, top + 0.5, c.z), Vector3(0.08, 1.0, 0.08), "counter_dark"))
+		var seg := Vector3(0.08, 0.06, 0.9) if absf(dir.z) > 0.5 else Vector3(0.9, 0.06, 0.08)
+		decor.append(decor_box(Vector3(c.x, top + 0.97, c.z), seg, "counter_dark"))
+
+
+## A level rail between two points on a deck edge, posts every 1.25 m.
+static func _rail(decor: Array, a: Vector3, b: Vector3) -> void:
+	var span := b - a
+	var length := span.length()
+	if length < 0.1:
+		return
+	var mid := (a + b) * 0.5
+	var along_x := absf(span.x) > absf(span.z)
+	decor.append(decor_box(mid + Vector3(0, 0.97, 0), Vector3(length, 0.06, 0.08) if along_x else Vector3(0.08, 0.06, length), "counter_dark"))
+	var posts := maxi(2, int(length / 1.25) + 1)
+	for k in posts:
+		var p := a + span * (float(k) / float(posts - 1))
+		decor.append(decor_box(p + Vector3(0, 0.5, 0), Vector3(0.08, 1.0, 0.08), "counter_dark"))

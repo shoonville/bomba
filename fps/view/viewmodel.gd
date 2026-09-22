@@ -78,8 +78,13 @@ func setup(p: Player) -> void:
 	_cyl(sniper, 0.021, 0.95, Vector3(0, 0.02, -0.55), dark_mat)
 	_cyl(sniper, 0.034, 0.11, Vector3(0, 0.02, -1.0), dark_mat)
 	_cyl(sniper, 0.03, 0.06, Vector3(0, 0.02, -0.93), tan_mat)
-	for bx: float in [-0.028, 0.028]:
-		_cyl(sniper, 0.007, 0.24, Vector3(bx, -0.012, -0.66), dark_mat)
+	# The folded bipod (Sean: the line under the barrel was not connected to the rifle): a hinge
+	# block clamped under the barrel near the brake and a clip near the receiver, with the two
+	# legs running between them along the barrel's underside, so it hangs off the rifle.
+	_box(sniper, Vector3(0.064, 0.03, 0.05), Vector3(0, -0.006, -0.79), dark_mat)
+	_box(sniper, Vector3(0.064, 0.022, 0.03), Vector3(0, -0.006, -0.53), dark_mat)
+	for bx: float in [-0.024, 0.024]:
+		_cyl(sniper, 0.007, 0.26, Vector3(bx, -0.007, -0.66), dark_mat)
 	_cyl(sniper, 0.052, 0.44, Vector3(0, 0.0, -0.1), cream_mat, Vector3(1.0, 0.9, 1.0))
 	_capsule(sniper, 0.034, 0.18, Vector3(0, -0.058, -0.03), dark_mat)
 	_cone(sniper, 0.046, 0.062, 0.36, Vector3(0, -0.02, 0.29), cream_mat)

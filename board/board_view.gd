@@ -1362,7 +1362,8 @@ func _play_next() -> void:
 			Audio.play("coin" if int(e["delta"]) >= 0 else "hurt", -6.0)
 			wait = 0.5
 		"item":
-			_float_label(int(e["peer"]), "+" + str(e["item"]).to_upper(), Palette.player_colour(5))
+			# The HUD pops the item's icon over the pawn's head (Sean: an icon, not the name).
+			Events.board_item_picked.emit(int(e["peer"]), str(e["item"]))
 			Audio.play("ui_click", -2.0)
 			wait = 0.5
 		"item_used":
@@ -1514,6 +1515,13 @@ func _float_label(peer_id: int, text: String, colour: Color) -> void:
 
 func _focus(point: Vector3) -> void:
 	_cam_look = point
+
+
+## Look at a player's pawn: the HUD's target mode sends the camera to whoever is targeted.
+func focus_peer(peer_id: int) -> void:
+	var pawn: BoardPawn = pawns.get(peer_id, null)
+	if pawn != null:
+		_focus(pawn.global_position)
 
 
 ## Put the camera behind a pawn travelling from `from` to `to` (flat), so it looks along the path.

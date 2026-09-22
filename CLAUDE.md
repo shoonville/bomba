@@ -33,7 +33,8 @@ that travels with the repo.
   spinning markers (flat stamps were "ugly"), close Pummel-Party camera, eight-sided die, no water.
   The vending machine lives on the two annexes only (his "original two spots", the bridges to the
   egg domes); never add machine pads or more spots.
-- Hitmarker: low woody click, not high-pitched. Music: off (`Audio.MUSIC_ENABLED`).
+- Hitmarker: a dice tick, "similar to the sound the dice makes" (two takes before it were too
+  high-pitched). No muzzle burst on either weapon ("tacky"). Music: off (`Audio.MUSIC_ENABLED`).
 
 ## Verify before claiming
 - `tools/check_all.sh`: tests + compile-all, determinism, a headless board match. `SOAK=1` adds the
@@ -48,7 +49,7 @@ that travels with the repo.
   `--screenshot_at=5` or more, the view is still playing the previous turn's hops before that).
   Handy flags: `--board_overview`, `--board_map`, `--board_cam=x,y,z:tx,ty,tz`, `--hover_fork=left`,
   `--social_test`, `--show_scoreboard`, `--figure_test`, `--ads_progress=0..1`, `--force_weapon=0|1`,
-  `--force_ads`, `--give_item=ID`, `--give_bots_item=ID`, `--hotbar_test`, `--aim_test=DEG`,
+  `--force_ads`, `--give_item=ID`, `--give_bots_item=ID`, `--hotbar_test`, `--target_test`, `--pop_test=ITEM`, `--aim_test=DEG`,
   `--machine_at=ID`, `--minigame=ID`, `--render_scale=N`, `--port=N`, `--no_warmup`,
   `--perf` (GPU/CPU ms summary at soak end), `--vsync=0|1`, `--window=fullscreen|windowed`, and
   Godot's own `--resolution 1920x1080` (the friends' resolution: judge looks and cost there, not at

@@ -32,6 +32,10 @@ var _hotbar_open: bool = false
 var _hotbar_sel: int = 0
 var _hotbar_rects: Array = []
 var _aiming: bool = false
+var _item_pops: Array = []   # [{peer, item, t}]: an item's icon rising over the pawn that picked it up
+var _test_done: bool = false
+var _pop_test_done: bool = false
+var _pop_test_t: float = 0.0
 
 
 func _ready() -> void:
@@ -62,6 +66,9 @@ func attach(p_director: BoardDirector) -> void:
 	Events.board_dice_landed.connect(func(v: int):
 		_dice_value = v
 		_dice_t = 1.3
+	)
+	Events.board_item_picked.connect(func(peer_id: int, item: String):
+		_item_pops.append({"peer": peer_id, "item": item, "t": 1.6})
 	)
 
 
@@ -146,7 +153,23 @@ func _process(delta: float) -> void:
 	_flash = maxf(0.0, _flash - delta * 2.0)
 	_intro_t = maxf(0.0, _intro_t - delta)
 	_reward_t = maxf(0.0, _reward_t - delta)
+	for i in range(_item_pops.size() - 1, -1, -1):
+		_item_pops[i]["t"] = float(_item_pops[i]["t"]) - delta
+		if float(_item_pops[i]["t"]) <= 0.0:
+			_item_pops.remove_at(i)
 	_layout_buttons()
+	if Game.args.has("pop_test") and not _pop_test_done and director != null and director.local_player() != null:
+		# Harness: a bomb icon pops over the local pawn 3 s in, for a screenshot of the pickup pop.
+		_pop_test_t += delta
+		if _pop_test_t > 3.0:
+			_pop_test_done = true
+			_item_pops.append({"peer": director.local_player().peer_id, "item": str(Game.args["pop_test"]), "t": 1.6})
+	if Game.args.has("target_test") and not _test_done and _can_use_items():
+		# Harness: the bomb's target mode open (the camera on the first target) for a screenshot.
+		var lp := director.local_player()
+		if lp != null and lp.items.has("bomb"):
+			_test_done = true
+			_use_item_index(lp.items.find("bomb"))
 	if Game.args.has("hotbar_test") and not _hotbar_open and not _aiming and _can_use_items():
 		# Harness: the bar open on the laser slot (or the first item) for a screenshot.
 		var lp := director.local_player()
@@ -350,12 +373,34 @@ func _cycle_target(dir: int) -> void:
 		for i in n:
 			if st.players[i] != lp:
 				_target_index = i
-				return
+				break
+	else:
+		for i in n:
+			_target_index = posmod(_target_index + dir, n)
+			if st.players[_target_index] != lp:
+				break
+	_focus_target()
+
+
+## The camera goes to whoever is targeted (Sean: A/D switch targets and the camera follows).
+func _focus_target() -> void:
+	var st := director.state
+	if director.view != null and director.view.has_method("focus_peer") and _target_index < st.players.size():
+		director.view.focus_peer(st.players[_target_index].peer_id)
+
+
+## Back to your own pawn when the target mode ends.
+func _refocus_local() -> void:
+	var lp := director.local_player()
+	if lp != null and director.view != null and director.view.has_method("focus_peer"):
+		director.view.focus_peer(lp.peer_id)
+
+
+func _cancel_target() -> void:
+	if _item_target_mode == "":
 		return
-	for i in n:
-		_target_index = posmod(_target_index + dir, n)
-		if st.players[_target_index] != lp:
-			break
+	_item_target_mode = ""
+	_refocus_local()
 
 
 func _confirm_target() -> void:
@@ -364,6 +409,7 @@ func _confirm_target() -> void:
 		return
 	director.request_item(_item_target_mode, st.players[_target_index].peer_id)
 	_item_target_mode = ""
+	_refocus_local()
 
 
 func _on_social(peer_id: int, kind: String, payload: String) -> void:
@@ -444,7 +490,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if st.phase == BoardState.PHASE_TURNS:
 		if event.is_action_pressed("jump"):
 			if _item_target_mode != "":
-				_item_target_mode = ""
+				_cancel_target()
 			elif _hotbar_open:
 				_hotbar_open = false
 			else:
@@ -531,6 +577,7 @@ func _draw() -> void:
 	_text(Vector2(size.x - 250, 112), "HOLD TAB · MAP", 14, Color(paper, 0.7))
 	_text(Vector2(size.x - 250, 134), "Q · ITEMS    E · PING    F1-F4 · EMOTE", 14, Color(paper, 0.7))
 	_draw_hotbar(lp, size)
+	_draw_item_pops()
 	if _dice_t > 0.0:
 		var s := 120 + int(24.0 * clampf(_dice_t - 1.3, 0.0, 0.3) / 0.3)
 		var txt := "%d" % _dice_value if _dice_bonus <= 0 else "%d +%d" % [_dice_value - _dice_bonus, _dice_bonus]
@@ -626,12 +673,34 @@ func _draw_hotbar(lp: BoardState.PlayerState, size: Vector2) -> void:
 	_text(Vector2((size.x - hw) * 0.5, y0 + slot + 24), hint, 14, Color(paper, 0.75))
 
 
+## A picked-up item pops as its icon over the pawn's head (Sean: an icon, not the name): a
+## sticker plate that scales in, rises and fades, projected from the pawn like the name tags.
+func _draw_item_pops() -> void:
+	var cam := get_viewport().get_camera_3d()
+	if cam == null or director.view == null or not director.view.has_method("pawn_tag_anchor"):
+		return
+	for pop in _item_pops:
+		var a: Vector3 = director.view.pawn_tag_anchor(int(pop["peer"]))
+		if a == Vector3.INF or cam.is_position_behind(a):
+			continue
+		var t: float = pop["t"]
+		var age := 1.6 - t
+		var grow := clampf(age / 0.14, 0.0, 1.0)
+		var scale := 1.0 + 0.35 * sin(grow * PI)   # a little overshoot as it lands
+		var alpha := clampf(t / 0.35, 0.0, 1.0)
+		var sp := cam.unproject_position(a + Vector3(0, 0.55 + age * 0.35, 0))
+		var r := 34.0 * scale * grow
+		draw_circle(sp, r + 4.0, Color(UiStyle.accent(), alpha))
+		draw_circle(sp, r, Color(UiStyle.ink(), 0.92 * alpha))
+		_draw_item_icon(str(pop["item"]), sp + Vector2(0, 2), 16.0 * scale * grow, alpha)
+
+
 ## Drawn item icons, `s` about half the icon's width: a pistol with a red emitter and a beam
 ## stub, a bomb with a lit fuse, a turbo chevron, a shield, swap arrows.
-func _draw_item_icon(kind: String, c: Vector2, s: float) -> void:
-	var ink := UiStyle.ink()
-	var paper := Palette.hud_colour("paper")
-	var danger := Palette.hud_colour("danger")
+func _draw_item_icon(kind: String, c: Vector2, s: float, alpha: float = 1.0) -> void:
+	var ink := Color(UiStyle.ink(), alpha)
+	var paper := Color(Palette.hud_colour("paper"), alpha)
+	var danger := Color(Palette.hud_colour("danger"), alpha)
 	match kind:
 		"laser":
 			draw_colored_polygon(PackedVector2Array([c + Vector2(-s, -s * 0.4), c + Vector2(s * 0.85, -s * 0.4), c + Vector2(s * 0.85, s * 0.05),
@@ -639,17 +708,17 @@ func _draw_item_icon(kind: String, c: Vector2, s: float) -> void:
 			draw_rect(Rect2(c + Vector2(s * 0.7, -s * 0.36), Vector2(s * 0.3, s * 0.36)), danger)
 			draw_line(c + Vector2(s * 1.05, -s * 0.18), c + Vector2(s * 1.5, -s * 0.18), danger, 3.0)
 		"bomb":
-			draw_circle(c + Vector2(0, s * 0.15), s * 0.7, ink.lightened(0.18))
+			draw_circle(c + Vector2(0, s * 0.15), s * 0.7, Color(UiStyle.ink().lightened(0.18), alpha))
 			draw_line(c + Vector2(s * 0.3, -s * 0.4), c + Vector2(s * 0.7, -s * 0.9), paper, 3.0)
-			draw_circle(c + Vector2(s * 0.78, -s * 0.98), s * 0.18, Palette.hud_colour("score"))
+			draw_circle(c + Vector2(s * 0.78, -s * 0.98), s * 0.18, Color(Palette.hud_colour("score"), alpha))
 		"turbo":
 			draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.9, -s * 0.5), c + Vector2(s * 0.1, -s * 0.5), c + Vector2(s * 0.9, 0),
-				c + Vector2(s * 0.1, s * 0.5), c + Vector2(-s * 0.9, s * 0.5), c + Vector2(-s * 0.3, 0)]), Palette.hud_colour("score"))
+				c + Vector2(s * 0.1, s * 0.5), c + Vector2(-s * 0.9, s * 0.5), c + Vector2(-s * 0.3, 0)]), Color(Palette.hud_colour("score"), alpha))
 		"shield":
 			draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.8, s * 0.3), c + Vector2(-s * 0.7, -s * 0.3), c + Vector2(0, -s * 0.85),
-				c + Vector2(s * 0.7, -s * 0.3), c + Vector2(s * 0.8, s * 0.3), c + Vector2(0, s * 0.35)]), Palette.hud_colour("meter"))
+				c + Vector2(s * 0.7, -s * 0.3), c + Vector2(s * 0.8, s * 0.3), c + Vector2(0, s * 0.35)]), Color(Palette.hud_colour("meter"), alpha))
 		"swap":
-			var col := Palette.player_colour(5)
+			var col := Color(Palette.player_colour(5), alpha)
 			draw_line(c + Vector2(-s * 0.8, -s * 0.3), c + Vector2(s * 0.8, -s * 0.3), col, 3.0)
 			draw_line(c + Vector2(s * 0.8, s * 0.3), c + Vector2(-s * 0.8, s * 0.3), col, 3.0)
 			draw_colored_polygon(PackedVector2Array([c + Vector2(s * 0.5, -s * 0.6), c + Vector2(s * 0.95, -s * 0.3), c + Vector2(s * 0.5, 0)]), col)

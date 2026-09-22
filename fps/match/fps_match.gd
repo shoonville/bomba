@@ -377,7 +377,6 @@ func _process(delta: float) -> void:
 	var from := at + right * rng.randf_range(-3.0, 3.0) + fwd * rng.randf_range(1.0, 4.0) + Vector3.UP * rng.randf_range(0.0, 1.5)
 	var kind: int = [HitscanResolver.WORLD, HitscanResolver.BODY, HitscanResolver.HEAD][rng.randi_range(0, 2)]
 	Tracer.spawn(effects_root, from, at, Palette.player_colour(rng.randi_range(0, 5)), kind, 0.3)
-	Burst.spawn_muzzle(effects_root, from, Palette.hud_colour("meter"))
 
 
 # --- queries -----------------------------------------------------------------------------
@@ -490,7 +489,8 @@ func _on_local_shot_fx(origin: Vector3, point: Vector3, hit_kind: int) -> void:
 	var local := get_local_player()
 	var colour := local.colour if local != null else Color.WHITE
 	Tracer.spawn(effects_root, start, point, colour, hit_kind)
-	Burst.spawn_muzzle(effects_root, start, Palette.hud_colour("meter"))
+	# No muzzle burst (Sean: the blue spark when shooting was tacky); the tracer and the impact
+	# star are the shot's feedback.
 
 
 func _exit_tree() -> void:

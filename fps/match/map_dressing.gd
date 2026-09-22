@@ -132,15 +132,19 @@ static func _buildings(out: Array, boxes: Array, w: float, d: float) -> void:
 			var face := p + n * (absf(n.x) * s.x + absf(n.z) * s.z) * 0.5
 			var slots := int(floorf((length - 1.6) / 2.0))
 			var start := -(slots - 1) * 1.0
+			# `base` carries the building's centre height already, so the offsets are from the
+			# centre: windows 2 m above the bottom, sills at 1.37 m. (They were placed from the
+			# top instead and stood 2 m over the roof: Sean's floating panels.)
 			for i in slots:
 				var base := face + a * (start + i * 2.0)
-				_box(out, base + n * 0.02 + Vector3(0, top - s.y * 0.5 + 2.0, 0), Vector3(0.9, 1.2, 0.04), "window", yaw, false)
-				_box(out, base + n * 0.04 + Vector3(0, top - s.y * 0.5 + 1.37, 0), Vector3(1.1, 0.1, 0.06), "paper", yaw, false)
-		# Roof: an air unit with a fan disc and a vent pipe, off the parapet side.
-		_box(out, p + Vector3(-s.x * 0.22, top + 0.45, s.z * 0.1), Vector3(1.4, 0.9, 1.1), "counter_dark")
-		_cyl(out, p + Vector3(-s.x * 0.22, top + 0.92, s.z * 0.1), Vector3(0.9, 0.06, 0.9), "glow", false)
-		_cyl(out, p + Vector3(s.x * 0.25, top + 0.7, -s.z * 0.15), Vector3(0.36, 1.4, 0.36), "counter_dark")
-		_cyl(out, p + Vector3(s.x * 0.25, top + 1.45, -s.z * 0.15), Vector3(0.6, 0.12, 0.6), "counter_dark")
+				_box(out, base + n * 0.02 + Vector3(0, 2.0 - s.y * 0.5, 0), Vector3(0.9, 1.2, 0.04), "window", yaw, false)
+				_box(out, base + n * 0.04 + Vector3(0, 1.37 - s.y * 0.5, 0), Vector3(1.1, 0.1, 0.06), "paper", yaw, false)
+		# Roof: an air unit with a fan disc and a vent pipe, off the parapet side, standing on
+		# the roof (absolute heights: `top` is the roof).
+		_box(out, Vector3(p.x - s.x * 0.22, top + 0.45, p.z + s.z * 0.1), Vector3(1.4, 0.9, 1.1), "counter_dark")
+		_cyl(out, Vector3(p.x - s.x * 0.22, top + 0.92, p.z + s.z * 0.1), Vector3(0.9, 0.06, 0.9), "glow", false)
+		_cyl(out, Vector3(p.x + s.x * 0.25, top + 0.7, p.z - s.z * 0.15), Vector3(0.36, 1.4, 0.36), "counter_dark")
+		_cyl(out, Vector3(p.x + s.x * 0.25, top + 1.45, p.z - s.z * 0.15), Vector3(0.6, 0.12, 0.6), "counter_dark")
 
 
 # --- crates: a strap band so a cube reads as a crate ----------------------------------------------

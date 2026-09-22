@@ -28,6 +28,7 @@ signal local_land()
 signal remote_shot(weapon: String, origin: Vector3)
 signal ui_sound(name: String)
 signal board_dice_landed(value: int)   # the 3D die has settled; HUD shows the number now
+signal board_item_picked(peer_id: int, item: String)   # the view plays an item pickup; the HUD pops the icon
 
 # Diagnostics
 signal net_stats(stats: Dictionary)

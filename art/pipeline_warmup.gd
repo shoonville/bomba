@@ -132,9 +132,8 @@ func _build() -> void:
 	label.position = Vector3(0.0, 2.2, 0.0)
 	add_child(label)
 
-	# Shot feedback: a tracer, an impact burst (depth-tested) and a muzzle burst (not).
+	# Shot feedback: a tracer and an impact burst (the muzzle burst is gone, Sean found it tacky).
 	Tracer.spawn(self, Vector3(-2.0, 1.0, 1.5), Vector3(2.0, 1.2, -1.0), Color(1.0, 0.9, 0.5), HitscanResolver.BODY, 2.0)
-	Burst.spawn_muzzle(self, Vector3(0.6, 1.0, 2.0), Color(1.0, 0.8, 0.4))
 
 
 func _mesh(mesh: Mesh, at: Vector3, mat: Material) -> void:

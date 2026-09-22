@@ -200,30 +200,31 @@ static func build(name: String) -> PackedFloat32Array:
 			out = mix(out, click, 0.5, samples(0.035))
 			return softclip(out, 2.2)
 		"hitmarker":
-			# Call of Duty style, take two (Sean: "too high pitched"): a woody click banded
-			# 0.9–3.2 kHz, a 1.5→1.15 kHz knock and a little 320 Hz body; 60 ms, instant attack.
-			var n := samples(0.06)
-			var click := mul(lowpass(highpass(noise(n, 31), 900.0), 3200.0), env_exp(n, 0.0045))
-			var knock := mul(tone(n, 1500.0, 1150.0, "tri"), env_exp(n, 0.02))
-			var body := mul(tone(n, 320.0, 240.0, "sine"), env_exp(n, 0.017))
-			var out := mix(silence(n), click, 1.0)
-			out = mix(out, knock, 0.9)
-			out = mix(out, body, 0.55)
-			return softclip(out, 2.0)
+			# Take three (Sean: still too high-pitched; "similar to the sound the dice makes"):
+			# one dice tick, a 40 ms noise burst low-passed at 2.2 kHz like the die's second
+			# bounce, with a 500→380 Hz knock and a 180 Hz thump under it. 70 ms, instant attack.
+			var n := samples(0.07)
+			var tick := mul(lowpass(noise(n, 31), 2200.0), env_exp(n, 0.009))
+			var knock := mul(tone(n, 500.0, 380.0, "tri"), env_exp(n, 0.016))
+			var thump := mul(tone(n, 180.0, 120.0, "sine"), env_exp(n, 0.02))
+			var out := mix(silence(n), tick, 1.0)
+			out = mix(out, knock, 0.6)
+			out = mix(out, thump, 0.7)
+			return softclip(out, 1.8)
 		"headshot":
-			# Two knocks 45 ms apart, the second lower, over a 200 Hz thud: heavier than a body hit.
-			var n := samples(0.18)
-			var c1 := mul(lowpass(highpass(noise(samples(0.06), 32), 900.0), 3200.0), env_exp(samples(0.06), 0.0045))
-			var k1 := mul(tone(samples(0.06), 1500.0, 1150.0, "tri"), env_exp(samples(0.06), 0.02))
-			var c2 := mul(lowpass(highpass(noise(samples(0.08), 33), 700.0), 2600.0), env_exp(samples(0.08), 0.005))
-			var k2 := mul(tone(samples(0.08), 1100.0, 820.0, "tri"), env_exp(samples(0.08), 0.028))
-			var thud := mul(tone(samples(0.12), 200.0, 120.0, "sine"), env_exp(samples(0.12), 0.05))
-			var out := mix(silence(n), c1, 1.0)
-			out = mix(out, k1, 0.9)
-			out = mix(out, c2, 1.0, samples(0.045))
-			out = mix(out, k2, 0.95, samples(0.045))
-			out = mix(out, thud, 0.7, samples(0.04))
-			return softclip(out, 2.0)
+			# Two dice ticks 55 ms apart, the second lower and heavier, over a 160 Hz thud.
+			var n := samples(0.16)
+			var t1 := mul(lowpass(noise(samples(0.06), 32), 2200.0), env_exp(samples(0.06), 0.009))
+			var k1 := mul(tone(samples(0.06), 500.0, 380.0, "tri"), env_exp(samples(0.06), 0.016))
+			var t2 := mul(lowpass(noise(samples(0.08), 33), 1600.0), env_exp(samples(0.08), 0.011))
+			var k2 := mul(tone(samples(0.08), 380.0, 260.0, "tri"), env_exp(samples(0.08), 0.022))
+			var thud := mul(tone(samples(0.12), 160.0, 100.0, "sine"), env_exp(samples(0.12), 0.04))
+			var out := mix(silence(n), t1, 1.0)
+			out = mix(out, k1, 0.6)
+			out = mix(out, t2, 1.0, samples(0.055))
+			out = mix(out, k2, 0.7, samples(0.055))
+			out = mix(out, thud, 0.8, samples(0.05))
+			return softclip(out, 1.8)
 		"kill":
 			var out := silence(samples(0.55))
 			var notes := [659.25, 783.99, 987.77]
