@@ -1,8 +1,8 @@
 class_name Figure
 extends Node3D
 ## A humanoid from primitives, the same figure for other players in the arena, the pawns on
-## the board and the results podium: built to Sean's FLCL references (Canti, the TV-headed
-## robot: reference/char1.webp and char2.jpg.webp), the identity colour on the jacket and ears.
+## the board and the results podium: built to Sean's Canti reference (FLCL's TV-headed robot,
+## the late-90s mecha look he asked for on 2026-09-22), the identity colour on the armour.
 ## Animated procedurally: walk swing from speed, a tuck in the air, arms up on a gun while
 ## aiming, and a tip-over when dead. No assets, no rig.
 
@@ -31,67 +31,88 @@ var _skates: bool = false
 ## want them hopping across the board).
 func build(colour: Color, map_id: String, head_y: float = 1.62, with_gun: bool = false, skates: bool = false) -> void:
 	_skates = skates
-	# Built to reference/char1.webp and char2.jpg.webp (Bomb Rush Cyberfunk's robots): a boxy
-	# screen head with side ears on a thin neck, an open bomber jacket in the identity colour
-	# over a dark mechanical core, a belt, thin jointed arms with cream forearm guards and dark
-	# gloves, long thin legs with knee joints, chunky boots with red soles.
+	# Built to Sean's Canti reference (FLCL's TV-headed robot, late-90s mecha lines): a boxy
+	# monitor head with a tilted cap, a dark visor band with a lit slit, an ear piece on the
+	# right; broad rounded chest armour in the identity colour over a narrow dark mechanical
+	# waist, a red collar trim and a small badge, a red pelvis plate with a buckle, a backpack
+	# unit; ball shoulders under round pauldrons, dark upper arms, flared gauntlets with a pale
+	# cuff, dark gloves with fingers; armoured thighs, ball knees with red kneecaps, flared shins
+	# into big boots with red toe caps and dark soles.
 	_has_gun = with_gun
 	var col := Palette.under_ceiling(colour)
 	var shadow := Palette.map_colour(map_id, "shadow_tint")
 	var ink := Palette.map_colour(map_id, "line")
 	var body_mat := CelMaterial.for_colour(col, shadow)
-	var body_dark_mat := CelMaterial.for_colour(Color.from_hsv(col.h, minf(1.0, col.s * 1.1), col.v * 0.72), shadow)
+	var body_dark_mat := CelMaterial.for_colour(Color.from_hsv(col.h, minf(1.0, col.s * 1.1), col.v * 0.74), shadow)
+	var body_light_mat := CelMaterial.for_colour(Color.from_hsv(col.h, col.s * 0.62, minf(1.0, col.v * 1.12)), shadow)
 	var dark_mat := CelMaterial.for_colour(Color.from_hsv(ink.h, 0.45, 0.24), shadow)
-	var cream_mat := CelMaterial.for_colour(Palette.hud_colour("paper"), shadow)
-	var pants_mat := CelMaterial.for_colour(Color.from_hsv(ink.h, 0.5, 0.36), shadow)
 	var metal_mat := CelMaterial.for_colour(Color.from_hsv(ink.h, 0.18, 0.58), shadow)
-	var shirt_mat := CelMaterial.for_colour(Palette.hud_colour("score"), shadow)
-	var sole_mat := CelMaterial.for_colour(Palette.hud_colour("danger"), shadow)
-	var screen_mat := CelMaterial.for_colour(Color.from_hsv(ink.h, 0.5, 0.16), shadow)
-	var glow_mat := CelMaterial.for_colour(Palette.hud_colour("meter"), shadow, 0.9)
+	var red_mat := CelMaterial.for_colour(Palette.hud_colour("danger"), shadow)
+	var badge_mat := CelMaterial.for_colour(Palette.hud_colour("score"), shadow, 0.4)
+	var cream_mat := CelMaterial.for_colour(Palette.hud_colour("paper"), shadow)
+	var screen_mat := CelMaterial.for_colour(Color.from_hsv(ink.h, 0.5, 0.14), shadow)
+	var glow_mat := CelMaterial.for_colour(Palette.hud_colour("meter"), shadow, 1.1)
 
-	# Torso group (bobs and flinches as one): the core, the jacket, the belt.
+	# Torso group (bobs and flinches as one): the chest armour, the waist, the pelvis, the pack.
 	_torso = Node3D.new()
 	_torso.position = Vector3(0, (SHOULDER_Y + HIP_Y) * 0.5, 0)
 	add_child(_torso)
 	var ty := -(SHOULDER_Y + HIP_Y) * 0.5   # torso-local offset so children can use world heights
-	_capsule(_torso, 0.12, 0.40, Vector3(0, ty + 1.22, 0), dark_mat)                 # mechanical core
-	for k in 4:
-		_box(_torso, Vector3(0.2, 0.02, 0.22), Vector3(0, ty + 1.1 + 0.07 * k, 0), metal_mat)   # ribs
-	_box(_torso, Vector3(0.1, 0.18, 0.05), Vector3(0, ty + 1.3, -0.12), shirt_mat)     # shirt in the opening
+	_box(_torso, Vector3(0.42, 0.32, 0.26), Vector3(0, ty + 1.27, 0.0), body_mat)             # chest armour
+	_box(_torso, Vector3(0.34, 0.1, 0.30), Vector3(0, ty + 1.1, 0.0), body_mat)               # its lower rim
+	_box(_torso, Vector3(0.46, 0.08, 0.28), Vector3(0, ty + 1.44, 0.0), body_dark_mat)        # clavicle plate
+	_box(_torso, Vector3(0.28, 0.2, 0.05), Vector3(0, ty + 1.24, -0.155), body_light_mat)     # inner chest plate
+	_box(_torso, Vector3(0.36, 0.05, 0.04), Vector3(0, ty + 1.39, -0.15), red_mat)            # collar trim
+	_box(_torso, Vector3(0.08, 0.07, 0.02), Vector3(0, ty + 1.3, -0.185), badge_mat)          # badge
+	_box(_torso, Vector3(0.02, 0.2, 0.01), Vector3(0, ty + 1.24, -0.185), body_dark_mat)         # centre seam
 	for sx: float in [-1.0, 1.0]:
-		_box(_torso, Vector3(0.14, 0.38, 0.11), Vector3(sx * 0.12, ty + 1.25, -0.1), body_mat)   # jacket fronts
-		_box(_torso, Vector3(0.14, 0.05, 0.11), Vector3(sx * 0.12, ty + 1.05, -0.1), cream_mat)  # ribbed hem
-		_box(_torso, Vector3(0.16, 0.09, 0.26), Vector3(sx * 0.2, ty + 1.43, 0.0), body_mat)     # shoulder caps
-	_box(_torso, Vector3(0.38, 0.4, 0.12), Vector3(0, ty + 1.25, 0.1), body_mat)         # jacket back
-	_box(_torso, Vector3(0.38, 0.05, 0.12), Vector3(0, ty + 1.05, 0.1), cream_mat)
-	_box(_torso, Vector3(0.32, 0.07, 0.24), Vector3(0, ty + 1.47, 0.0), body_dark_mat)   # collar
-	_box(_torso, Vector3(0.3, 0.07, 0.22), Vector3(0, ty + 1.0, 0.0), dark_mat)          # belt
-	_box(_torso, Vector3(0.08, 0.05, 0.03), Vector3(0, ty + 1.0, -0.115), cream_mat)     # buckle
-	_cyl(self, 0.045, 0.14, Vector3(0, head_y - 0.16, 0), dark_mat)                     # neck
+		_box(_torso, Vector3(0.05, 0.14, 0.03), Vector3(sx * 0.17, ty + 1.25, -0.15), body_dark_mat)   # chest seams
+	_capsule(_torso, 0.095, 0.3, Vector3(0, ty + 1.03, 0.0), dark_mat)                       # mechanical waist
+	for k in 3:
+		_box(_torso, Vector3(0.21, 0.02, 0.2), Vector3(0, ty + 0.97 + 0.055 * k, 0), metal_mat)   # waist rings
+	_box(_torso, Vector3(0.32, 0.11, 0.24), Vector3(0, ty + 0.93, 0.0), red_mat)              # pelvis plate
+	_box(_torso, Vector3(0.09, 0.06, 0.02), Vector3(0, ty + 0.93, -0.14), cream_mat)          # buckle
+	for sx: float in [-1.0, 1.0]:
+		var guard := _box(_torso, Vector3(0.1, 0.17, 0.2), Vector3(sx * 0.19, ty + 0.9, 0.0), red_mat)   # hip guards
+		guard.rotation.z = -sx * 0.18
+	_box(_torso, Vector3(0.32, 0.28, 0.12), Vector3(0, ty + 1.25, 0.19), body_dark_mat)       # backpack unit
+	for sx: float in [-1.0, 1.0]:
+		_box(_torso, Vector3(0.08, 0.16, 0.03), Vector3(sx * 0.09, ty + 1.25, 0.26), metal_mat)   # pack vents
+	_box(_torso, Vector3(0.2, 0.06, 0.06), Vector3(0, ty + 1.44, 0.2), metal_mat)             # pack handle
+	for sx: float in [-1.0, 1.0]:
+		_sphere(_torso, 0.11, Vector3(sx * 0.28, ty + 1.44, 0.0), body_mat)                   # pauldrons
+		_box(_torso, Vector3(0.14, 0.04, 0.16), Vector3(sx * 0.29, ty + 1.52, 0.0), body_light_mat)   # pauldron caps
+		_box(_torso, Vector3(0.15, 0.02, 0.17), Vector3(sx * 0.29, ty + 1.49, 0.0), red_mat)          # their red rim
+	_cyl(self, 0.05, 0.14, Vector3(0, head_y - 0.14, 0), dark_mat)                           # neck
+	_cyl(self, 0.075, 0.03, Vector3(0, head_y - 0.06, 0), metal_mat)                         # neck ring
 
-	# Head: a boxy screen on a thin neck, tilted down a touch, ears in the identity colour.
+	# Head: the monitor, its tilted cap, the visor band with the lit slit, the jaw, the ear piece.
 	head = Node3D.new()
 	head.name = "Head"
 	head.position = Vector3(0, head_y, 0)
 	add_child(head)
-	_box(head, Vector3(0.36, 0.26, 0.30), Vector3(0, 0.0, 0.0), cream_mat)              # shell
-	_box(head, Vector3(0.28, 0.16, 0.02), Vector3(0, -0.01, -0.152), screen_mat)         # screen
-	_box(head, Vector3(0.24, 0.02, 0.006), Vector3(0, 0.02, -0.163), glow_mat)           # scanline
-	_box(head, Vector3(0.38, 0.05, 0.32), Vector3(0, 0.15, 0.0), body_dark_mat)          # top plate
-	_box(head, Vector3(0.12, 0.03, 0.1), Vector3(0, 0.185, 0.04), dark_mat)              # vent
-	for sx: float in [-1.0, 1.0]:
-		var ear := _cyl(head, 0.055, 0.05, Vector3(sx * 0.2, 0.0, 0.02), body_mat)
-		ear.rotation.z = PI * 0.5
-		var ear_cap := _cyl(head, 0.03, 0.02, Vector3(sx * 0.235, 0.0, 0.02), dark_mat)
-		ear_cap.rotation.z = PI * 0.5
+	_box(head, Vector3(0.40, 0.30, 0.34), Vector3(0, 0.07, 0.0), body_mat)                    # monitor
+	_box(head, Vector3(0.36, 0.04, 0.30), Vector3(0, -0.1, 0.0), body_dark_mat)              # jaw
+	var cap := _box(head, Vector3(0.43, 0.07, 0.37), Vector3(0, 0.245, 0.01), body_dark_mat)   # cap
+	cap.rotation.x = -0.12
+	_box(head, Vector3(0.2, 0.03, 0.12), Vector3(0, 0.29, 0.06), metal_mat)                   # cap vent
+	_box(head, Vector3(0.36, 0.11, 0.03), Vector3(0, 0.06, -0.175), screen_mat)              # visor band
+	_box(head, Vector3(0.3, 0.025, 0.01), Vector3(0, 0.065, -0.192), glow_mat)                # the lit slit
+	_box(head, Vector3(0.4, 0.02, 0.02), Vector3(0, 0.135, -0.17), body_light_mat)            # brow line
+	_box(head, Vector3(0.4, 0.02, 0.02), Vector3(0, -0.015, -0.17), body_light_mat)           # cheek line
+	_box(head, Vector3(0.07, 0.11, 0.12), Vector3(0.23, 0.05, 0.02), badge_mat)               # ear piece
+	_cyl(head, 0.02, 0.02, Vector3(0.27, 0.05, 0.02), dark_mat).rotation.z = PI * 0.5        # its stud
+	var ant := _cyl(head, 0.015, 0.14, Vector3(-0.22, 0.13, 0.02), dark_mat)                  # antenna
+	ant.rotation.z = 0.35
+	_sphere(head, 0.025, Vector3(-0.245, 0.2, 0.02), red_mat)                                # its tip
+	for k in 3:
+		_box(head, Vector3(0.012, 0.05, 0.06), Vector3(-0.202, 0.02, 0.07 + 0.035 * k), body_dark_mat)   # cheek vents
 
-	# Arms: shoulder ball, sleeve, elbow ball, dark forearm with a cream guard, dark glove.
-	_l_arm = _arm(Vector3(-0.27, SHOULDER_Y, 0), body_mat, dark_mat, cream_mat, metal_mat)
-	_r_arm = _arm(Vector3(0.27, SHOULDER_Y, 0), body_mat, dark_mat, cream_mat, metal_mat)
-	# Legs: thin thigh, knee ball, shin, chunky boot with a red sole and a cream toe cap.
-	_l_leg = _leg(Vector3(-0.11, HIP_Y, 0), pants_mat, metal_mat, dark_mat, cream_mat, sole_mat, body_mat)
-	_r_leg = _leg(Vector3(0.11, HIP_Y, 0), pants_mat, metal_mat, dark_mat, cream_mat, sole_mat, body_mat)
+	# Arms and legs on their pivots (the animation rotates the pivots).
+	_l_arm = _arm(Vector3(-0.29, SHOULDER_Y, 0), body_mat, body_light_mat, dark_mat, metal_mat)
+	_r_arm = _arm(Vector3(0.29, SHOULDER_Y, 0), body_mat, body_light_mat, dark_mat, metal_mat)
+	_l_leg = _leg(Vector3(-0.11, HIP_Y, 0), body_mat, body_light_mat, body_dark_mat, dark_mat, metal_mat, red_mat)
+	_r_leg = _leg(Vector3(0.11, HIP_Y, 0), body_mat, body_light_mat, body_dark_mat, dark_mat, metal_mat, red_mat)
 
 	if with_gun:
 		# The gun runs along the arm's own axis (local -Y, the hand direction), so when the arm
@@ -111,36 +132,51 @@ func build(colour: Color, map_id: String, head_y: float = 1.62, with_gun: bool =
 		_gun_short.visible = false
 
 
-func _arm(pivot: Vector3, sleeve_mat: Material, dark_mat: Material, guard_mat: Material, joint_mat: Material) -> Node3D:
+## An arm from the shoulder down: the ball joint, a dark upper arm, the elbow ball, a flared
+## gauntlet with a pale cuff, a dark glove with three fingers and a thumb.
+func _arm(pivot: Vector3, body_mat: Material, light_mat: Material, dark_mat: Material, joint_mat: Material) -> Node3D:
 	var n := Node3D.new()
 	n.position = pivot
 	add_child(n)
-	_sphere(n, 0.07, Vector3.ZERO, joint_mat)
-	_capsule(n, 0.05, 0.3, Vector3(0, -0.17, 0), sleeve_mat)
-	_sphere(n, 0.055, Vector3(0, -0.34, 0), joint_mat)
-	_capsule(n, 0.042, 0.26, Vector3(0, -0.49, 0), dark_mat)
-	_box(n, Vector3(0.1, 0.2, 0.11), Vector3(0, -0.47, 0), guard_mat)
-	_box(n, Vector3(0.11, 0.12, 0.11), Vector3(0, -0.66, 0), dark_mat)
+	_sphere(n, 0.075, Vector3.ZERO, dark_mat)
+	_capsule(n, 0.052, 0.3, Vector3(0, -0.17, 0), dark_mat)
+	_box(n, Vector3(0.09, 0.14, 0.09), Vector3(0, -0.2, 0), body_mat)                # upper arm plate
+	_sphere(n, 0.06, Vector3(0, -0.34, 0), joint_mat)
+	_box(n, Vector3(0.11, 0.13, 0.11), Vector3(0, -0.42, 0), body_mat)               # gauntlet, narrow end
+	_box(n, Vector3(0.13, 0.16, 0.13), Vector3(0, -0.55, 0), body_mat)               # gauntlet, flared
+	_box(n, Vector3(0.145, 0.04, 0.145), Vector3(0, -0.635, 0), light_mat)           # cuff
+	_box(n, Vector3(0.1, 0.1, 0.09), Vector3(0, -0.71, 0), dark_mat)                 # glove
+	for k in 3:
+		_box(n, Vector3(0.026, 0.07, 0.03), Vector3(-0.032 + 0.032 * k, -0.79, -0.02), dark_mat)   # fingers
+	_box(n, Vector3(0.03, 0.05, 0.03), Vector3(0.0, -0.73, -0.06), dark_mat)          # thumb
 	return n
 
 
-func _leg(pivot: Vector3, pants_mat: Material, joint_mat: Material, boot_mat: Material, cap_mat: Material, sole_mat: Material, stripe_mat: Material) -> Node3D:
+## A leg from the hip down: the ball joint, an armoured thigh, the knee ball with a red cap, a
+## flared shin, a big boot with a red toe cap, an ankle cuff and a dark sole (skates under it).
+func _leg(pivot: Vector3, body_mat: Material, light_mat: Material, dark_body_mat: Material, dark_mat: Material, joint_mat: Material, red_mat: Material) -> Node3D:
 	var n := Node3D.new()
 	n.position = pivot
 	add_child(n)
-	_capsule(n, 0.065, 0.42, Vector3(0, -0.21, 0), pants_mat)
-	_sphere(n, 0.075, Vector3(0, -0.42, 0), joint_mat)
-	_capsule(n, 0.06, 0.38, Vector3(0, -0.61, 0), pants_mat)
-	_box(n, Vector3(0.2, 0.13, 0.34), Vector3(0, -0.895, -0.04), boot_mat)
-	_box(n, Vector3(0.21, 0.03, 0.35), Vector3(0, -0.965, -0.04), sole_mat)
-	_box(n, Vector3(0.2, 0.08, 0.1), Vector3(0, -0.9, -0.18), cap_mat)
-	_box(n, Vector3(0.21, 0.03, 0.12), Vector3(0, -0.84, -0.04), stripe_mat)
+	_sphere(n, 0.075, Vector3.ZERO, dark_mat)
+	_capsule(n, 0.062, 0.4, Vector3(0, -0.21, 0), body_mat)                           # thigh
+	_box(n, Vector3(0.12, 0.28, 0.05), Vector3(0, -0.2, -0.065), light_mat)           # thigh plate
+	_sphere(n, 0.075, Vector3(0, -0.43, 0), joint_mat)                                 # knee
+	_box(n, Vector3(0.12, 0.1, 0.05), Vector3(0, -0.43, -0.085), red_mat)              # kneecap
+	_box(n, Vector3(0.11, 0.16, 0.12), Vector3(0, -0.53, 0), body_mat)                 # shin, narrow
+	_box(n, Vector3(0.14, 0.2, 0.15), Vector3(0, -0.7, 0), body_mat)                   # shin, flared
+	_box(n, Vector3(0.16, 0.05, 0.18), Vector3(0, -0.79, 0), dark_body_mat)            # ankle cuff
+	_box(n, Vector3(0.19, 0.15, 0.33), Vector3(0, -0.885, -0.04), body_mat)            # boot
+	_box(n, Vector3(0.1, 0.06, 0.05), Vector3(0, -0.83, -0.16), light_mat)              # tongue
+	_box(n, Vector3(0.19, 0.1, 0.11), Vector3(0, -0.905, -0.19), red_mat)              # toe cap
+	_box(n, Vector3(0.2, 0.035, 0.34), Vector3(0, -0.965, -0.04), dark_mat)            # sole
+	_box(n, Vector3(0.21, 0.03, 0.06), Vector3(0, -0.84, 0.14), light_mat)             # heel strap
 	if _skates:
 		# Rollerskates: a plate under the sole and two wheels each side, axles across the boot.
 		_box(n, Vector3(0.16, 0.025, 0.3), Vector3(0, -0.99, -0.04), joint_mat)
 		for wz: float in [-0.15, 0.07]:
 			for wx: float in [-0.075, 0.075]:
-				var wheel := _cyl(n, 0.045, 0.035, Vector3(wx, -1.03, wz), boot_mat)
+				var wheel := _cyl(n, 0.045, 0.035, Vector3(wx, -1.03, wz), dark_mat)
 				wheel.rotation.z = PI * 0.5
 	return n
 

@@ -626,6 +626,19 @@ measured at 1920×1080 unless noted, on the 5090, and extrapolated.
   the arena's 50 % / 8 %), `hill_hip.png` (the hill held, the status lines), `hill_scoreboard.png`
   (the HILL column), `board_intro_hill.png` (the NEXT UP card). Switch frame into HILL under the
   wipe 175–186 ms. His verdict pending; "KING OF THE HILL" is a long name for the card.
+- **Sean's item notes** (later the same day): TURBO gone; the BOMB thrown into a ring of range
+  with AOE HP damage and a shove (bots never bomb their own blast); SWAP is PORTAL, a framed
+  doorway with the menu swirl inside that you go through and push the mark back through; the
+  SHIELD a pulsing aura; MAGNET the retractable claw, one item from a player within three
+  spaces (coins from an empty bar, a shield eats it); every icon redrawn with detail. 84 tests,
+  three headless matches with the item in every hand (0 errors), frames: `board_bomb_aim.png`,
+  `board_bomb_blast.png`, `board_portal.png`, `board_magnet.png`, `board_shield.png`,
+  `board_items.png`, `board_item_pop.png`. His verdict pending.
+- **Characters rebuilt to Canti** (his reference, `reference/canti.webp`): monitor head with a
+  visor slit and ear piece, armoured chest with a badge and red trim, pauldrons, gauntlets,
+  red pelvis, kneecaps and toe caps, a backpack; same pivots and hooks, so nothing else moved.
+  Frames: `figures.png`, `board_turn.png`, `arena_spectator.png`, `results.png`. His verdict
+  pending.
 
 ### Next (after session 8)
 

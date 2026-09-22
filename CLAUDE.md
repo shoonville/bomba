@@ -26,7 +26,8 @@ that travels with the repo.
 ## Settled verdicts (do not redo without a new note)
 - Menu: the marbled swirl background is "the exact vibe"; never touch it. Logo: drawn wordmark,
   upright, no tagline, no orange (his BRC-vibe verdict is still pending).
-- Characters: built to his FLCL references (`reference/char1.webp`, `char2.jpg.webp`, Canti).
+- Characters: rebuilt to his Canti reference (`reference/canti.webp`, FLCL, the late-90s mecha look he
+  asked for on 2026-09-22): monitor head, visor slit, armoured chest, pauldrons, red pelvis and toe caps.
 - Sniper: the ORIGINAL hip pose (he rejected every re-angle), cream body, black scope, glass on the
   eyepiece only, one-round-at-a-time reload with a heavy sound. AR: the old boxy sight, red dot ON its
   screen (a translucent pane at ADS), crisp snap sound, untouched otherwise.
