@@ -179,3 +179,23 @@ func machine_spot(from_ids: Array, rng: RandomNumberGenerator, exclude: String =
 	if best == "" and not cands.is_empty():
 		best = cands[0]
 	return best
+
+
+var _mean_step: float = -1.0
+
+
+## The mean distance between linked spaces, in metres: the board's "one space" for anything
+## measured in spaces (the laser's reach), so the numbers in tuning hold on any board.
+func mean_step() -> float:
+	if _mean_step < 0.0:
+		var total := 0.0
+		var n := 0
+		for sid in spaces:
+			var s: Space = spaces[sid]
+			for nx in s.next:
+				var t := get_space(str(nx))
+				if t != null:
+					total += s.position.distance_to(t.position)
+					n += 1
+		_mean_step = total / n if n > 0 else 3.0
+	return _mean_step

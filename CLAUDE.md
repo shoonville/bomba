@@ -43,10 +43,13 @@ that travels with the repo.
   file LF; if a script dies on `\r`, strip them: `git ls-files --eol | grep w/crlf`, `sed -i 's/\r$//'`.
 - `tools/test.sh` re-imports first; REQUIRED after adding any `class_name` script.
 - Screenshots: `-- --screenshot=out.png --screenshot_at=N --screenshot_quit`, with
-  `--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results|shield|roll|move` to arm on an
-  event. Handy flags: `--board_overview`, `--board_map`, `--board_cam=x,y,z:tx,ty,tz`, `--hover_fork=left`,
+  `--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results|shield|roll|move|laser` to arm
+  on an event (`--screenshot_event_index=N` for its Nth occurrence; a `myturn` frame needs
+  `--screenshot_at=5` or more, the view is still playing the previous turn's hops before that).
+  Handy flags: `--board_overview`, `--board_map`, `--board_cam=x,y,z:tx,ty,tz`, `--hover_fork=left`,
   `--social_test`, `--show_scoreboard`, `--figure_test`, `--ads_progress=0..1`, `--force_weapon=0|1`,
-  `--force_ads`, `--give_item=ID`, `--minigame=ID`, `--render_scale=N`, `--port=N`, `--no_warmup`,
+  `--force_ads`, `--give_item=ID`, `--give_bots_item=ID`, `--hotbar_test`, `--aim_test=DEG`,
+  `--machine_at=ID`, `--minigame=ID`, `--render_scale=N`, `--port=N`, `--no_warmup`,
   `--perf` (GPU/CPU ms summary at soak end), `--vsync=0|1`, `--window=fullscreen|windowed`, and
   Godot's own `--resolution 1920x1080` (the friends' resolution: judge looks and cost there, not at
   Sean's 5120×2160; his monitor "doesn't matter"). `tools/report.gd -- frame_stats IMAGE...` prints the

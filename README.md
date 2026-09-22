@@ -31,9 +31,12 @@ card to set it EASY, NORMAL or HARD. FPS controls: WASD, Space
 jump, LMB fire, RMB scope, 1/2/Q weapons, R reload (the sniper loads one round at a time; the
 trigger interrupts it), LMB switches who you watch when you are
 out in LAST STAND, Esc pauses (resume, settings, leave), F5
-reloads `tuning/*.json` in debug builds. Board controls: click ROLL, a fork button, an item
-button and then a player row, or Space / A D / 1 2 / Enter. Hover LEFT or RIGHT at a fork to
-see where the move lands; hold Tab for the whole board, and in a minigame for the scoreboard.
+reloads `tuning/*.json` in debug builds. Board controls: click ROLL or press Space; A D or the
+fork buttons at a fork; Q opens the item hotbar on your turn, 1–9 or the wheel pick a slot, E
+(or a click on it) uses the item; a bomb or swap then wants a player (click a row or A/D + Enter),
+the laser aims with the mouse and fires on a click (right click puts it away). Hover LEFT or
+RIGHT at a fork to see where the move lands; hold Tab for the whole board, and in a minigame
+for the scoreboard.
 E (or middle-click) pings the tile under the cursor for everyone; F1–F4 send an emote. Sound is synthesised at startup;
 nothing is loaded from disk.
 
@@ -51,15 +54,19 @@ each as its machine spot, and a bridge runs from the space to the annex); pass o
 one with 10 coins and a toy pops out, then the machine moves to the other annex. First to 4 toys wins
 on the spot (the host sets FIRST TO, TURN TIME, ROUND CAP and TOY PRICE in the lobby's MATCH
 SETTINGS; `--toys_to_win=N`, `--toy_price=N` and `--machine_at=ID` in the harness). Spots: coin (+3),
-item (a random item), damage (−3 coins, a spiked ball), event (teleport, "?"), and one safe
-spot (cyan dome) that hands out a SHIELD which eats the next bomb or damage spot.
+item (a random item: bomb, turbo, swap, shield or the laser gun), damage (−3 coins, a spiked
+ball), event (teleport, "?"), and one safe spot (cyan dome) that hands out a SHIELD which eats
+the next bomb, damage spot or laser hit. Everyone has 30 HP; the laser takes it by distance,
+and a downed player bleeds, drops half their coins to the shooter and respawns at the other annex.
 
 Useful flags after `--`: `--autoplay` (a bot drives your seat), `--seed=N`, `--soak=SECONDS`
 (quit and write `reports/<label>_summary.json` + `_traj.csv`), `--report=LABEL`, `--expect=N`
 (host waits for N humans before `--start`), `--round_seconds=N`, `--log=0..4`,
 `--screenshot=path.png --screenshot_at=5 --screenshot_quit` (add
-`--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results` to start the timer on
-an event; `--give_item=bomb` and `--board_auto_roll` exercise the board UI from a fresh match),
+`--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results|laser` to start the timer
+on an event, `--screenshot_event_index=N` on its Nth occurrence; `--give_item=laser`,
+`--give_bots_item=laser`, `--hotbar_test` (the bar open), `--aim_test=DEG` (the laser drawn at
+an angle) and `--board_auto_roll` exercise the board UI from a fresh match),
 `--ads_progress=0..1` (pins the scope-in for a frame), `--board_overview` (whole board),
 `--board_cam=x,y,z:tx,ty,tz` (camera anywhere on the board), `--render_scale=N` (pins the 3D
 render scale; the SETTINGS slider is the player's cap, default 1.5 supersampling, and the game

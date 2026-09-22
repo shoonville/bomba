@@ -38,6 +38,17 @@ var _playing: bool = false
 var _goal_spot: String = ""     # the spot the ring and the lit machine show
 var _hop: float = 0.32
 var _fork_focus: Array = []
+# The laser gun: aim mode (the local player's pawn turns with the mouse and a beam shows the
+# reach), the shot flash everyone sees, and the blood it leaves on the board.
+var _aiming: bool = false
+var _aim: float = 0.0
+var _aim_len: float = 9.0
+var _aim_peer: int = 0
+var _beam: MeshInstance3D
+var _beam_dot: MeshInstance3D
+var _blood_root: Node3D
+var _blood_drawn: Dictionary = {}   # blood serial → true
+var _blood_mat: Material
 
 
 func setup(p_director: BoardDirector) -> void:
@@ -51,6 +62,11 @@ func setup(p_director: BoardDirector) -> void:
 	Log.info("perf", "Board view built: environment %d ms, tiles+markers %d ms" % [(t1 - t0) / 1000, (t2 - t1) / 1000])
 	director.state_changed.connect(_on_state)
 	director.events_received.connect(_on_events)
+	_blood_root = Node3D.new()
+	_blood_root.name = "Blood"
+	add_child(_blood_root)
+	_blood_mat = CelMaterial.for_colour(Color.from_hsv(355.0 / 360.0, 0.85, 0.42), Palette.map_colour("board", "shadow_tint"))
+	_build_beam()
 	camera = Camera3D.new()
 	camera.name = "BoardCamera"
 	camera.fov = 52.0
@@ -369,6 +385,202 @@ func show_emote(peer_id: int, text: String) -> void:
 	root.add_child(label)
 	root.scale = Vector3.ONE * 0.2
 	_socials.append({"node": root, "t": 0.0, "life": 2.4, "base_y": 2.7, "kind": "emote"})
+
+
+# --- the laser gun ------------------------------------------------------------------------------------
+
+## The aiming beam: a thin red bar with a bright dot at its end, unshaded so it reads as light.
+## Reused for the shot flash (thicker, fading).
+func _build_beam() -> void:
+	_beam = MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(0.07, 0.07, 1.0)
+	_beam.mesh = bm
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color(0.95, 0.12, 0.1)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.render_priority = 3
+	_beam.material_override = mat
+	_beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_beam.visible = false
+	add_child(_beam)
+	_beam_dot = MeshInstance3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = 0.14
+	sm.height = 0.28
+	sm.radial_segments = 10
+	sm.rings = 5
+	_beam_dot.mesh = sm
+	_beam_dot.material_override = mat
+	_beam_dot.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_beam_dot.visible = false
+	add_child(_beam_dot)
+
+
+func _place_beam(from: Vector3, a: float, length: float, thick: float, alpha: float) -> void:
+	var dir := Vector3(cos(a), 0.0, sin(a))
+	_beam.visible = true
+	_beam_dot.visible = true
+	_beam.scale = Vector3(thick / 0.07, thick / 0.07, length)
+	_beam.global_position = from + dir * length * 0.5
+	_beam.look_at(from + dir * length, Vector3.UP)
+	_beam_dot.global_position = from + dir * length
+	_beam_dot.scale = Vector3.ONE * (thick / 0.07) * 0.8
+	(_beam.material_override as StandardMaterial3D).albedo_color = Color(0.95, 0.12, 0.1, alpha)
+
+
+func _hide_beam() -> void:
+	if _beam != null:
+		_beam.visible = false
+		_beam_dot.visible = false
+
+
+## The local player draws the laser: the pawn turns to follow the mouse and the beam shows how
+## far it reaches. `length` in metres (the rules' laser_length).
+func begin_aim(peer_id: int, length: float) -> void:
+	_aiming = true
+	_aim_peer = peer_id
+	_aim_len = length
+	var pawn: BoardPawn = pawns.get(peer_id, null)
+	if pawn != null:
+		pawn.show_gun(true)
+		_focus(pawn.global_position)
+
+
+func end_aim() -> void:
+	if not _aiming:
+		return
+	_aiming = false
+	var pawn: BoardPawn = pawns.get(_aim_peer, null)
+	if pawn != null:
+		pawn.show_gun(false)
+	_hide_beam()
+
+
+func is_aiming() -> bool:
+	return _aiming
+
+
+func aim_angle() -> float:
+	return _aim
+
+
+## Aim from the mouse: the point under the cursor on the plane at the pawn's chest height, seen
+## from the pawn. Keeps the last aim when the cursor is off the plane. `--aim_test=DEG` pins it.
+func _update_aim(pawn: BoardPawn) -> void:
+	if Game.args.has("aim_test"):
+		_aim = deg_to_rad(float(Game.args["aim_test"]))
+		return
+	if camera == null:
+		return
+	var mouse := get_viewport().get_mouse_position()
+	var origin := camera.project_ray_origin(mouse)
+	var normal := camera.project_ray_normal(mouse)
+	var plane_y := pawn.global_position.y + 1.0
+	if absf(normal.y) < 0.001:
+		return
+	var t := (plane_y - origin.y) / normal.y
+	if t <= 0.0:
+		return
+	var hit := origin + normal * t
+	var d := Vector2(hit.x - pawn.global_position.x, hit.z - pawn.global_position.z)
+	if d.length() > 0.2:
+		_aim = atan2(d.y, d.x)
+
+
+## The shot everyone sees: a thick beam that fades over a third of a second.
+func _flash_beam(from: Vector3, a: float, length: float) -> void:
+	_place_beam(from, a, length, 0.16, 1.0)
+	var tw := create_tween()
+	tw.tween_method(func(v: float): _place_beam(from, a, length, 0.16 * (0.4 + 0.6 * v), v), 1.0, 0.0, 0.36)
+	tw.tween_callback(func(): if not _aiming: _hide_beam())
+
+
+## Blood: a burst of dark-red blobs flung from the victim, then a splat on the board.
+func _blood_burst(at: Vector3) -> void:
+	if Game.headless:
+		return
+	Burst.spawn(self, at + Vector3(0, 1.0, 0), Color.from_hsv(355.0 / 360.0, 0.85, 0.5), 0.9, 0.3, 9)
+	for k in 9:
+		var mi := MeshInstance3D.new()
+		var sm := SphereMesh.new()
+		var r := randf_range(0.05, 0.11)
+		sm.radius = r
+		sm.height = r * 2.0
+		sm.radial_segments = 6
+		sm.rings = 3
+		mi.mesh = sm
+		mi.material_override = _blood_mat
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(mi)
+		mi.global_position = at + Vector3(0, randf_range(0.8, 1.3), 0)
+		var fling := Vector3(randf_range(-1.0, 1.0), 0.0, randf_range(-1.0, 1.0)).normalized() * randf_range(0.5, 1.4)
+		var tw := create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(mi, "global_position:x", mi.global_position.x + fling.x, 0.42)
+		tw.tween_property(mi, "global_position:z", mi.global_position.z + fling.z, 0.42)
+		tw.tween_property(mi, "global_position:y", at.y + 0.04, 0.42).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.chain().tween_property(mi, "scale", Vector3(1.5, 0.15, 1.5), 0.08)
+		tw.chain().tween_interval(1.2)
+		tw.chain().tween_callback(mi.queue_free)
+
+
+## One splat from a state record {n, space, a, r, seed}: flat dark-red discs on the tile,
+## drawn once per serial so a rebuilt view and a replayed event agree.
+func _draw_blood(entry: Dictionary) -> void:
+	var n := int(entry.get("n", 0))
+	if _blood_drawn.has(n) or _blood_root == null:
+		return
+	_blood_drawn[n] = true
+	var base := director.space_position(str(entry.get("space", "")))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(entry.get("seed", 0)) * 7919 + n
+	var root := Node3D.new()
+	root.position = base + Vector3(0, 0.03, 0)
+	root.rotation.y = float(entry.get("a", 0.0))
+	_blood_root.add_child(root)
+	var spread := float(entry.get("r", 0.6))
+	for k in 7:
+		var mi := MeshInstance3D.new()
+		var sm := SphereMesh.new()
+		var r := rng.randf_range(0.12, 0.34) * (1.4 if k == 0 else 1.0)
+		sm.radius = r
+		sm.height = r * 2.0
+		sm.radial_segments = 9
+		sm.rings = 4
+		mi.mesh = sm
+		mi.material_override = _blood_mat
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var off := Vector3.ZERO if k == 0 else Vector3(rng.randf_range(-spread, spread), 0.0, rng.randf_range(-spread, spread)) * 0.8
+		mi.position = off + Vector3(0, -r + 0.05, 0)
+		mi.scale = Vector3(rng.randf_range(0.9, 1.4), 0.1, rng.randf_range(0.9, 1.4))
+		root.add_child(mi)
+	for k in 5:
+		var mi := MeshInstance3D.new()
+		var sm := SphereMesh.new()
+		var r := rng.randf_range(0.04, 0.08)
+		sm.radius = r
+		sm.height = r * 2.0
+		sm.radial_segments = 6
+		sm.rings = 3
+		mi.mesh = sm
+		mi.material_override = _blood_mat
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var ang := rng.randf_range(0.0, TAU)
+		var dist := rng.randf_range(spread * 0.9, spread * 1.6)
+		mi.position = Vector3(cos(ang) * dist, -r + 0.05, sin(ang) * dist)
+		mi.scale = Vector3(1.0, 0.15, 1.0)
+		root.add_child(mi)
+
+
+## Everything in the state's blood list that is not on the board yet (a rebuilt view, a
+## reconnect, or a splat whose event this peer never played).
+func _draw_blood_from_state() -> void:
+	if director.state == null:
+		return
+	for entry in director.state.blood:
+		_draw_blood(entry)
 
 
 ## The ring and the lit machine move to `spot` together.
@@ -1051,6 +1263,14 @@ func _on_state(state: BoardState) -> void:
 	var ap := state.active_player()
 	if ap != null and first:
 		_focus(director.space_position(ap.space))
+	if first:
+		_draw_blood_from_state()
+	# Low HP bleeds until a respawn refills it.
+	var low := int(director.cfg.get("bleed_below_hp", 10))
+	for p in state.players:
+		var pawn: BoardPawn = pawns.get(p.peer_id, null)
+		if pawn != null:
+			pawn.set_bleeding(p.hp <= low)
 
 
 func _snap_all() -> void:
@@ -1080,6 +1300,7 @@ func _play_next() -> void:
 		# A goal the events did not move (a reconnect, a state without a toy) is placed now.
 		if director.state != null and director.state.goal != "" and director.state.goal != _goal_spot:
 			_show_goal(director.state.goal)
+		_draw_blood_from_state()
 		return
 	_playing = true
 	var e: Dictionary = _queue.pop_front()
@@ -1147,7 +1368,64 @@ func _play_next() -> void:
 		"item_used":
 			_float_label(int(e["peer"]), str(e["item"]).to_upper() + "!", Palette.hud_colour("danger"))
 			Audio.play("dice", 0.0)
-			wait = 0.5
+			wait = 0.5 if str(e["item"]) != "laser" else 0.15
+		"laser":
+			# The shooter turns to the aim and draws, the beam flashes down the line, and every
+			# player in it flinches, bleeds and loses HP; a downed one comes back at the annex.
+			var shooter: BoardPawn = pawns.get(int(e["peer"]), null)
+			var a := float(e["aim"])
+			var length := float(e["length"])
+			var hits: Array = e.get("hits", [])
+			var deaths := 0
+			if shooter != null:
+				shooter.face_angle(a)
+				shooter.show_gun(true)
+				_focus(shooter.global_position)
+				await get_tree().create_timer(0.3).timeout
+				if not is_inside_tree():
+					_playing = false
+					return
+				if not Game.headless:
+					_flash_beam(shooter.gun_tip(), a, length)
+				Audio.play("laser", -2.0)
+				for h in hits:
+					var victim: BoardPawn = pawns.get(int(h["peer"]), null)
+					if victim == null:
+						continue
+					if bool(h.get("shielded", false)):
+						continue   # the shield event that follows shows it
+					victim.flinch()
+					victim.hit_bleed()
+					_blood_burst(victim.global_position)
+					if h.has("blood"):
+						_draw_blood(h["blood"])
+					_float_label(victim.peer_id, "-%d" % int(h["damage"]), Palette.hud_colour("danger"))
+					Audio.play("splat", -4.0)
+					if bool(h.get("dead", false)):
+						deaths += 1
+				if deaths > 0:
+					await get_tree().create_timer(0.7).timeout
+					if not is_inside_tree():
+						_playing = false
+						return
+					for h in hits:
+						if not bool(h.get("dead", false)):
+							continue
+						var victim: BoardPawn = pawns.get(int(h["peer"]), null)
+						if victim == null:
+							continue
+						_float_label(victim.peer_id, "DOWN!", Palette.hud_colour("danger"))
+						if not Game.headless:
+							Burst.spawn(self, victim.global_position + Vector3(0, 0.6, 0), Palette.player_colour(0), 0.8, 0.3, 8)
+						victim.snap_to(director.space_position(str(h["respawn"])))
+						victim.set_bleeding(false)
+						Audio.play("respawn", -4.0)
+						if int(h.get("coins", 0)) > 0:
+							_float_label(shooter.peer_id, "+%d" % int(h["coins"]), Palette.player_colour(3))
+				get_tree().create_timer(1.0).timeout.connect(func():
+					if is_instance_valid(shooter) and not _aiming:
+						shooter.show_gun(false))
+			wait = 0.9 + 0.5 * deaths
 		"toy":
 			var pawn: BoardPawn = pawns.get(int(e["peer"]), null)
 			var col := Palette.hud_colour("score")
@@ -1230,6 +1508,7 @@ func _float_label(peer_id: int, text: String, colour: Color) -> void:
 	tw.set_parallel(true)
 	tw.tween_property(l, "global_position:y", l.global_position.y + 1.4, 1.0)
 	tw.tween_property(l, "modulate:a", 0.0, 1.0).set_delay(0.4)
+	tw.tween_property(l, "outline_modulate:a", 0.0, 1.0).set_delay(0.4)   # or the ink shows through the fade
 	tw.chain().tween_callback(l.queue_free)
 
 
@@ -1257,6 +1536,12 @@ func _process(delta: float) -> void:
 	# behind the pawn along its heading so the spaces ahead fill the frame. The heading eases
 	# at most ~100°/s so corners swing, never snap.
 	_cam_yaw = _rotate_toward_angle(_cam_yaw, _cam_yaw_target, delta * 1.8)
+	if _aiming:
+		var pawn: BoardPawn = pawns.get(_aim_peer, null)
+		if pawn != null:
+			_update_aim(pawn)
+			pawn.face_angle(_aim)
+			_place_beam(pawn.gun_tip(), _aim, _aim_len, 0.07, 0.9)
 	var desired_pos := _cam_look + Vector3(sin(_cam_yaw) * 6.8, 6.2, cos(_cam_yaw) * 6.8)
 	var look := _cam_look
 	if Game.args.has("board_overview"):

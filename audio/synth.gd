@@ -171,7 +171,7 @@ static func names() -> PackedStringArray:
 	return PackedStringArray(["sniper_fire", "ar_fire", "hitmarker", "headshot", "kill", "death", "hurt",
 		"bolt", "reload_start", "reload_end", "dry", "swap", "jump", "land", "footstep", "respawn",
 		"ui_hover", "ui_click", "ui_back", "round_start", "round_end", "dice", "coin", "shell_in",
-		"ping", "emote"])
+		"ping", "emote", "laser", "splat"])
 
 
 ## Build a named sound as float samples. Unknown names return a short click so a typo is audible.
@@ -336,6 +336,22 @@ static func build(name: String) -> PackedFloat32Array:
 			var n := samples(0.22)
 			var out := mul(tone(n, 1318.5, 1318.5, "square"), env_exp(n, 0.08))
 			return mix(out, mul(tone(n, 1975.5, 1975.5, "square"), env_exp(n, 0.1)), 0.7, samples(0.05))
+		"laser":
+			# The board laser gun: a falling saw zap 1600→180 Hz with a square an octave up
+			# riding it, a crackle at the start and a short low thump under the beam.
+			var n := samples(0.34)
+			var out := mul(tone(n, 1600.0, 180.0, "saw"), env_exp(n, 0.11))
+			out = mix(out, mul(lowpass(tone(n, 3200.0, 360.0, "square"), 3000.0), env_exp(n, 0.07)), 0.35)
+			out = mix(out, mul(lowpass(highpass(noise(n, 191), 1200.0), 6000.0), env_exp(n, 0.012)), 0.6)
+			out = mix(out, mul(tone(n, 150.0, 70.0, "sine"), env_exp(n, 0.09)), 0.6, samples(0.02))
+			return softclip(out, 1.9)
+		"splat":
+			# A laser hit landing: a wet low-passed burst with a soft thud and a little squelch.
+			var n := samples(0.2)
+			var out := mul(lowpass(noise(n, 192), 900.0), env_exp(n, 0.05))
+			out = mix(out, mul(tone(n, 160.0, 62.0, "sine"), env_exp(n, 0.07)), 0.9)
+			out = mix(out, mul(lowpass(highpass(noise(samples(0.06), 193), 400.0), 1600.0), env_exp(samples(0.06), 0.015)), 0.5, samples(0.03))
+			return softclip(out, 1.6)
 	var n := samples(0.05)
 	return mul(noise(n, 1), env_exp(n, 0.01))
 

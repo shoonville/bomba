@@ -28,7 +28,10 @@ static func setup(state: BoardState, graph: BoardGraph, players_data: Array, see
 		p.toys = 0
 		p.items = []
 		p.roll_bonus = 0
+		p.hp = int(cfg.get("hp", 30))
 		state.players.append(p)
+	state.blood.clear()
+	state.blood_serial = 0
 	state.goal = graph.machine_spot([graph.start_id], rng(state))
 	state.phase = BoardState.PHASE_TURNS
 	state.active = 0
@@ -54,8 +57,9 @@ static func _begin_turn(state: BoardState, events: Array) -> void:
 	events.append({"kind": "turn", "peer": ap.peer_id, "round": state.round, "serial": state.turn_serial})
 
 
-## Items are used before rolling. Returns [] if not allowed.
-static func use_item(state: BoardState, graph: BoardGraph, cfg: Dictionary, peer_id: int, item: String, target_peer: int) -> Array:
+## Items are used before rolling. Returns [] if not allowed. `payload` carries what an item needs
+## beyond a target player: the laser's aim angle.
+static func use_item(state: BoardState, graph: BoardGraph, cfg: Dictionary, peer_id: int, item: String, target_peer: int, payload: Dictionary = {}) -> Array:
 	var events := []
 	if state.phase != BoardState.PHASE_TURNS or state.dice != 0:
 		return events
@@ -106,9 +110,108 @@ static func use_item(state: BoardState, graph: BoardGraph, cfg: Dictionary, peer
 		"shield":
 			# Passive: it is spent when a bomb targets its holder. Using it by hand does nothing.
 			user.items.append(item)
+		"laser":
+			# Aimed: every other player in the beam takes damage by distance; a shield eats the hit;
+			# at 0 HP the victim hands the shooter a share of their coins and respawns at the annex
+			# that is not the live machine, HP full. Sean: "if they are close enough they lose all
+			# their hp"; the respawn spots are his "original two spots".
+			var aim := float(payload.get("aim", 0.0))
+			var shot := {"kind": "laser", "peer": user.peer_id, "aim": aim, "length": laser_length(graph, cfg), "hits": []}
+			var shields := []
+			events.append({"kind": "item_used", "peer": user.peer_id, "item": item, "target": 0})
+			for h in laser_hits(state, graph, cfg, user, aim):
+				var victim: BoardState.PlayerState = h["player"]
+				var rec := {"peer": victim.peer_id, "damage": int(h["damage"]), "hp": victim.hp, "dead": false, "coins": 0, "respawn": ""}
+				if victim.items.has("shield"):
+					victim.items.erase("shield")
+					rec["damage"] = 0
+					rec["shielded"] = true
+					shields.append({"kind": "shield", "peer": victim.peer_id, "from": user.peer_id})
+				else:
+					victim.hp = maxi(0, victim.hp - int(h["damage"]))
+					rec["hp"] = victim.hp
+					rec["blood"] = _add_blood(state, victim.space)
+					if victim.hp <= 0:
+						rec["dead"] = true
+						var taken := int(floor(victim.coins * float(def.get("death_coin_share", 0.5))))
+						victim.coins -= taken
+						user.coins += taken
+						rec["coins"] = taken
+						victim.hp = int(cfg.get("hp", 30))
+						victim.space = _respawn_spot(state, graph)
+						rec["respawn"] = victim.space
+				(shot["hits"] as Array).append(rec)
+			events.append(shot)
+			events.append_array(shields)
 		_:
 			user.items.append(item)
 	return events
+
+
+## The beam's reach in metres: `length_spaces` of the board's mean tile spacing.
+static func laser_length(graph: BoardGraph, cfg: Dictionary) -> float:
+	var def: Dictionary = (cfg.get("items", {}) as Dictionary).get("laser", {})
+	return float(def.get("length_spaces", 3.0)) * graph.mean_step()
+
+
+## Who a laser from `shooter` at `aim` (radians in the XZ plane, atan2(dz, dx)) hits, nearest
+## first: [{player, along, damage}]. A straight beam from the shooter's space, `width` wide,
+## over every other player's space; players on the shooter's own space are beside the gun, not
+## in front of it. Damage is `damage_close` out to `close_spaces`, then falls linearly to
+## `damage_far` at the end of the beam.
+static func laser_hits(state: BoardState, graph: BoardGraph, cfg: Dictionary, shooter: BoardState.PlayerState, aim: float) -> Array:
+	var out := []
+	var def: Dictionary = (cfg.get("items", {}) as Dictionary).get("laser", {})
+	var origin := graph.get_space(shooter.space)
+	if origin == null or def.is_empty():
+		return out
+	var length := laser_length(graph, cfg)
+	var half_w := float(def.get("width", 1.4)) * 0.5
+	var close := float(def.get("close_spaces", 1.0)) * graph.mean_step()
+	var d_close := float(def.get("damage_close", 30))
+	var d_far := float(def.get("damage_far", 10))
+	var dir := Vector2(cos(aim), sin(aim))
+	for p in state.players:
+		if p == shooter:
+			continue
+		var sp := graph.get_space(p.space)
+		if sp == null:
+			continue
+		var v := Vector2(sp.position.x - origin.position.x, sp.position.z - origin.position.z)
+		var along := v.dot(dir)
+		var across := absf(v.x * dir.y - v.y * dir.x)
+		if along < 0.3 or along > length or across > half_w:
+			continue
+		var t := 0.0 if along <= close else clampf((along - close) / maxf(length - close, 0.001), 0.0, 1.0)
+		out.append({"player": p, "along": along, "damage": int(round(lerpf(d_close, d_far, t)))})
+	out.sort_custom(func(a, b): return float(a["along"]) < float(b["along"]))
+	return out
+
+
+## Where a downed player comes back: a machine spot that is not the live machine (so dying never
+## hands you the machine), the start when the board has no other.
+static func _respawn_spot(state: BoardState, graph: BoardGraph) -> String:
+	var spots := []
+	for c in graph.goal_candidates():
+		if str(c) != state.goal:
+			spots.append(str(c))
+	if spots.is_empty():
+		return graph.start_id
+	spots.sort()
+	return spots[rng(state).randi_range(0, spots.size() - 1)]
+
+
+## A blood splat record on the victim's space, kept in the state so every peer draws the same
+## one and it survives the board being rebuilt. Capped so the state stays small.
+static func _add_blood(state: BoardState, space_id: String) -> Dictionary:
+	var r := rng(state)
+	state.blood_serial += 1
+	var entry := {"n": state.blood_serial, "space": space_id, "a": r.randf_range(0.0, TAU),
+		"r": r.randf_range(0.45, 0.8), "seed": r.randi_range(0, 9999)}
+	state.blood.append(entry)
+	while state.blood.size() > 24:
+		state.blood.pop_front()
+	return entry
 
 
 static func roll(state: BoardState, graph: BoardGraph, cfg: Dictionary) -> Array:
@@ -307,18 +410,42 @@ static func bot_choose(state: BoardState, graph: BoardGraph) -> int:
 	return best
 
 
-## [item, target_peer] or [] when the bot passes.
-static func bot_item(state: BoardState, graph: BoardGraph = null) -> Array:
+## [item, target_peer, payload] or [] when the bot passes. `cfg` is needed for the laser (its
+## reach is a tuning number); without it the bot never fires.
+static func bot_item(state: BoardState, graph: BoardGraph = null, cfg: Dictionary = {}) -> Array:
 	var me := state.active_player()
 	if me == null:
 		return []
+	if me.items.has("laser") and graph != null and not cfg.is_empty():
+		# Aim straight at each other player in turn and take the shot that does the most damage.
+		var origin := graph.get_space(me.space)
+		var best_total := 0
+		var best_peer := 0
+		var best_aim := 0.0
+		if origin != null:
+			for p in state.players:
+				if p == me:
+					continue
+				var sp := graph.get_space(p.space)
+				if sp == null:
+					continue
+				var aim := atan2(sp.position.z - origin.position.z, sp.position.x - origin.position.x)
+				var total := 0
+				for h in laser_hits(state, graph, cfg, me, aim):
+					total += int(h["damage"])
+				if total > best_total:
+					best_total = total
+					best_peer = p.peer_id
+					best_aim = aim
+		if best_total > 0:
+			return ["laser", best_peer, {"aim": snappedf(best_aim, 0.001)}]
 	if me.items.has("turbo"):
-		return ["turbo", me.peer_id]
+		return ["turbo", me.peer_id, {}]
 	if me.items.has("bomb"):
 		var standings := state.standings()
 		for p in standings:
 			if p != me and (p.toys > me.toys or p.coins > me.coins + 4):
-				return ["bomb", p.peer_id]
+				return ["bomb", p.peer_id, {}]
 	if me.items.has("swap") and graph != null and state.goal != "":
 		# Swap with whoever stands clearly nearer the goal than we do.
 		var my_d := graph.distance(me.space, state.goal)
@@ -334,5 +461,5 @@ static func bot_item(state: BoardState, graph: BoardGraph = null) -> Array:
 				best_d = d
 				best = p
 		if best != null:
-			return ["swap", best.peer_id]
+			return ["swap", best.peer_id, {}]
 	return []

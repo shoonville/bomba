@@ -236,9 +236,85 @@ func test_bots_pick_toward_goal_and_items() -> void:
 	me.items = ["bomb"]
 	s.players[1].toys = 1
 	var pick := BoardRules.bot_item(s)
-	assert_eq(pick.size(), 2)
+	assert_eq(pick.size(), 3)
 	assert_eq(str(pick[0]), "bomb")
 	assert_eq(int(pick[1]), s.players[1].peer_id)
+
+
+func test_laser_hits_by_distance_and_line() -> void:
+	# Fixture spaces 2, 3, 4, 5 sit in a row along +x about 3 m apart (5 half a metre off the
+	# line); a shooter on 2 aiming along +x hits all three, hardest the nearest. 8 is off the line.
+	var s := _fresh(3, 5)
+	var shooter := s.players[0]
+	shooter.space = "2"
+	shooter.items = ["laser"]
+	s.players[1].space = "3"
+	s.players[2].space = "4"
+	s.players[3].space = "5"
+	s.players[4].space = "8"
+	s.players[1].coins = 9
+	var shooter_coins := shooter.coins
+	var length := BoardRules.laser_length(graph, cfg)
+	assert_true(length > 9.0 and length < 12.0, "three spaces of the fixture's mean step: %.1f m" % length)
+	var hits := BoardRules.laser_hits(s, graph, cfg, shooter, 0.0)
+	assert_eq(hits.size(), 3, "3, 4 and 5 are in the beam; 8 is not")
+	assert_eq(int(hits[0]["damage"]), int((cfg["items"]["laser"] as Dictionary)["damage_close"]), "point blank takes everything")
+	assert_true(int(hits[1]["damage"]) < 30 and int(hits[1]["damage"]) > int(hits[2]["damage"]),
+		"damage falls with distance: %d > %d" % [int(hits[1]["damage"]), int(hits[2]["damage"])])
+	var ev := BoardRules.use_item(s, graph, cfg, shooter.peer_id, "laser", 0, {"aim": 0.0})
+	var shots := ev.filter(func(e): return e["kind"] == "laser")
+	assert_eq(shots.size(), 1)
+	assert_false(shooter.items.has("laser"), "spent")
+	var recs: Array = shots[0]["hits"]
+	assert_eq(recs.size(), 3)
+	# The nearest died: respawned at a machine spot that is not the live one, HP refilled, and
+	# half their coins (rounded down) went to the shooter.
+	var v1 := s.players[1]
+	assert_true(bool(recs[0]["dead"]))
+	assert_eq(v1.hp, int(cfg["hp"]))
+	assert_eq(v1.coins, 5, "lost half of 9, rounded down")
+	assert_eq(shooter.coins, shooter_coins + 4)
+	assert_true(graph.goal_candidates().has(v1.space) and v1.space != s.goal, "respawned at another machine spot: %s (live %s)" % [v1.space, s.goal])
+	assert_true(s.players[2].hp > 0 and s.players[2].hp < s.players[3].hp, "the nearer one hurts more: %d < %d" % [s.players[2].hp, s.players[3].hp])
+	assert_eq(s.players[4].hp, int(cfg["hp"]), "off the line")
+	assert_eq(s.blood.size(), 3, "a splat per hit")
+	var back := BoardState.from_dict(s.to_dict())
+	assert_eq(back.players[2].hp, s.players[2].hp, "hp round-trips")
+	assert_eq(back.blood.size(), 3, "blood round-trips")
+	# A shield eats the hit and is spent.
+	var t := _fresh(3, 3)
+	t.players[0].space = "2"
+	t.players[0].items = ["laser"]
+	t.players[1].space = "3"
+	t.players[1].items = ["shield"]
+	var ev2 := BoardRules.use_item(t, graph, cfg, t.players[0].peer_id, "laser", 0, {"aim": 0.0})
+	assert_eq(t.players[1].hp, int(cfg["hp"]))
+	assert_false(t.players[1].items.has("shield"))
+	assert_true(ev2.any(func(e): return e["kind"] == "shield"))
+	# No shot mid-turn; the item is kept.
+	var u := _fresh(3, 3)
+	u.players[0].items = ["laser"]
+	u.dice = 3
+	u.steps_left = 3
+	assert_eq(BoardRules.use_item(u, graph, cfg, u.players[0].peer_id, "laser", 0, {"aim": 0.0}).size(), 0)
+	assert_true(u.players[0].items.has("laser"))
+
+
+func test_bot_fires_the_laser_at_someone_in_range() -> void:
+	var s := _fresh(2, 3)
+	var me := s.active_player()
+	me.space = "2"
+	me.items = ["laser", "turbo"]
+	s.players[1].space = "4"
+	s.players[2].space = "17"
+	var pick := BoardRules.bot_item(s, graph, cfg)
+	assert_eq(pick.size(), 3)
+	assert_eq(str(pick[0]), "laser", "a target in the beam beats the turbo")
+	assert_eq(int(pick[1]), s.players[1].peer_id)
+	assert_true(absf(float((pick[2] as Dictionary)["aim"])) < 0.05, "aimed along +x at 4: %.3f" % float((pick[2] as Dictionary)["aim"]))
+	s.players[1].space = "17"
+	var pick2 := BoardRules.bot_item(s, graph, cfg)
+	assert_eq(str(pick2[0]), "turbo", "nobody in range: the turbo instead")
 
 
 func test_swap_and_shield() -> void:
@@ -266,9 +342,9 @@ func test_swap_and_shield() -> void:
 	assert_false(victim.items.has("shield"), "shield spent")
 	assert_false(attacker.items.has("bomb"), "bomb spent")
 	assert_true(ev2.any(func(e): return e["kind"] == "shield"))
-	# item draws can produce all four kinds
+	# item draws can produce all five kinds
 	var names := (cfg["items"] as Dictionary).keys()
-	assert_eq(names.size(), 4)
+	assert_eq(names.size(), 5)
 
 
 func test_bot_swaps_only_for_a_real_gain() -> void:
@@ -279,7 +355,7 @@ func test_bot_swaps_only_for_a_real_gain() -> void:
 	me.space = "1"
 	s.players[1].space = "12"
 	var pick := BoardRules.bot_item(s, graph)
-	assert_eq(pick.size(), 2, "swap with the player sitting next to the goal")
+	assert_eq(pick.size(), 3, "swap with the player sitting next to the goal")
 	assert_eq(str(pick[0]), "swap")
 	assert_eq(int(pick[1]), s.players[1].peer_id)
 	s.players[1].space = "1"

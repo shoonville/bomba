@@ -5,6 +5,8 @@
   "toy_price": 10,
   "toys_to_win": 4,
   "start_coins": 5,
+  "hp": 30,
+  "bleed_below_hp": 10,
   "turn_timeout_seconds": 20.0,
   "choice_timeout_seconds": 8.0,
   "bot_think_seconds": 1.2,
@@ -40,6 +42,16 @@
     },
     "shield": {
       "display_name": "SHIELD"
+    },
+    "laser": {
+      "_comment": "Aimed on your turn: a straight beam length_spaces spaces long (spaces = the board's mean tile spacing) and width metres wide hits every other player in it; damage_close within close_spaces, falling to damage_far at the end. At 0 HP the victim respawns at the annex that is not the live machine and hands death_coin_share of their coins to the shooter.",
+      "display_name": "LASER",
+      "length_spaces": 3.0,
+      "width": 1.4,
+      "close_spaces": 1.0,
+      "damage_close": 30,
+      "damage_far": 10,
+      "death_coin_share": 0.5
     }
   },
   "default_board": "main",

@@ -19,11 +19,12 @@ class PlayerState:
 	var toys: int = 0
 	var items: Array = []
 	var roll_bonus: int = 0
+	var hp: int = 30
 
 	func to_dict() -> Dictionary:
 		return {"peer_id": peer_id, "display_name": display_name, "colour_index": colour_index,
 			"is_bot": is_bot, "space": space, "coins": coins, "toys": toys,
-			"items": items.duplicate(), "roll_bonus": roll_bonus}
+			"items": items.duplicate(), "roll_bonus": roll_bonus, "hp": hp}
 
 	static func from_dict(d: Dictionary) -> PlayerState:
 		var p := PlayerState.new()
@@ -36,6 +37,7 @@ class PlayerState:
 		p.toys = int(d.get("toys", 0))
 		p.items = Array(d.get("items", []))
 		p.roll_bonus = int(d.get("roll_bonus", 0))
+		p.hp = int(d.get("hp", 30))
 		return p
 
 
@@ -53,6 +55,10 @@ var seed_value: int = 0
 var rng_counter: int = 0
 var turn_serial: int = 0
 var last_ranking: Array = []
+# Blood on the board: {n, space, a, r, seed} per laser hit, newest last, capped; every peer
+# draws the same splats from this, so they survive the view being rebuilt after a minigame.
+var blood: Array = []
+var blood_serial: int = 0
 
 
 func active_player() -> PlayerState:
@@ -94,7 +100,7 @@ func to_dict() -> Dictionary:
 	return {"board_id": board_id, "players": ps, "round": round, "rounds": rounds, "phase": phase,
 		"active": active, "dice": dice, "steps_left": steps_left, "pending_options": Array(pending_options),
 		"goal": goal, "seed": seed_value, "rng_counter": rng_counter, "turn_serial": turn_serial,
-		"last_ranking": last_ranking.duplicate()}
+		"last_ranking": last_ranking.duplicate(), "blood": blood.duplicate(true), "blood_serial": blood_serial}
 
 
 static func from_dict(d: Dictionary) -> BoardState:
@@ -115,4 +121,6 @@ static func from_dict(d: Dictionary) -> BoardState:
 	s.rng_counter = int(d.get("rng_counter", 0))
 	s.turn_serial = int(d.get("turn_serial", 0))
 	s.last_ranking = Array(d.get("last_ranking", []))
+	s.blood = Array(d.get("blood", []))
+	s.blood_serial = int(d.get("blood_serial", 0))
 	return s

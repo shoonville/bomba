@@ -26,6 +26,7 @@ var _quitting: bool = false
 var _shot_timer: float = 0.0
 var _shot_done: bool = false
 var _shot_armed: bool = false
+var _shot_event_seen: int = 0
 var _last_frame_ms: int = 0
 var _last_vmem: int = 0
 var _last_nodes: int = 0
@@ -687,6 +688,10 @@ func _arm_screenshot_on(events: Array) -> void:
 		elif want == "mychoose":
 			hit = kind == "choose" and int(e.get("peer", 0)) == multiplayer.get_unique_id()
 		if hit:
+			# --screenshot_event_index=N arms on the Nth matching event (1 = the first).
+			_shot_event_seen += 1
+			if _shot_event_seen < int(args.get("screenshot_event_index", 1)):
+				continue
 			_shot_armed = true
 			_shot_timer = 0.0
 			return

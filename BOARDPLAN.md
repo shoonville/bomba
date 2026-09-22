@@ -54,15 +54,23 @@ a random space), `goal` (the moving goal's spawn candidates carry `"goal": true`
 space with two or more `next` entries. The first board is a hand-made loop of ~28 spaces with two
 forks and a shortcut, positions in metres on a 24×18 m field, some spaces raised.
 
-## 4. Items (v0, two of them)
+## 4. Items
 
 | Item | Effect | Counter |
 |---|---|---|
-| BOMB | Pick a player: they lose 5 coins and are knocked back 3 spaces | Spend coins early; stay behind the leader |
+| BOMB | Pick a player: they lose 5 coins and are knocked back 3 spaces | Spend coins early; stay behind the leader; a SHIELD eats it |
 | TURBO | Next roll +3 | None; it is a race item |
+| SWAP | Trade places with a player | Stand somewhere nobody wants |
+| SHIELD | Passive: eats the next bomb, damage space or laser hit | It is spent by the first hit |
+| LASER | Aimed with the mouse on your turn: a straight beam 3 spaces long; everyone in it loses HP by distance (all 30 within a space, 10 at the end); at 0 HP they drop half their coins to the shooter and respawn at the other annex | Keep your distance; a SHIELD eats the hit |
 
-Items are strings in `tuning/board.json`; the effect table lives in the rules. Item #3 onward is
-data + a rule branch, no new nodes.
+Players carry **HP** (`board.hp`, 30) as well as coins. HP only matters to the laser for now: a
+downed player comes back at the machine spot that is not the live machine with full HP, and a
+player under `board.bleed_below_hp` (10) bleeds until then. Items are strings in
+`tuning/board.json`; the effect table lives in the rules. A new item is data + a rule branch, no
+new nodes. The HUD shows the inventory as a hotbar: Q opens it on your turn, 1–9 or the wheel
+pick a slot, E (or a click on the slot) uses it; the laser then aims with the mouse and fires on
+a click, right click puts it away.
 
 ## 5. Presentation (STYLE.md)
 

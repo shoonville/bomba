@@ -153,8 +153,8 @@ func request_choose(index: int) -> void:
 	_rpc_intent_choose.rpc_id(1, index)
 
 
-func request_item(item: String, target_peer: int) -> void:
-	_rpc_intent_item.rpc_id(1, item, target_peer)
+func request_item(item: String, target_peer: int, payload: Dictionary = {}) -> void:
+	_rpc_intent_item.rpc_id(1, item, target_peer, payload)
 
 
 @rpc("any_peer", "call_local", "reliable")
@@ -182,7 +182,7 @@ func _rpc_intent_choose(index: int) -> void:
 
 
 @rpc("any_peer", "call_local", "reliable")
-func _rpc_intent_item(item: String, target_peer: int) -> void:
+func _rpc_intent_item(item: String, target_peer: int, payload: Dictionary) -> void:
 	if not is_server():
 		return
 	var sender := multiplayer.get_remote_sender_id()
@@ -190,7 +190,7 @@ func _rpc_intent_item(item: String, target_peer: int) -> void:
 		sender = multiplayer.get_unique_id()
 	if not BoardRules.can_act(state, sender):
 		return
-	var events := BoardRules.use_item(state, graph, cfg, sender, item, target_peer)
+	var events := BoardRules.use_item(state, graph, cfg, sender, item, target_peer, payload)
 	if not events.is_empty():
 		_broadcast(events)
 
@@ -221,9 +221,10 @@ func _process(delta: float) -> void:
 			var ap := state.active_player()
 			if ap.is_bot or Game.args.has("autoplay"):
 				if _timer >= float(cfg.get("bot_think_seconds", 1.2)):
-					var pick := BoardRules.bot_item(state, graph)
+					var pick := BoardRules.bot_item(state, graph, cfg)
 					if not pick.is_empty():
-						_broadcast(BoardRules.use_item(state, graph, cfg, ap.peer_id, str(pick[0]), int(pick[1])))
+						var payload: Dictionary = pick[2] if pick.size() > 2 else {}
+						_broadcast(BoardRules.use_item(state, graph, cfg, ap.peer_id, str(pick[0]), int(pick[1]), payload))
 						_timer = 0.0
 						return
 					_do_roll()
@@ -308,6 +309,14 @@ func _broadcast(events: Array) -> void:
 			var m := MinigameRegistry.get_manifest(_next_minigame)
 			e["id"] = _next_minigame
 			e["display_name"] = m.display_name if m != null else _next_minigame.to_upper()
+	for e in events:
+		if str(e.get("kind", "")) == "laser":
+			var shooter := state.player(int(e["peer"]))
+			var parts := []
+			for h in e.get("hits", []):
+				var v := state.player(int(h["peer"]))
+				parts.append("%s -%d%s" % [v.display_name if v != null else "?", int(h["damage"]), " DOWN" if bool(h.get("dead", false)) else ""])
+			Log.info("board", "%s fires the laser at %.2f rad: %s" % [shooter.display_name if shooter != null else "?", float(e["aim"]), ", ".join(parts) if not parts.is_empty() else "no hit"])
 	var pause := _estimate_pause(events)
 	_busy_until = _clock + pause
 	_rpc_state.rpc(state.to_dict())
@@ -324,6 +333,11 @@ func _estimate_pause(events: Array) -> float:
 			"move": t += hop * (e["path"] as Array).size()
 			"coins", "item", "item_used": t += 0.55
 			"toy": t += 1.4
+			"laser":
+				t += 1.5
+				for h in e.get("hits", []):
+					if bool(h.get("dead", false)):
+						t += 0.9
 			"teleport": t += 1.1
 			"turn": t += 0.35
 			"minigame": t += 2.4

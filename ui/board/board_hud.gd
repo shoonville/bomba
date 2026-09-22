@@ -26,8 +26,12 @@ var _last_round: int = 0
 var _roll_btn: Button
 var _fork_left: Button
 var _fork_right: Button
-var _item_btns: Array = []
-var _item_box: HBoxContainer
+# The item hotbar (Sean): Q opens it on your turn, 1–9 or the wheel pick a slot, E uses it;
+# the laser then aims with the mouse and fires on a click.
+var _hotbar_open: bool = false
+var _hotbar_sel: int = 0
+var _hotbar_rects: Array = []
+var _aiming: bool = false
 
 
 func _ready() -> void:
@@ -48,21 +52,17 @@ func _ready() -> void:
 	_fork_right.mouse_exited.connect(_unhover)
 	add_child(_fork_left)
 	add_child(_fork_right)
-	_item_box = HBoxContainer.new()
-	_item_box.add_theme_constant_override("separation", 8)
-	add_child(_item_box)
 
 
 func attach(p_director: BoardDirector) -> void:
 	director = p_director
-	director.state_changed.connect(func(_s): _rebuild_items())
+	director.state_changed.connect(_on_state)
 	director.events_received.connect(_on_events)
 	director.social.connect(_on_social)
 	Events.board_dice_landed.connect(func(v: int):
 		_dice_value = v
 		_dice_t = 1.3
 	)
-	_rebuild_items()
 
 
 func _on_events(events: Array) -> void:
@@ -94,6 +94,9 @@ func _on_events(events: Array) -> void:
 				_intro_t = 2.6
 				_dice_t = 0.0
 				Audio.play("round_end", -6.0)
+			"laser":
+				for h in e.get("hits", []):
+					_row_flash[int(h["peer"])] = 1.0
 			"coins":
 				_row_flash[int(e["peer"])] = 1.0
 				if e.has("rank"):
@@ -144,6 +147,17 @@ func _process(delta: float) -> void:
 	_intro_t = maxf(0.0, _intro_t - delta)
 	_reward_t = maxf(0.0, _reward_t - delta)
 	_layout_buttons()
+	if Game.args.has("hotbar_test") and not _hotbar_open and not _aiming and _can_use_items():
+		# Harness: the bar open on the laser slot (or the first item) for a screenshot.
+		var lp := director.local_player()
+		if lp != null and not lp.items.is_empty():
+			_hotbar_sel = maxi(0, lp.items.find("laser"))
+			_hotbar_open = true
+	if Game.args.has("aim_test") and not _aiming and _can_use_items():
+		# Harness: the laser drawn at a fixed angle (degrees) for a screenshot.
+		var lp := director.local_player()
+		if lp != null and lp.items.has("laser"):
+			_begin_aim()
 	queue_redraw()
 
 
@@ -153,13 +167,12 @@ func _layout_buttons() -> void:
 		_roll_btn.visible = false
 		_fork_left.visible = false
 		_fork_right.visible = false
-		_item_box.visible = false
 		return
 	var st := director.state
 	var settled: bool = director.view == null or not director.view.has_method("is_animating") or not bool(director.view.is_animating())
 	var mine: bool = st != null and director.is_local_turn() and settled
 	var can_roll := mine and st.phase == BoardState.PHASE_TURNS and _item_target_mode == "" and director.local_player() != null and not director.local_player().is_bot
-	_roll_btn.visible = can_roll
+	_roll_btn.visible = can_roll and not _aiming
 	_roll_btn.position = Vector2((size.x - _roll_btn.size.x) * 0.5, size.y - 160)
 	var forking := mine and st.phase == BoardState.PHASE_CHOOSING and _fork_options.size() >= 2
 	_fork_left.visible = forking
@@ -171,23 +184,85 @@ func _layout_buttons() -> void:
 		# that the camera stands behind it at a fork.
 		_fork_left.position = Vector2(size.x * 0.24 - _fork_left.size.x * 0.5, size.y * 0.56)
 		_fork_right.position = Vector2(size.x * 0.76 - _fork_right.size.x * 0.5, size.y * 0.56)
-	_item_box.visible = can_roll and _item_btns.size() > 0
-	_item_box.position = Vector2((size.x - _item_box.size.x) * 0.5, size.y - 225)
 
 
-func _rebuild_items() -> void:
-	for b in _item_btns:
-		b.queue_free()
-	_item_btns.clear()
+## A state landed: the hotbar and the aim only live on the local player's own turn.
+func _on_state(_st: BoardState) -> void:
+	if director == null or not director.is_local_turn():
+		_hotbar_open = false
+		_end_aim()
 	var lp := director.local_player() if director != null else null
-	if lp == null:
+	if lp != null and _hotbar_sel >= lp.items.size():
+		_hotbar_sel = maxi(0, lp.items.size() - 1)
+
+
+## Items can be used on the local player's turn, before the roll, once the view has settled.
+func _can_use_items() -> bool:
+	if director == null or not is_instance_valid(director) or not director.is_inside_tree() or director.state == null:
+		return false
+	var st := director.state
+	var lp := director.local_player()
+	var settled: bool = director.view == null or not director.view.has_method("is_animating") or not bool(director.view.is_animating())
+	return lp != null and not lp.is_bot and director.is_local_turn() and settled and st.phase == BoardState.PHASE_TURNS and st.dice == 0 and _item_target_mode == ""
+
+
+func _toggle_hotbar() -> void:
+	if _aiming:
+		_end_aim()
 		return
-	for i in lp.items.size():
-		var item := str(lp.items[i])
-		var def: Dictionary = (director.cfg.get("items", {}) as Dictionary).get(item, {})
-		var b := UiStyle.button("%d  %s" % [i + 1, str(def.get("display_name", item.to_upper()))], func(): _use_item_index(i), 20, Palette.player_colour(5))
-		_item_box.add_child(b)
-		_item_btns.append(b)
+	_hotbar_open = not _hotbar_open and _can_use_items()
+	if _hotbar_open:
+		Audio.play("ui_click", -6.0)
+
+
+## Slot `i` (0-based) opens the bar on it when it holds an item.
+func _select_slot(i: int) -> void:
+	var lp := director.local_player()
+	if lp == null or i < 0 or i >= lp.items.size() or not _can_use_items():
+		return
+	_hotbar_sel = i
+	_hotbar_open = true
+	Audio.play("ui_hover", -8.0)
+
+
+func _cycle_slot(dir: int) -> void:
+	var lp := director.local_player()
+	if lp == null or lp.items.is_empty():
+		return
+	_hotbar_sel = posmod(_hotbar_sel + dir, lp.items.size())
+	Audio.play("ui_hover", -8.0)
+
+
+func _use_selected() -> void:
+	if not _hotbar_open or not _can_use_items():
+		return
+	_use_item_index(_hotbar_sel)
+
+
+## The laser: the view turns the pawn with the mouse and shows the beam; a click fires.
+func _begin_aim() -> void:
+	var lp := director.local_player()
+	if lp == null or director.view == null or not director.view.has_method("begin_aim"):
+		return
+	_aiming = true
+	_hotbar_open = false
+	director.view.begin_aim(lp.peer_id, BoardRules.laser_length(director.graph, director.cfg))
+
+
+func _end_aim() -> void:
+	if not _aiming:
+		return
+	_aiming = false
+	if director != null and director.view != null and director.view.has_method("end_aim"):
+		director.view.end_aim()
+
+
+func _fire() -> void:
+	if not _aiming or director.view == null:
+		return
+	var aim: float = director.view.aim_angle()
+	_end_aim()
+	director.request_item("laser", 0, {"aim": snappedf(aim, 0.001)})
 
 
 ## Options are space ids; map LEFT/RIGHT by where the tiles sit on screen.
@@ -235,6 +310,8 @@ func _unhover() -> void:
 
 
 func _roll() -> void:
+	_hotbar_open = false
+	_end_aim()
 	if director != null and director.is_local_turn():
 		director.request_roll()
 
@@ -252,10 +329,14 @@ func _use_item_index(idx: int) -> void:
 	var item := str(lp.items[idx])
 	match item:
 		"turbo":
+			_hotbar_open = false
 			director.request_item(item, lp.peer_id)
 		"shield":
 			pass
+		"laser":
+			_begin_aim()
 		_:
+			_hotbar_open = false
 			_item_target_mode = item
 			_target_index = 0
 			_cycle_target(0)
@@ -300,9 +381,46 @@ func _on_social(peer_id: int, kind: String, payload: String) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if director == null or not is_instance_valid(director) or not director.is_inside_tree() or director.state == null:
 		return
-	# Pings and emotes work on anyone's turn.
+	# Aiming the laser: a click fires, right click / Q / Esc put it away; nothing else gets through.
+	if _aiming:
+		if event is InputEventMouseButton and event.pressed:
+			if event.button_index == MOUSE_BUTTON_LEFT:
+				_fire()
+			elif event.button_index == MOUSE_BUTTON_RIGHT:
+				_end_aim()
+			get_viewport().set_input_as_handled()
+		elif event.is_action_pressed("inventory") or event.is_action_pressed("pause"):
+			_end_aim()
+			get_viewport().set_input_as_handled()
+		return
+	# The item hotbar: Q opens it on your turn, 1–9 or the wheel pick a slot, E uses it.
+	if event.is_action_pressed("inventory"):
+		_toggle_hotbar()
+		get_viewport().set_input_as_handled()
+		return
+	if event is InputEventKey and event.pressed and not event.echo and _can_use_items():
+		var kc: int = event.keycode if event.keycode != 0 else event.physical_keycode
+		if kc >= KEY_1 and kc <= KEY_9:
+			_select_slot(kc - KEY_1)
+			get_viewport().set_input_as_handled()
+			return
+	if _hotbar_open and event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP or event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			_cycle_slot(-1 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1)
+			get_viewport().set_input_as_handled()
+			return
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			for i in _hotbar_rects.size():
+				if (_hotbar_rects[i] as Rect2).has_point(event.position):
+					_hotbar_sel = i
+					_use_selected()
+					get_viewport().set_input_as_handled()
+					return
+	# Pings and emotes work on anyone's turn; E uses the selected item while the bar is open.
 	if event.is_action_pressed("ping"):
-		if director.view != null and director.view.has_method("tile_at_screen"):
+		if _hotbar_open:
+			_use_selected()
+		elif director.view != null and director.view.has_method("tile_at_screen"):
 			var sid: String = director.view.tile_at_screen(get_viewport().get_mouse_position())
 			if sid != "":
 				director.send_ping(sid)
@@ -327,11 +445,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.is_action_pressed("jump"):
 			if _item_target_mode != "":
 				_item_target_mode = ""
+			elif _hotbar_open:
+				_hotbar_open = false
 			else:
 				_roll()
-			get_viewport().set_input_as_handled()
-		elif event.is_action_pressed("weapon_1") or event.is_action_pressed("weapon_2"):
-			_use_item_index(0 if event.is_action_pressed("weapon_1") else 1)
 			get_viewport().set_input_as_handled()
 		elif _item_target_mode != "" and (event.is_action_pressed("move_left") or event.is_action_pressed("move_right")):
 			_cycle_target(-1 if event.is_action_pressed("move_left") else 1)
@@ -364,7 +481,7 @@ func _draw() -> void:
 		var col := Palette.player_colour(p.colour_index)
 		var active := i == st.active
 		var targeted := _item_target_mode != "" and i == _target_index
-		var w := 480.0
+		var w := 600.0
 		var h := 44.0
 		var x := 24.0 + (14.0 if active else 0.0)
 		var skew := 12.0
@@ -382,13 +499,24 @@ func _draw() -> void:
 			var d := director.graph.distance(p.space, st.goal)
 			if d >= 0:
 				_text(Vector2(x + 325, y + 29), "%d TO ●" % d, 14, Color(paper, 0.85))
+		# HP: a small shaped bar, cyan while healthy and the danger red once a laser would finish it.
+		var hp_max := maxi(1, int(director.cfg.get("hp", 30)))
+		var hp_f := clampf(float(p.hp) / float(hp_max), 0.0, 1.0)
+		var hx := x + 392.0
+		var hy := y + 17.0
+		draw_colored_polygon(PackedVector2Array([Vector2(hx + 3, hy), Vector2(hx + 57, hy), Vector2(hx + 54, hy + 9), Vector2(hx, hy + 9)]), Color(paper, 0.22))
+		if hp_f > 0.0:
+			var hw := 54.0 * hp_f
+			draw_colored_polygon(PackedVector2Array([Vector2(hx + 3, hy), Vector2(hx + 3 + hw, hy), Vector2(hx + hw, hy + 9), Vector2(hx, hy + 9)]),
+				Palette.hud_colour("danger") if hp_f <= 0.34 else Palette.hud_colour("meter"))
+		_text(Vector2(x + 454, y + 29), "%d" % p.hp, 14, Color(paper, 0.9))
 		var chips := ""
 		for it in p.items:
 			chips += str(it).substr(0, 2).to_upper() + " "
 		if chips != "":
-			_text(Vector2(x + 396, y + 29), chips.strip_edges(), 14, Palette.player_colour(5))
+			_text(Vector2(x + 494, y + 29), chips.strip_edges(), 14, Palette.player_colour(5))
 		if not active and st.players.size() > 1 and i == (st.active + 1) % st.players.size() and st.phase != BoardState.PHASE_FINISHED:
-			_text(Vector2(x + w - 62, y + 27), "NEXT", 13, Color(accent, 0.9))
+			_text(Vector2(x + w - 52, y + 27), "NEXT", 13, Color(accent, 0.9))
 		if _row_delta.has(p.peer_id) and float(_row_delta[p.peer_id]["t"]) > 0.0:
 			# The minigame reward, beside the row, drifting up and fading with the reward card.
 			var rt: float = _row_delta[p.peer_id]["t"]
@@ -401,7 +529,8 @@ func _draw() -> void:
 	var to_win := int(director.cfg.get("toys_to_win", 4))
 	_text(Vector2(size.x - 250, 84), "TOY COSTS %d%s" % [int(director.cfg.get("toy_price", 10)), ("  ·  FIRST TO %d" % to_win) if to_win > 0 else ""], 18, Palette.hud_colour("score"))
 	_text(Vector2(size.x - 250, 112), "HOLD TAB · MAP", 14, Color(paper, 0.7))
-	_text(Vector2(size.x - 250, 134), "E · PING    F1-F4 · EMOTE", 14, Color(paper, 0.7))
+	_text(Vector2(size.x - 250, 134), "Q · ITEMS    E · PING    F1-F4 · EMOTE", 14, Color(paper, 0.7))
+	_draw_hotbar(lp, size)
 	if _dice_t > 0.0:
 		var s := 120 + int(24.0 * clampf(_dice_t - 1.3, 0.0, 0.3) / 0.3)
 		var txt := "%d" % _dice_value if _dice_bonus <= 0 else "%d +%d" % [_dice_value - _dice_bonus, _dice_bonus]
@@ -429,7 +558,9 @@ func _draw() -> void:
 	var ap := st.active_player()
 	if st.phase == BoardState.PHASE_TURNS:
 		if director.is_local_turn():
-			if _item_target_mode != "":
+			if _aiming:
+				prompt = "AIM WITH THE MOUSE   ·   CLICK TO FIRE   ·   RIGHT CLICK PUTS IT AWAY"
+			elif _item_target_mode != "":
 				var target := st.players[clampi(_target_index, 0, st.players.size() - 1)]
 				prompt = "%s → %s   ·   CLICK A PLAYER OR A/D + ENTER   ·   SPACE CANCELS" % [_item_target_mode.to_upper(), target.display_name.to_upper()]
 			else:
@@ -451,6 +582,80 @@ func _draw() -> void:
 		if _flash > 0.0:
 			pc = pc.lerp(Color.WHITE, _flash * 0.6)
 		_text(Vector2((size.x - pw) * 0.5, size.y - 52), prompt, 26, pc, 7.0)
+
+
+## The item hotbar: nine angled slots above the ROLL button, the held items drawn as icons, the
+## selected one lifted and outlined in the accent colour with its name over it (STYLE.md §5:
+## shaped, edge-anchored, no boxes).
+func _draw_hotbar(lp: BoardState.PlayerState, size: Vector2) -> void:
+	_hotbar_rects.clear()
+	if not _hotbar_open or lp == null or not _can_use_items():
+		return
+	var ink := UiStyle.ink()
+	var paper := UiStyle.paper()
+	var accent := UiStyle.accent()
+	var n := 9
+	var slot := 60.0
+	var gap := 8.0
+	var skew := 10.0
+	var total := n * slot + (n - 1) * gap
+	var x0 := (size.x - total) * 0.5
+	var y0 := size.y - 300.0
+	var defs: Dictionary = director.cfg.get("items", {})
+	for i in n:
+		var x := x0 + i * (slot + gap)
+		var has := i < lp.items.size()
+		var sel := has and i == _hotbar_sel
+		var y := y0 - (8.0 if sel else 0.0)
+		_hotbar_rects.append(Rect2(x, y, slot, slot))
+		var poly := PackedVector2Array([Vector2(x + skew, y), Vector2(x + slot, y), Vector2(x + slot - skew, y + slot), Vector2(x, y + slot)])
+		draw_colored_polygon(poly, Color(ink, 0.88 if has else 0.45))
+		if sel:
+			draw_polyline(PackedVector2Array([poly[0], poly[1], poly[2], poly[3], poly[0]]), accent, 3.0)
+		_text(Vector2(x + 14, y + 16), "%d" % (i + 1), 12, Color(paper, 0.7 if has else 0.35), 3.0)
+		if has:
+			var item := str(lp.items[i])
+			_draw_item_icon(item, Vector2(x + slot * 0.5, y + slot * 0.56), 15.0)
+			if sel:
+				var def: Dictionary = defs.get(item, {})
+				var label: String = str(def.get("display_name", item.to_upper()))
+				var tw := _font.get_string_size(label, HORIZONTAL_ALIGNMENT_CENTER, -1, 22).x
+				_text(Vector2(x + slot * 0.5 - tw * 0.5, y - 14), label, 22, accent, 6.0)
+	var hint := "Q · CLOSE     1-9 / WHEEL · SELECT     E · USE"
+	var hw := _font.get_string_size(hint, HORIZONTAL_ALIGNMENT_CENTER, -1, 14).x
+	_text(Vector2((size.x - hw) * 0.5, y0 + slot + 24), hint, 14, Color(paper, 0.75))
+
+
+## Drawn item icons, `s` about half the icon's width: a pistol with a red emitter and a beam
+## stub, a bomb with a lit fuse, a turbo chevron, a shield, swap arrows.
+func _draw_item_icon(kind: String, c: Vector2, s: float) -> void:
+	var ink := UiStyle.ink()
+	var paper := Palette.hud_colour("paper")
+	var danger := Palette.hud_colour("danger")
+	match kind:
+		"laser":
+			draw_colored_polygon(PackedVector2Array([c + Vector2(-s, -s * 0.4), c + Vector2(s * 0.85, -s * 0.4), c + Vector2(s * 0.85, s * 0.05),
+				c + Vector2(-s * 0.15, s * 0.05), c + Vector2(-s * 0.3, s * 0.85), c + Vector2(-s * 0.85, s * 0.85), c + Vector2(-s * 0.75, s * 0.05), c + Vector2(-s, s * 0.05)]), paper)
+			draw_rect(Rect2(c + Vector2(s * 0.7, -s * 0.36), Vector2(s * 0.3, s * 0.36)), danger)
+			draw_line(c + Vector2(s * 1.05, -s * 0.18), c + Vector2(s * 1.5, -s * 0.18), danger, 3.0)
+		"bomb":
+			draw_circle(c + Vector2(0, s * 0.15), s * 0.7, ink.lightened(0.18))
+			draw_line(c + Vector2(s * 0.3, -s * 0.4), c + Vector2(s * 0.7, -s * 0.9), paper, 3.0)
+			draw_circle(c + Vector2(s * 0.78, -s * 0.98), s * 0.18, Palette.hud_colour("score"))
+		"turbo":
+			draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.9, -s * 0.5), c + Vector2(s * 0.1, -s * 0.5), c + Vector2(s * 0.9, 0),
+				c + Vector2(s * 0.1, s * 0.5), c + Vector2(-s * 0.9, s * 0.5), c + Vector2(-s * 0.3, 0)]), Palette.hud_colour("score"))
+		"shield":
+			draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.8, s * 0.3), c + Vector2(-s * 0.7, -s * 0.3), c + Vector2(0, -s * 0.85),
+				c + Vector2(s * 0.7, -s * 0.3), c + Vector2(s * 0.8, s * 0.3), c + Vector2(0, s * 0.35)]), Palette.hud_colour("meter"))
+		"swap":
+			var col := Palette.player_colour(5)
+			draw_line(c + Vector2(-s * 0.8, -s * 0.3), c + Vector2(s * 0.8, -s * 0.3), col, 3.0)
+			draw_line(c + Vector2(s * 0.8, s * 0.3), c + Vector2(-s * 0.8, s * 0.3), col, 3.0)
+			draw_colored_polygon(PackedVector2Array([c + Vector2(s * 0.5, -s * 0.6), c + Vector2(s * 0.95, -s * 0.3), c + Vector2(s * 0.5, 0)]), col)
+			draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.5, 0), c + Vector2(-s * 0.95, s * 0.3), c + Vector2(-s * 0.5, s * 0.6)]), col)
+		_:
+			_text(c + Vector2(-s * 0.6, s * 0.4), kind.substr(0, 2).to_upper(), 18, paper)
 
 
 ## Name tags over the pawns, projected from the 3D view and pushed apart when they would

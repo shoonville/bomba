@@ -144,6 +144,20 @@ func flinch() -> void:
 	_flinch = 1.0
 
 
+var _aiming: bool = false
+
+
+## Board aiming (the laser gun): the right arm comes up straight out in front, the hand leading,
+## and stays there while `on`; the left arm keeps its walk swing.
+func set_aiming(on: bool) -> void:
+	_aiming = on
+
+
+## The right hand's node, for a held prop; the hand is 0.62 down the arm's local -Y.
+func hand_node() -> Node3D:
+	return _r_arm
+
+
 ## Speed in m/s, on_floor, look pitch (radians, up positive), alive. Call every frame.
 func animate(speed: float, on_floor: bool, pitch: float, alive: bool, delta: float) -> void:
 	_flinch = maxf(0.0, _flinch - delta * 4.5)
@@ -169,6 +183,9 @@ func animate(speed: float, on_floor: bool, pitch: float, alive: bool, delta: flo
 		_l_arm.rotation.x = aim
 		_l_arm.rotation.y = -0.55   # the left hand reaches in to the gun
 		_l_arm.rotation.z = 0.0
+	elif _aiming:
+		_l_arm.rotation.x = -swing * 0.7
+		_r_arm.rotation.x = lerpf(_r_arm.rotation.x, PI * 0.5, minf(1.0, delta * 10.0))
 	elif on_floor:
 		_l_arm.rotation.x = -swing * 0.7
 		_r_arm.rotation.x = swing * 0.7

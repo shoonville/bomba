@@ -563,3 +563,12 @@ measured at 1920×1080 unless noted, on the 5090, and extrapolated.
   the way STYLE.md measured the references. At 1080p: arena spectator saturated 47 % (reference
   22–52 %), mean S 0.57 (0.56–0.71), dark 11 % (5–19 %); the pit dark 82 → 14 %. GPU 0.71 ms
   arena, 0.69 board (was 0.64 / 0.63). Ten doc frames retaken. His verdict pending.
+- **Board items, the laser gun** (Sean's spec: Q hotbar, 1–9 / wheel, E; a laser gun, left
+  click fires where the red line points, the character turns with the cursor, 30 HP, bleeding
+  and blood). Everyone has 30 HP (`board.hp`). The LASER item (`board.items.laser`): a beam 3
+  spaces long (11.3 m here), 1.4 m wide; all 30 within a space, 10 at the end; a shield eats it;
+  at 0 HP half your coins go to the shooter and you respawn at the other annex with full HP.
+  Blood splats live in the state so they survive the board rebuild. Bots fire at whoever the
+  beam hurts most. HUD: a nine-slot hotbar with drawn icons, HP bars on the rows. 78 tests; a
+  headless match with lasers in every hand: 5 shots, 3 kills, no errors. Frames:
+  `board_items.png` (the hotbar), `board_laser.png` (the shot). His verdict pending.
