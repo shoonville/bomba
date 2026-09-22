@@ -4,6 +4,8 @@
   "waypoint_reach_m": 1.2,
   "repath_seconds": 2.5,
   "stuck_seconds": 1.5,
+  "objective_weight": 0.85,
+  "objective_hold_m": 1.2,
   "difficulties": {
     "easy": {
       "reaction_ms": 750,

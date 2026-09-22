@@ -90,6 +90,7 @@ func _draw() -> void:
 		# Eliminated and watching someone else: only the round state stays on screen.
 		_draw_score(size)
 		_draw_feed()
+		_draw_status(size)
 	else:
 		if def != null and def.is_sniper() and progress > 0.5:
 			# Iris: the ink tube closes from beyond the corners down to the lens between 50 % and
@@ -111,6 +112,7 @@ func _draw() -> void:
 		_draw_score(size)
 		_draw_ammo(size, def)
 		_draw_feed()
+		_draw_status(size)
 	if _damage_flash > 0.0:
 		_draw_damage(size)
 	if _arena != null and _arena.has_method("in_warmup") and _arena.in_warmup():
@@ -239,6 +241,8 @@ func _draw_health(size: Vector2) -> void:
 
 func _draw_score(size: Vector2) -> void:
 	var kills := "%d" % (_arena.kills_for(_player.peer_id) if _arena != null and _arena.has_method("kills_for") else _player.kills)
+	if _arena != null and _arena.has_method("hud_score"):
+		kills = str(_arena.hud_score(_player))   # a minigame's own score (hill time)
 	var pos := Vector2(size.x - 40.0 - _font.get_string_size(kills, HORIZONTAL_ALIGNMENT_RIGHT, -1, 84).x, 96.0)
 	_draw_outlined(pos, kills, 84, _score_col, 8.0, -0.24)
 	var remaining := 0.0
@@ -310,20 +314,24 @@ func _draw_scoreboard(size: Vector2) -> void:
 			continue
 		var k: int = _arena.kills_for(pl.peer_id) if _arena.has_method("kills_for") else pl.kills
 		var d: int = _arena.deaths_for(pl.peer_id) if _arena.has_method("deaths_for") else pl.deaths
-		rows.append({"name": pl.display_name.to_upper(), "k": k, "d": d, "col": pl.colour, "me": pl == _player, "alive": pl.is_alive()})
-	rows.sort_custom(func(a, b): return a["k"] > b["k"] if a["k"] != b["k"] else a["d"] < b["d"])
-	var w := 520.0
+		var v: int = _arena.score_value(pl) if _arena.has_method("score_value") else k
+		var cell := str(_arena.hud_score(pl)) if _arena.has_method("hud_score") else "%d" % k
+		rows.append({"name": pl.display_name.to_upper(), "k": k, "d": d, "v": v, "cell": cell, "col": pl.colour, "me": pl == _player, "alive": pl.is_alive()})
+	rows.sort_custom(func(a, b): return a["v"] > b["v"] if a["v"] != b["v"] else a["d"] < b["d"])
+	var head := str(_arena.hud_score_header()) if _arena.has_method("hud_score_header") else "K"
+	var title := "SCOREBOARD"
+	if "manifest" in _arena and _arena.manifest != null:
+		title = "%s  ·  SCOREBOARD" % _arena.manifest.display_name
+	# Wide enough for a long name (KING OF THE HILL) to clear the score columns.
+	var w := maxf(520.0, _font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 24).x + 34.0 + 236.0)
 	var row_h := 38.0
 	var h := 74.0 + row_h * rows.size()
 	var x := (size.x - w) * 0.5
 	var y := size.y * 0.5 - h * 0.5
 	var skew := 20.0
 	draw_colored_polygon(PackedVector2Array([Vector2(x + skew, y), Vector2(x + w, y), Vector2(x + w - skew, y + h), Vector2(x, y + h)]), Color(_ink, 0.9))
-	var title := "SCOREBOARD"
-	if "manifest" in _arena and _arena.manifest != null:
-		title = "%s  ·  SCOREBOARD" % _arena.manifest.display_name
 	_draw_outlined(Vector2(x + 34, y + 36), title, 24, _score_col, 5.0)
-	_draw_outlined(Vector2(x + w - 150, y + 36), "K", 18, _paper, 4.0)
+	_draw_outlined(Vector2(x + w - 150 - (26.0 if head.length() > 1 else 0.0), y + 36), head, 18, _paper, 4.0)
 	_draw_outlined(Vector2(x + w - 90, y + 36), "D", 18, _paper, 4.0)
 	for i in rows.size():
 		var r: Dictionary = rows[i]
@@ -333,8 +341,24 @@ func _draw_scoreboard(size: Vector2) -> void:
 		if not bool(r["alive"]):
 			col = Color(col, 0.55)
 		_draw_outlined(Vector2(x + 58, ry + 26), "%d   %s" % [i + 1, str(r["name"])], 20, col, 4.0)
-		_draw_outlined(Vector2(x + w - 150, ry + 26), "%d" % int(r["k"]), 20, col, 4.0)
+		_draw_outlined(Vector2(x + w - 150 - (26.0 if head.length() > 1 else 0.0), ry + 26), str(r["cell"]), 20, col, 4.0)
 		_draw_outlined(Vector2(x + w - 90, ry + 26), "%d" % int(r["d"]), 20, col, 4.0)
+
+
+## What the minigame wants said at the top centre (hud_status: KING OF THE HILL's holder and
+## times), under nothing else; hidden during the warmup, when GET READY has the middle.
+func _draw_status(size: Vector2) -> void:
+	if _arena == null or not _arena.has_method("hud_status"):
+		return
+	if _arena.has_method("in_warmup") and _arena.in_warmup():
+		return
+	var y := 40.0
+	for line in _arena.hud_status():
+		var fs := int(line.get("size", 20))
+		var text := str(line.get("text", ""))
+		var w := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, fs).x
+		_draw_outlined(Vector2((size.x - w) * 0.5, y + fs), text, fs, line.get("colour", _paper), 5.0 if fs > 24 else 4.0)
+		y += fs * 1.25 + 4.0
 
 
 func _draw_centre_text(size: Vector2, text: String, font_size: int, col: Color) -> void:

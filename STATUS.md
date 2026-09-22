@@ -587,3 +587,51 @@ measured at 1920×1080 unless noted, on the 5090, and extrapolated.
   the last minigame's ranking (tested); the pawns rollerskate across the board (a level glide,
   a push-glide walk, wheels under the boots). Frames: `arena_hip_ar.png`, `arena_burst.png`,
   `board_turn.png`, `board_hop.png`, `board_reward_card.png`. His verdict pending.
+
+## 2026-09-22 — session 8: the lost kill, the export preset, KING OF THE HILL
+
+"continue", with the previous session's notes settled. Three pieces, each verified and committed.
+
+- **The lost kill, fixed** (`tools/check_all.sh` failed at HEAD on the 2026-09-18 tripwire: "state
+  says 0 kills, the kill log says 1"). A five-bot LAST STAND stress lost a kill or a death in six
+  of eight rounds; per-tick diagnostics showed why: a kill at tick T is counted in the victim's
+  `_rollback_tick`, netfox patches #4/#5 left the transmitter's latest state tick one behind the
+  simulation on alternate loops, the host restarted every other rollback loop at a tick it had
+  simulated, and in that tick only the nodes the fire actions mark mutated (every recent
+  shooter) ran again while the victim was re-applied from history, so the record for T+1
+  overwrote both counters with pre-death values. Fixed twice: netfox patch #8 (the authority's
+  latest state tick is the newest simulated tick; the decimation counts from its own tick), and
+  `kills`/`deaths` are plain once-per-life counters kept in step with the kill message, not
+  rollback state (two ints fewer per state). After: LAST STAND five bots eight rounds 40 kills
+  0 lost, SNIPERS 74 kills 0 lost, 78 tests, determinism identical, soak `bad` (host + 1 client +
+  1 bot, 45 s): rtt 131 ms, misprediction 5 mm, hit confirmation 0.93, 32 of 32 shots agree,
+  death → client 2 ticks, 0 outages. Known: with lagging clients netfox still re-runs a shooter's
+  tick without a victim who has not fired within the window, rewinding that victim one tick of
+  movement (≤ 5 cm); a late-simulation pass in netfox would close it.
+- **Windows export** (Next item 2 from session 5): `export_presets.cfg` is checked in (Windows
+  Desktop, x86_64, pack embedded, no signing) and `tools/export_windows.sh` writes
+  `export/BOMBA.exe`. It stops with the path when the 4.7.2 export templates are missing, which
+  they are on this desktop (`%APPDATA%\Godot\export_templates` is empty): Sean installs them once
+  from the editor (Manage Export Templates) or with the two lines in the script's header, then
+  the script runs. `reports/` carries a `.gdignore` (140 stray `.import` files from CSVs).
+- **KING OF THE HILL** (Next item 3, the objective minigame): planned in `MINIGAMES.md` §3, built
+  in `minigames/hill/` on the shared FPS match with five new hooks (status lines, score cell and
+  header, rank value, objective position) that the other three minigames do not use. A glass
+  hill on a ring with a pennant and a beam, eight spots on the arena (tower top, roofs, catwalk,
+  four lanes), moving every 30 s along a seeded order; a tick alone inside scores, contested
+  scores nobody, 60 s alone wins; bots path to it and hold it (the roofs are bot-free). Numbers
+  in `tuning/hill.json`. Verified: 83 tests (5 new, `HillRules`), a headless four-seat round
+  (three placements, ranked result 790 / 615 / 266 / 0 ticks), `check_all` with HILL drawn in
+  round 1 of the board match, frames at 1080p: `hill_spectator.png` (saturated 51 %, dark 8 %,
+  the arena's 50 % / 8 %), `hill_hip.png` (the hill held, the status lines), `hill_scoreboard.png`
+  (the HILL column), `board_intro_hill.png` (the NEXT UP card). Switch frame into HILL under the
+  wipe 175–186 ms. His verdict pending; "KING OF THE HILL" is a long name for the card.
+
+### Next (after session 8)
+
+1. Sean plays: a KING OF THE HILL round with friends or bots (is 30 s per spot and a minute to
+   win right; is the beam enough to find it; does the name want to be HILL), and the §8 checklist.
+2. Export templates installed once, then `tools/export_windows.sh` and a friend runs the exe.
+3. The display face (OFL candidates listed in session 4), a fifth minigame (Jenga needs synced
+   physics props; Duck Hunt and Monster Trucks the vehicle controller), and the netfox late-
+   simulation pass if the one-tick victim rewind ever shows in play.

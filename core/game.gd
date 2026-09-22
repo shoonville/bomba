@@ -68,6 +68,7 @@ func _ready() -> void:
 	if args.has("screenshot_event"):
 		Events.kill.connect(_arm_screenshot_on_kill)
 		Events.round_ended.connect(_arm_screenshot_on_round_end)
+		Events.hill_moved.connect(_arm_screenshot_on_hill)
 	headless = DisplayServer.get_name() == "headless"
 	if args.has("log"):
 		Log.level = int(args["log"])
@@ -666,6 +667,17 @@ func _arm_screenshot_on_kill(_killer: int, victim: int, _weapon: String, _headsh
 	if victim == multiplayer.get_unique_id():
 		_shot_armed = true
 		_shot_timer = 0.0
+
+
+## "hill" arms when the hill is placed or moves (--screenshot_event_index=N: 1 the first hill, 2 the first move).
+func _arm_screenshot_on_hill(_index: int) -> void:
+	if _shot_armed or str(args.get("screenshot_event", "")) != "hill":
+		return
+	_shot_event_seen += 1
+	if _shot_event_seen < int(args.get("screenshot_event_index", 1)):
+		return
+	_shot_armed = true
+	_shot_timer = 0.0
 
 
 func _arm_screenshot_on_round_end() -> void:

@@ -43,6 +43,9 @@ class MatchContext:
 	func waypoint_edges() -> Array:
 		return arena.layout.get("edges", [])
 
+	func objective_position() -> Vector3:
+		return arena.objective_position()
+
 	func notify_shot(shooter: Node, tick: int, origin: Vector3, end_point: Vector3, hit_kind: int) -> void:
 		arena._notify_shot(shooter, tick, origin, end_point, hit_kind)
 
@@ -169,6 +172,30 @@ func centre_text() -> String:
 	return ""
 
 
+## Lines the HUD prints at the top centre, each {text, colour, size}; [] for none.
+func hud_status() -> Array:
+	return []
+
+
+## The big number top-right and this player's scoreboard cell; the column's header.
+func hud_score(pl: Player) -> String:
+	return "%d" % kills_for(pl.peer_id)
+
+
+func hud_score_header() -> String:
+	return "K"
+
+
+## The rank score, for the scoreboard's order.
+func score_value(pl: Player) -> int:
+	return _score_for(pl)
+
+
+## Where the bots go when nobody is in sight; INF for no objective.
+func objective_position() -> Vector3:
+	return Vector3.INF
+
+
 func warmup_seconds_left() -> float:
 	if not in_warmup():
 		return 0.0
@@ -271,6 +298,8 @@ func _spawn_player(mp: MinigamePlayer, index: int) -> void:
 	p.name = "Player_%d" % mp.peer_id
 	var spawns: Array = layout["spawns"]
 	var sp: Dictionary = spawns[index % spawns.size()]
+	if not mp.is_bot and mp.peer_id == local_peer_id() and Game.args.has("spawn_index"):
+		sp = spawns[clampi(int(Game.args["spawn_index"]), 0, spawns.size() - 1)]   # harness: a chosen vantage for a frame
 	p.position = sp["pos"]
 	p.yaw = float(sp["yaw"])
 	p.rotation = Vector3(0.0, float(sp["yaw"]), 0.0)

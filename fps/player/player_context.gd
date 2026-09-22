@@ -51,6 +51,11 @@ func waypoint_edges() -> Array:
 	return []
 
 
+## Where the bots go when nobody is in sight (an objective such as the hill); INF for none.
+func objective_position() -> Vector3:
+	return Vector3.INF
+
+
 ## Authority-only: a shot resolved (for tracers seen by other players).
 func notify_shot(_shooter: Node, _tick: int, _origin: Vector3, _end_point: Vector3, _hit_kind: int) -> void:
 	pass

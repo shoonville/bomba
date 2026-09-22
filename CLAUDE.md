@@ -9,7 +9,8 @@ that travels with the repo.
 1. `DESIGN.md` (the contract; its §8 rules are in force), `STYLE.md` (the look, measured).
 2. `STATUS.md` (what exists, with numbers) and `DECISIONS.md` (every decision and why; newest at the
    bottom). Skim the last 40 entries of DECISIONS before changing anything visual.
-3. `README.md` for how to run, flags and controls. `NETPLAN.md`, `BOARDPLAN.md` for the netcode and board.
+3. `README.md` for how to run, flags and controls. `NETPLAN.md`, `BOARDPLAN.md`, `MINIGAMES.md` for the
+   netcode, the board and the minigames (the SDK contract and each minigame's rules).
 
 ## How Sean works (follow this)
 - Terse notes, often numbered, sometimes while he is playing. Do exactly the listed items. A note about
@@ -47,10 +48,10 @@ that travels with the repo.
   file LF; if a script dies on `\r`, strip them: `git ls-files --eol | grep w/crlf`, `sed -i 's/\r$//'`.
 - `tools/test.sh` re-imports first; REQUIRED after adding any `class_name` script.
 - Screenshots: `-- --screenshot=out.png --screenshot_at=N --screenshot_quit`, with
-  `--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results|shield|roll|move|laser` to arm
+  `--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results|shield|roll|move|laser|hill` to arm
   on an event (`--screenshot_event_index=N` for its Nth occurrence; a `myturn` frame needs
   `--screenshot_at=5` or more, the view is still playing the previous turn's hops before that).
-  Handy flags: `--board_overview`, `--board_map`, `--board_cam=x,y,z:tx,ty,tz`, `--hover_fork=left`,
+  Handy flags: `--board_overview`, `--board_map`, `--hill_index=N`, `--spawn_index=N`, `--board_cam=x,y,z:tx,ty,tz`, `--hover_fork=left`,
   `--social_test`, `--show_scoreboard`, `--figure_test`, `--ads_progress=0..1`, `--force_weapon=0|1`,
   `--force_ads`, `--give_item=ID`, `--give_bots_item=ID`, `--hotbar_test`, `--target_test`, `--pop_test=ITEM`, `--aim_test=DEG`,
   `--machine_at=ID`, `--minigame=ID`, `--render_scale=N`, `--port=N`, `--no_warmup`,
@@ -68,6 +69,6 @@ that travels with the repo.
 ## Where things are
 `core/` boot, game flow, settings · `board/` graph, rules, director, view, dice, pawns · `fps/` player,
 weapons, view (viewmodel, figure, spectator), `fps/match/` the shared FPS match · `minigames/` SDK plus
-`arena/`, `snipers/`, `last_stand/` · `bots/` · `audio/` synthesised sounds · `art/` shaders, cel material,
+`arena/`, `snipers/`, `last_stand/`, `hill/` · `bots/` · `audio/` synthesised sounds · `art/` shaders, cel material,
 post stack, palette · `ui/` menu, HUD, board HUD, results, settings · `tuning/` every number · `tools/`
 harnesses and tests · `docs/screenshots/` the verified frames.

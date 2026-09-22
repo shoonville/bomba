@@ -1,0 +1,9 @@
+{
+  "_comment": "KING OF THE HILL: a hill that moves between the layout's spots; a tick alone inside it scores; contested (two or more inside) scores nobody; win_seconds alone wins on the spot.",
+  "radius_m": 2.8,
+  "height_m": 3.0,
+  "floor_slack_m": 0.3,
+  "move_every_seconds": 30,
+  "win_seconds": 60,
+  "sync_interval_ticks": 6
+}

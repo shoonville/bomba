@@ -171,12 +171,26 @@ static func names() -> PackedStringArray:
 	return PackedStringArray(["sniper_fire", "ar_fire", "hitmarker", "headshot", "kill", "death", "hurt",
 		"bolt", "reload_start", "reload_end", "dry", "swap", "jump", "land", "footstep", "respawn",
 		"ui_hover", "ui_click", "ui_back", "round_start", "round_end", "dice", "coin", "shell_in",
-		"ping", "emote", "laser", "splat"])
+		"ping", "emote", "laser", "splat", "hill_move", "hill_tick"])
 
 
 ## Build a named sound as float samples. Unknown names return a short click so a typo is audible.
 static func build(name: String) -> PackedFloat32Array:
 	match name:
+		"hill_move":
+			# KING OF THE HILL: the hill moves. Two rising soft notes with a felt tap under the first.
+			var n := samples(0.42)
+			var a := mul(tone(n, 523.0, 523.0, "sine"), env_adsr(n, 0.01, 0.12, 0.35, 0.2))
+			var b := mul(tone(n, 784.0, 784.0, "sine"), env_adsr(n, 0.01, 0.12, 0.35, 0.2))
+			var out := mix(silence(n), a, 0.7)
+			out = mix(out, b, 0.7, samples(0.14))
+			var tap := mul(lowpass(noise(samples(0.05), 31), 900.0), env_exp(samples(0.05), 0.02))
+			out = mix(out, tap, 0.5)
+			return softclip(out, 1.2)
+		"hill_tick":
+			# A second held on the hill: one soft blip.
+			var n := samples(0.06)
+			return mul(tone(n, 880.0, 840.0, "sine"), env_exp(n, 0.02))
 		"sniper_fire":
 			# The original (Sean: the Halo-shaped take "sounds like a bazooka"; this one stays).
 			var n := samples(0.95)

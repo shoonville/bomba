@@ -12,6 +12,7 @@ signal error_banner(text: String)
 signal kill(killer_id: int, victim_id: int, weapon: String, headshot: bool, tick: int)
 signal round_started(end_tick: int)
 signal round_ended()
+signal hill_moved(index: int)   # KING OF THE HILL: the hill was placed or moved (every peer)
 
 # Local feedback (this machine only, predicted)
 signal local_fired(weapon: String)
@@ -25,6 +26,7 @@ signal local_weapon_event(name: String)   # reload_started, reload_finished, dry
 signal local_footstep()
 signal local_jump()
 signal local_land()
+signal hill_tick()   # the local player held the hill for another second
 signal remote_shot(weapon: String, origin: Vector3)
 signal ui_sound(name: String)
 signal board_dice_landed(value: int)   # the 3D die has settled; HUD shows the number now

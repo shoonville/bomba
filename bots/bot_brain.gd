@@ -44,6 +44,10 @@ var aim_error_deg: float = 3.0
 var aim_settle_ticks: int = 42
 var aim_height: float = 0.45
 var stuck_limit_ticks: int = 90
+var objective: Vector3 = Vector3.INF     # the minigame's objective (the hill), INF for none
+var objective_weight: float = 0.85        # chance a repath heads for it instead of roaming
+var hold_target: Vector3 = Vector3.INF    # standing on the objective: walk to its centre, hold
+var hold_reach_m: float = 1.2
 
 
 func setup(p_player: Player, p_ctx: PlayerContext, difficulty: String) -> void:
@@ -68,6 +72,8 @@ func setup(p_player: Player, p_ctx: PlayerContext, difficulty: String) -> void:
 	aim_height = float(diff.get("aim_height_m", 0.45))
 	reach_m = float(bots.get("waypoint_reach_m", 1.2))
 	stuck_limit_ticks = int(float(bots.get("stuck_seconds", 1.5)) * tr)
+	objective_weight = float(bots.get("objective_weight", 0.85))
+	hold_reach_m = float(bots.get("objective_hold_m", 1.2))
 	waypoints = ctx.waypoints()
 	for e in ctx.waypoint_edges():
 		var a := int(e[0])
@@ -97,7 +103,13 @@ func gather_into(input: PlayerInput) -> void:
 	_update_nav(tick, pos)
 
 	var move_dir := Vector3.ZERO
-	if target_wp >= 0 and target_wp < waypoints.size():
+	if hold_target.is_finite():
+		# On the objective's waypoint: walk to its centre and hold there (strafing if fighting).
+		var to_h := hold_target - pos
+		to_h.y = 0.0
+		if to_h.length() > hold_reach_m:
+			move_dir = to_h.normalized()
+	elif target_wp >= 0 and target_wp < waypoints.size():
 		var to: Vector3 = waypoints[target_wp] - pos
 		to.y = 0.0
 		if to.length() > 0.1:
@@ -231,14 +243,25 @@ func _can_see(eye: Vector3, other: Player) -> bool:
 func _update_nav(tick: int, pos: Vector3) -> void:
 	if waypoints.is_empty():
 		return
+	objective = ctx.objective_position()
+	if hold_target.is_finite():
+		if not objective.is_finite() or hold_target.distance_to(objective) > 1.0:
+			# The objective moved or went away: back to the graph.
+			hold_target = Vector3.INF
+			_pick_destination(pos, false)
+		return
 	if target_wp >= 0:
 		var to: Vector3 = waypoints[target_wp] - pos
 		to.y = 0.0
 		if to.length() < reach_m:
 			if path.is_empty():
+				if objective.is_finite() and target_wp == _nearest_waypoint(objective):
+					hold_target = objective
 				target_wp = -1
 			else:
 				target_wp = int(path.pop_front())
+	if hold_target.is_finite():
+		return
 	if target_wp < 0 or tick >= repath_at_tick:
 		_pick_destination(pos, false)
 
@@ -246,10 +269,19 @@ func _update_nav(tick: int, pos: Vector3) -> void:
 func _pick_destination(pos: Vector3, force_new: bool) -> void:
 	var start := _nearest_waypoint(pos)
 	var dest := start
-	var tries := 0
-	while (dest == start or (force_new and dest == target_wp)) and tries < 8:
-		dest = rng.randi_range(0, waypoints.size() - 1)
-		tries += 1
+	if objective.is_finite() and not force_new and rng.randf() < objective_weight:
+		# Head for the objective's waypoint; already there, walk to its centre.
+		dest = _nearest_waypoint(objective)
+		if dest == start:
+			hold_target = objective
+			target_wp = -1
+			path = []
+			return
+	else:
+		var tries := 0
+		while (dest == start or (force_new and dest == target_wp)) and tries < 8:
+			dest = rng.randi_range(0, waypoints.size() - 1)
+			tries += 1
 	path = _bfs(start, dest)
 	if path.is_empty():
 		target_wp = dest
