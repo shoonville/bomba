@@ -65,7 +65,8 @@ func start(players_data: Array, seed_value: int, p_board_id: String) -> void:
 			# Harness: hand the host's seat an item so the item UI can be exercised from a fresh match.
 			var me := state.player(multiplayer.get_unique_id())
 			if me != null:
-				me.items.append(str(Game.args["give_item"]))
+				for id in str(Game.args["give_item"]).split(","):   # a list, for a frame of the whole bar
+					me.items.append(id.strip_edges())
 		if Game.args.has("give_bots_item"):
 			for p in state.players:
 				if p.is_bot:
@@ -317,6 +318,23 @@ func _broadcast(events: Array) -> void:
 				var v := state.player(int(h["peer"]))
 				parts.append("%s -%d%s" % [v.display_name if v != null else "?", int(h["damage"]), " DOWN" if bool(h.get("dead", false)) else ""])
 			Log.info("board", "%s fires the laser at %.2f rad: %s" % [shooter.display_name if shooter != null else "?", float(e["aim"]), ", ".join(parts) if not parts.is_empty() else "no hit"])
+		elif str(e.get("kind", "")) == "bomb":
+			var thrower := state.player(int(e["peer"]))
+			var parts := []
+			for h in e.get("hits", []):
+				var v := state.player(int(h["peer"]))
+				parts.append("%s %s%s%s" % [v.display_name if v != null else "?", "shielded" if bool(h.get("shielded", false)) else "-%d" % int(h["damage"]), " DOWN" if bool(h.get("dead", false)) else "", " back %d" % (h.get("knock", []) as Array).size() if not (h.get("knock", []) as Array).is_empty() else ""])
+			var at: Array = e["at"]
+			Log.info("board", "%s throws the bomb to (%.1f, %.1f): %s" % [thrower.display_name if thrower != null else "?", float(at[0]), float(at[2]), ", ".join(parts) if not parts.is_empty() else "no hit"])
+		elif str(e.get("kind", "")) == "portal":
+			var u := state.player(int(e["peer"]))
+			var m := state.player(int(e["target"]))
+			Log.info("board", "%s portals to %s: %s -> %s" % [u.display_name if u != null else "?", m.display_name if m != null else "?", str(e["from"]), str(e["to"])])
+		elif str(e.get("kind", "")) == "magnet":
+			var thief := state.player(int(e["peer"]))
+			var mark := state.player(int(e["target"]))
+			var what := "nothing (shielded)" if bool(e.get("shielded", false)) else (str(e["item"]).to_upper() if str(e["item"]) != "" else "%d coins" % int(e["coins"]))
+			Log.info("board", "%s grabs %s from %s" % [thief.display_name if thief != null else "?", what, mark.display_name if mark != null else "?"])
 	var pause := _estimate_pause(events)
 	_busy_until = _clock + pause
 	_rpc_state.rpc(state.to_dict())
@@ -338,6 +356,12 @@ func _estimate_pause(events: Array) -> float:
 				for h in e.get("hits", []):
 					if bool(h.get("dead", false)):
 						t += 0.9
+			"bomb":
+				t += 1.8
+				for h in e.get("hits", []):
+					t += 0.9 if bool(h.get("dead", false)) else 0.35 * (h.get("knock", []) as Array).size()
+			"portal": t += 2.8
+			"magnet": t += 1.3
 			"teleport": t += 1.1
 			"turn": t += 0.35
 			"minigame": t += 2.4

@@ -6,10 +6,12 @@ extends Control
 var director: BoardDirector
 var _font: Font
 var _dice_value: int = 0
-var _dice_bonus: int = 0
 var _dice_t: float = 0.0
 var _fork_options: PackedStringArray = []
 var _item_target_mode: String = ""
+var _aim_item: String = "laser"   # what the aim mode is for: the laser's beam or the bomb's throw
+var _hint: String = ""             # a short line under the bar (NOBODY IN RANGE)
+var _hint_t: float = 0.0
 var _target_index: int = 0
 var _flash: float = 0.0
 var _intro: String = ""
@@ -94,8 +96,6 @@ func _on_events(events: Array) -> void:
 	var rewards := []
 	for e in events:
 		match str(e.get("kind", "")):
-			"roll":
-				_dice_bonus = int(e.get("bonus", 0))   # the number slams in when the die lands
 			"choose":
 				_fork_options.clear()
 				for o in e["options"]:
@@ -123,6 +123,11 @@ func _on_events(events: Array) -> void:
 			"laser":
 				for h in e.get("hits", []):
 					_row_flash[int(h["peer"])] = 1.0
+			"bomb":
+				for h in e.get("hits", []):
+					_row_flash[int(h["peer"])] = 1.0
+			"magnet":
+				_row_flash[int(e["target"])] = 1.0
 			"coins":
 				_row_flash[int(e["peer"])] = 1.0
 				if e.has("rank"):
@@ -184,11 +189,11 @@ func _process(delta: float) -> void:
 			_pop_test_done = true
 			_item_pops.append({"peer": director.local_player().peer_id, "item": str(Game.args["pop_test"]), "t": 1.6})
 	if Game.args.has("target_test") and not _test_done and _can_use_items():
-		# Harness: the bomb's target mode open (the camera on the first target) for a screenshot.
+		# Harness: the portal's target mode open (the camera on the first target) for a screenshot.
 		var lp := director.local_player()
-		if lp != null and lp.items.has("bomb"):
+		if lp != null and lp.items.has("portal"):
 			_test_done = true
-			_use_item_index(lp.items.find("bomb"))
+			_use_item_index(lp.items.find("portal"))
 	if Game.args.has("hotbar_test") and not _hotbar_open and not _aiming and _can_use_items():
 		# Harness: the bar open on the laser slot (or the first item) for a screenshot.
 		var lp := director.local_player()
@@ -200,6 +205,20 @@ func _process(delta: float) -> void:
 		var lp := director.local_player()
 		if lp != null and lp.items.has("laser"):
 			_begin_aim()
+	if Game.args.has("magnet_test") and not _test_done and _can_use_items():
+		# Harness: the claw fired at the first player in range, for a screenshot of the grab.
+		var lp := director.local_player()
+		if lp != null and lp.items.has("magnet"):
+			var targets: Array = BoardRules.magnet_targets(director.state, director.graph, director.cfg, lp)
+			if not targets.is_empty():
+				_test_done = true
+				director.request_item("magnet", (targets[0] as BoardState.PlayerState).peer_id)
+	if Game.args.has("throw_test") and not _aiming and _can_use_items():
+		# Harness: the bomb's throw aimed at a fixed angle (degrees) for a screenshot.
+		var lp := director.local_player()
+		if lp != null and lp.items.has("bomb"):
+			_begin_throw()
+	_hint_t = maxf(0.0, _hint_t - delta)
 	queue_redraw()
 
 
@@ -287,8 +306,21 @@ func _begin_aim() -> void:
 	if lp == null or director.view == null or not director.view.has_method("begin_aim"):
 		return
 	_aiming = true
+	_aim_item = "laser"
 	_hotbar_open = false
 	director.view.begin_aim(lp.peer_id, BoardRules.laser_length(director.graph, director.cfg))
+
+
+## The bomb: a ring of range round the pawn, a reticle the size of the blast under the mouse; a
+## click throws it there.
+func _begin_throw() -> void:
+	var lp := director.local_player()
+	if lp == null or director.view == null or not director.view.has_method("begin_throw"):
+		return
+	_aiming = true
+	_aim_item = "bomb"
+	_hotbar_open = false
+	director.view.begin_throw(lp.peer_id, BoardRules.bomb_range(director.graph, director.cfg), BoardRules.bomb_radius(director.graph, director.cfg))
 
 
 func _end_aim() -> void:
@@ -301,6 +333,11 @@ func _end_aim() -> void:
 
 func _fire() -> void:
 	if not _aiming or director.view == null:
+		return
+	if _aim_item == "bomb":
+		var p: Vector3 = director.view.throw_point()
+		_end_aim()
+		director.request_item("bomb", 0, {"x": snappedf(p.x, 0.01), "z": snappedf(p.z, 0.01)})
 		return
 	var aim: float = director.view.aim_angle()
 	_end_aim()
@@ -370,13 +407,26 @@ func _use_item_index(idx: int) -> void:
 		return
 	var item := str(lp.items[idx])
 	match item:
-		"turbo":
-			_hotbar_open = false
-			director.request_item(item, lp.peer_id)
 		"shield":
 			pass
 		"laser":
 			_begin_aim()
+		"bomb":
+			_begin_throw()
+		"magnet":
+			# Only players within the claw's reach can be picked; one alone is grabbed at once.
+			var targets: Array = BoardRules.magnet_targets(director.state, director.graph, director.cfg, lp)
+			if targets.is_empty():
+				_hint = "NOBODY IN RANGE"
+				_hint_t = 1.4
+				Audio.play("dry", -4.0)
+				return
+			_hotbar_open = false
+			_item_target_mode = item
+			_target_index = 0
+			_cycle_target(0)
+			if targets.size() == 1:
+				_confirm_target()
 		_:
 			_hotbar_open = false
 			_item_target_mode = item
@@ -384,19 +434,30 @@ func _use_item_index(idx: int) -> void:
 			_cycle_target(0)
 
 
-func _cycle_target(dir: int) -> void:
+## Whether row `i` can be the target of the item being aimed: never yourself, and only players
+## within reach for the magnet.
+func _target_ok(i: int) -> bool:
 	var st := director.state
 	var lp := director.local_player()
+	if i < 0 or i >= st.players.size() or st.players[i] == lp:
+		return false
+	if _item_target_mode == "magnet":
+		return BoardRules.magnet_targets(st, director.graph, director.cfg, lp).has(st.players[i])
+	return true
+
+
+func _cycle_target(dir: int) -> void:
+	var st := director.state
 	var n := st.players.size()
 	if dir == 0:
 		for i in n:
-			if st.players[i] != lp:
+			if _target_ok(i):
 				_target_index = i
 				break
 	else:
 		for i in n:
 			_target_index = posmod(_target_index + dir, n)
-			if st.players[_target_index] != lp:
+			if _target_ok(_target_index):
 				break
 	_focus_target()
 
@@ -501,7 +562,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	var st := director.state
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT and _item_target_mode != "":
 		for i in _row_rects.size():
-			if (_row_rects[i] as Rect2).has_point(event.position) and st.players[i] != director.local_player():
+			if (_row_rects[i] as Rect2).has_point(event.position) and _target_ok(i):
 				_target_index = i
 				_confirm_target()
 				get_viewport().set_input_as_handled()
@@ -546,13 +607,14 @@ func _draw() -> void:
 		var col := Palette.player_colour(p.colour_index)
 		var active := i == st.active
 		var targeted := _item_target_mode != "" and i == _target_index
+		var out_of_reach := _item_target_mode == "magnet" and p != lp and not _target_ok(i)
 		var w := 600.0
 		var h := 44.0
 		var x := 24.0 + (14.0 if active else 0.0)
 		var skew := 12.0
 		_row_rects.append(Rect2(x, y, w, h))
 		var flash: float = float(_row_flash.get(p.peer_id, 0.0))
-		draw_colored_polygon(PackedVector2Array([Vector2(x + skew, y), Vector2(x + w, y), Vector2(x + w - skew, y + h), Vector2(x, y + h)]), Color(ink, 0.9 if active else 0.7).lerp(Color(paper, 0.9), flash * 0.6))
+		draw_colored_polygon(PackedVector2Array([Vector2(x + skew, y), Vector2(x + w, y), Vector2(x + w - skew, y + h), Vector2(x, y + h)]), Color(ink, (0.9 if active else 0.7) * (0.4 if out_of_reach else 1.0)).lerp(Color(paper, 0.9), flash * 0.6))
 		draw_colored_polygon(PackedVector2Array([Vector2(x + skew, y), Vector2(x + skew + 34, y), Vector2(x + 34, y + h), Vector2(x, y + h)]), col)
 		if active or targeted:
 			draw_polyline(PackedVector2Array([Vector2(x + skew, y), Vector2(x + w, y), Vector2(x + w - skew, y + h), Vector2(x, y + h), Vector2(x + skew, y)]), Palette.hud_colour("danger") if targeted else accent, 3.0)
@@ -599,7 +661,7 @@ func _draw() -> void:
 	_draw_item_pops()
 	if _dice_t > 0.0:
 		var s := 120 + int(24.0 * clampf(_dice_t - 1.3, 0.0, 0.3) / 0.3)
-		var txt := "%d" % _dice_value if _dice_bonus <= 0 else "%d +%d" % [_dice_value - _dice_bonus, _dice_bonus]
+		var txt := "%d" % _dice_value
 		var tw := _font.get_string_size(txt, HORIZONTAL_ALIGNMENT_CENTER, -1, s).x
 		# Over the die, which lands to the camera's right of the pawn, clear of the name tags.
 		_text(Vector2(size.x * 0.61 - tw * 0.5, size.y * 0.36), txt, s, Color(Palette.hud_colour("score"), clampf(_dice_t * 2.0, 0.0, 1.0)), 10.0, -0.22)
@@ -625,10 +687,10 @@ func _draw() -> void:
 	if st.phase == BoardState.PHASE_TURNS:
 		if director.is_local_turn():
 			if _aiming:
-				prompt = "AIM WITH THE MOUSE   ·   CLICK TO FIRE   ·   RIGHT CLICK PUTS IT AWAY"
+				prompt = "AIM WITH THE MOUSE   ·   CLICK TO THROW   ·   RIGHT CLICK PUTS IT AWAY" if _aim_item == "bomb" else "AIM WITH THE MOUSE   ·   CLICK TO FIRE   ·   RIGHT CLICK PUTS IT AWAY"
 			elif _item_target_mode != "":
 				var target := st.players[clampi(_target_index, 0, st.players.size() - 1)]
-				prompt = "%s → %s   ·   CLICK A PLAYER OR A/D + ENTER   ·   SPACE CANCELS" % [_item_target_mode.to_upper(), target.display_name.to_upper()]
+				prompt = "%s → %s   ·   CLICK A PLAYER%s OR A/D + ENTER   ·   SPACE CANCELS" % [_item_target_mode.to_upper(), target.display_name.to_upper(), " IN RANGE" if _item_target_mode == "magnet" else ""]
 			else:
 				prompt = "YOUR TURN"
 				var left := director.turn_seconds_left()
@@ -690,6 +752,9 @@ func _draw_hotbar(lp: BoardState.PlayerState, size: Vector2) -> void:
 	var hint := "Q · CLOSE     1-9 / WHEEL · SELECT     E · USE"
 	var hw := _font.get_string_size(hint, HORIZONTAL_ALIGNMENT_CENTER, -1, 14).x
 	_text(Vector2((size.x - hw) * 0.5, y0 + slot + 24), hint, 14, Color(paper, 0.75))
+	if _hint_t > 0.0:
+		var hint_w := _font.get_string_size(_hint, HORIZONTAL_ALIGNMENT_CENTER, -1, 20).x
+		_text(Vector2((size.x - hint_w) * 0.5, y0 - 34), _hint, 20, Color(Palette.hud_colour("danger"), clampf(_hint_t * 2.0, 0.0, 1.0)), 5.0)
 
 
 ## A picked-up item pops as its icon over the pawn's head (Sean: an icon, not the name): a
@@ -716,36 +781,102 @@ func _draw_item_pops() -> void:
 		_draw_item_icon(str(pop["item"]), sp + Vector2(0, 2), 16.0 * scale * grow, alpha)
 
 
-## Drawn item icons, `s` about half the icon's width: a pistol with a red emitter and a beam
-## stub, a bomb with a lit fuse, a turbo chevron, a shield, swap arrows.
+## Drawn item icons, `s` about half the icon's width (Sean: more detail). Every one is inked, with
+## a shine or a band so it reads at hotbar size and in the pickup pop: a ray pistol with a slide
+## band, a grip inset and a lit emitter; a bomb with a cap, a rope fuse and a spark; an oval portal
+## with a swirl and sparks; a shield with a rim band and a boss; the claw with its cable and spool.
 func _draw_item_icon(kind: String, c: Vector2, s: float, alpha: float = 1.0) -> void:
 	var ink := Color(UiStyle.ink(), alpha)
 	var paper := Color(Palette.hud_colour("paper"), alpha)
 	var danger := Color(Palette.hud_colour("danger"), alpha)
+	var score := Color(Palette.hud_colour("score"), alpha)
 	match kind:
 		"laser":
-			draw_colored_polygon(PackedVector2Array([c + Vector2(-s, -s * 0.4), c + Vector2(s * 0.85, -s * 0.4), c + Vector2(s * 0.85, s * 0.05),
-				c + Vector2(-s * 0.15, s * 0.05), c + Vector2(-s * 0.3, s * 0.85), c + Vector2(-s * 0.85, s * 0.85), c + Vector2(-s * 0.75, s * 0.05), c + Vector2(-s, s * 0.05)]), paper)
-			draw_rect(Rect2(c + Vector2(s * 0.7, -s * 0.36), Vector2(s * 0.3, s * 0.36)), danger)
-			draw_line(c + Vector2(s * 1.05, -s * 0.18), c + Vector2(s * 1.5, -s * 0.18), danger, 3.0)
+			var body := PackedVector2Array([c + Vector2(-s, -s * 0.45), c + Vector2(s * 0.85, -s * 0.45), c + Vector2(s * 0.85, s * 0.05),
+				c + Vector2(-s * 0.15, s * 0.05), c + Vector2(-s * 0.3, s * 0.9), c + Vector2(-s * 0.9, s * 0.9), c + Vector2(-s * 0.75, s * 0.05), c + Vector2(-s, s * 0.05)])
+			_icon_poly(body, paper, ink, c)
+			draw_rect(Rect2(c + Vector2(-s * 0.9, -s * 0.38), Vector2(s * 1.35, s * 0.15)), Color(ink, alpha * 0.5))
+			draw_rect(Rect2(c + Vector2(-s * 0.72, s * 0.22), Vector2(s * 0.3, s * 0.5)), Color(ink, alpha * 0.5))
+			draw_rect(Rect2(c + Vector2(-s * 0.05, -s * 0.2), Vector2(s * 0.5, s * 0.08)), Color(ink, alpha * 0.35))
+			draw_circle(c + Vector2(s * 0.92, -s * 0.2), s * 0.26, ink)
+			draw_circle(c + Vector2(s * 0.92, -s * 0.2), s * 0.17, danger)
+			draw_line(c + Vector2(s * 1.18, -s * 0.2), c + Vector2(s * 1.55, -s * 0.2), danger, 3.0)
+			draw_circle(c + Vector2(s * 1.6, -s * 0.2), s * 0.1, danger)
 		"bomb":
-			draw_circle(c + Vector2(0, s * 0.15), s * 0.7, Color(UiStyle.ink().lightened(0.18), alpha))
-			draw_line(c + Vector2(s * 0.3, -s * 0.4), c + Vector2(s * 0.7, -s * 0.9), paper, 3.0)
-			draw_circle(c + Vector2(s * 0.78, -s * 0.98), s * 0.18, Color(Palette.hud_colour("score"), alpha))
-		"turbo":
-			draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.9, -s * 0.5), c + Vector2(s * 0.1, -s * 0.5), c + Vector2(s * 0.9, 0),
-				c + Vector2(s * 0.1, s * 0.5), c + Vector2(-s * 0.9, s * 0.5), c + Vector2(-s * 0.3, 0)]), Color(Palette.hud_colour("score"), alpha))
-		"shield":
-			draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.8, s * 0.3), c + Vector2(-s * 0.7, -s * 0.3), c + Vector2(0, -s * 0.85),
-				c + Vector2(s * 0.7, -s * 0.3), c + Vector2(s * 0.8, s * 0.3), c + Vector2(0, s * 0.35)]), Color(Palette.hud_colour("meter"), alpha))
-		"swap":
+			var centre := c + Vector2(0, s * 0.22)
+			draw_circle(centre, s * 0.8, ink)
+			draw_circle(centre, s * 0.68, Color(UiStyle.ink().lightened(0.22), alpha))
+			draw_circle(centre + Vector2(-s * 0.24, -s * 0.26), s * 0.17, Color(paper, alpha * 0.75))
+			draw_rect(Rect2(centre + Vector2(-s * 0.17, -s * 0.92), Vector2(s * 0.34, s * 0.24)), ink)
+			draw_rect(Rect2(centre + Vector2(-s * 0.1, -s * 0.88), Vector2(s * 0.2, s * 0.14)), Color(paper, alpha * 0.6))
+			draw_line(centre + Vector2(0, -s * 0.88), centre + Vector2(s * 0.3, -s * 1.16), ink, 5.5)
+			draw_line(centre + Vector2(s * 0.3, -s * 1.16), centre + Vector2(s * 0.58, -s * 1.1), ink, 5.5)
+			draw_line(centre + Vector2(0, -s * 0.88), centre + Vector2(s * 0.3, -s * 1.16), paper, 3.0)
+			draw_line(centre + Vector2(s * 0.3, -s * 1.16), centre + Vector2(s * 0.58, -s * 1.1), paper, 3.0)
+			_icon_spark(centre + Vector2(s * 0.74, -s * 1.16), s * 0.24, score, paper)
+		"portal":
 			var col := Color(Palette.player_colour(5), alpha)
-			draw_line(c + Vector2(-s * 0.8, -s * 0.3), c + Vector2(s * 0.8, -s * 0.3), col, 3.0)
-			draw_line(c + Vector2(s * 0.8, s * 0.3), c + Vector2(-s * 0.8, s * 0.3), col, 3.0)
-			draw_colored_polygon(PackedVector2Array([c + Vector2(s * 0.5, -s * 0.6), c + Vector2(s * 0.95, -s * 0.3), c + Vector2(s * 0.5, 0)]), col)
-			draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.5, 0), c + Vector2(-s * 0.95, s * 0.3), c + Vector2(-s * 0.5, s * 0.6)]), col)
+			draw_set_transform(c, 0.0, Vector2(0.72, 1.0))
+			draw_arc(Vector2.ZERO, s * 0.9, 0.0, TAU, 40, ink, 7.0)
+			draw_circle(Vector2.ZERO, s * 0.72, Color(col.darkened(0.55), alpha * 0.95))
+			draw_arc(Vector2.ZERO, s * 0.9, 0.0, TAU, 40, col, 4.0)
+			draw_arc(Vector2.ZERO, s * 0.46, 0.5, 3.9, 18, col, 3.0)
+			draw_arc(Vector2.ZERO, s * 0.24, 2.8, 6.4, 14, Color(col.lightened(0.3), alpha), 2.5)
+			draw_set_transform_matrix(Transform2D())
+			_icon_spark(c + Vector2(s * 0.78, -s * 0.78), s * 0.13, paper, paper)
+			_icon_spark(c + Vector2(-s * 0.72, s * 0.62), s * 0.1, paper, paper)
+		"shield":
+			var meter := Color(Palette.hud_colour("meter"), alpha)
+			var shape := PackedVector2Array([c + Vector2(-s * 0.85, -s * 0.5), c + Vector2(0, -s * 0.9), c + Vector2(s * 0.85, -s * 0.5),
+				c + Vector2(s * 0.7, s * 0.25), c + Vector2(0, s * 0.95), c + Vector2(-s * 0.7, s * 0.25)])
+			_icon_poly(shape, meter, ink, c)
+			var band := PackedVector2Array()
+			for p in shape:
+				band.append(c + (p - c) * 0.74)
+			band.append(band[0])
+			draw_polyline(band, Color(paper, alpha * 0.85), 2.5)
+			var boss := PackedVector2Array()
+			for k in 6:
+				var a := PI / 6.0 + float(k) * PI / 3.0
+				boss.append(c + Vector2(cos(a), sin(a)) * s * 0.3)
+			draw_colored_polygon(boss, paper)
+			draw_circle(c, s * 0.12, meter)
+			draw_line(c + Vector2(-s * 0.5, -s * 0.3), c + Vector2(-s * 0.22, -s * 0.62), Color(paper, alpha * 0.9), 3.0)
+		"magnet":
+			var steel := Color(paper, alpha)
+			var accent := Color(Palette.player_colour(1), alpha)
+			draw_line(c + Vector2(0, -s * 1.15), c + Vector2(0, -s * 0.35), ink, 5.0)
+			draw_line(c + Vector2(0, -s * 1.15), c + Vector2(0, -s * 0.35), steel, 2.5)
+			draw_rect(Rect2(c + Vector2(-s * 0.4, -s * 1.38), Vector2(s * 0.8, s * 0.26)), ink)
+			draw_rect(Rect2(c + Vector2(-s * 0.32, -s * 1.32), Vector2(s * 0.64, s * 0.14)), Color(ink.lightened(0.3), alpha))
+			for side: float in [-1.0, 1.0]:
+				var jaw := PackedVector2Array([c + Vector2(0, -s * 0.3), c + Vector2(side * s * 0.5, -s * 0.05), c + Vector2(side * s * 0.72, s * 0.5), c + Vector2(side * s * 0.5, s * 0.9)])
+				draw_polyline(jaw, ink, 7.0)
+				draw_polyline(jaw, steel, 4.0)
+				draw_colored_polygon(PackedVector2Array([c + Vector2(side * s * 0.5, s * 0.9), c + Vector2(side * s * 0.72, s * 0.62), c + Vector2(side * s * 0.36, s * 0.72)]), accent)
+			draw_circle(c + Vector2(0, -s * 0.3), s * 0.32, ink)
+			draw_circle(c + Vector2(0, -s * 0.3), s * 0.22, accent)
+			draw_circle(c + Vector2(0, -s * 0.3), s * 0.08, ink)
 		_:
 			_text(c + Vector2(-s * 0.6, s * 0.4), kind.substr(0, 2).to_upper(), 18, paper)
+
+
+## A filled shape with an ink outline: the outline is the shape inflated from its centre.
+func _icon_poly(points: PackedVector2Array, fill: Color, ink: Color, c: Vector2) -> void:
+	var fat := PackedVector2Array()
+	for p in points:
+		fat.append(c + (p - c) * 1.16)
+	draw_colored_polygon(fat, ink)
+	draw_colored_polygon(points, fill)
+
+
+## A four-ray spark with a bright core.
+func _icon_spark(at: Vector2, r: float, col: Color, core: Color) -> void:
+	draw_line(at + Vector2(-r, 0), at + Vector2(r, 0), col, 3.0)
+	draw_line(at + Vector2(0, -r), at + Vector2(0, r), col, 3.0)
+	draw_line(at + Vector2(-r * 0.6, -r * 0.6), at + Vector2(r * 0.6, r * 0.6), col, 2.0)
+	draw_line(at + Vector2(-r * 0.6, r * 0.6), at + Vector2(r * 0.6, -r * 0.6), col, 2.0)
+	draw_circle(at, r * 0.4, core)
 
 
 ## Name tags over the pawns, projected from the 3D view and pushed apart when they would

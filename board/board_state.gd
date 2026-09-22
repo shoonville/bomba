@@ -18,13 +18,12 @@ class PlayerState:
 	var coins: int = 0
 	var toys: int = 0
 	var items: Array = []
-	var roll_bonus: int = 0
 	var hp: int = 30
 
 	func to_dict() -> Dictionary:
 		return {"peer_id": peer_id, "display_name": display_name, "colour_index": colour_index,
 			"is_bot": is_bot, "space": space, "coins": coins, "toys": toys,
-			"items": items.duplicate(), "roll_bonus": roll_bonus, "hp": hp}
+			"items": items.duplicate(), "hp": hp}
 
 	static func from_dict(d: Dictionary) -> PlayerState:
 		var p := PlayerState.new()
@@ -36,7 +35,6 @@ class PlayerState:
 		p.coins = int(d.get("coins", 0))
 		p.toys = int(d.get("toys", 0))
 		p.items = Array(d.get("items", []))
-		p.roll_bonus = int(d.get("roll_bonus", 0))
 		p.hp = int(d.get("hp", 30))
 		return p
 

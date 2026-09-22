@@ -158,12 +158,29 @@ func flinch() -> void:
 
 
 var _aiming: bool = false
+var _throw_t: float = 0.0
+const THROW_SECONDS := 0.6
 
 
 ## Board aiming (the laser gun): the right arm comes up straight out in front, the hand leading,
 ## and stays there while `on`; the left arm keeps its walk swing.
 func set_aiming(on: bool) -> void:
 	_aiming = on
+
+
+## Board throw (the bomb): the right arm winds back, whips over the head and settles again,
+## THROW_SECONDS long; the bomb leaves the hand as the arm passes the top.
+func throw() -> void:
+	_throw_t = THROW_SECONDS
+
+
+func _throw_arm() -> float:
+	var k := 1.0 - _throw_t / THROW_SECONDS
+	if k < 0.35:
+		return lerpf(0.0, -1.2, smoothstep(0.0, 0.35, k))
+	if k < 0.6:
+		return lerpf(-1.2, 2.4, smoothstep(0.35, 0.6, k))
+	return lerpf(2.4, 0.0, smoothstep(0.6, 1.0, k))
 
 
 ## The right hand's node, for a held prop; the hand is 0.62 down the arm's local -Y.
@@ -195,6 +212,11 @@ func animate(speed: float, on_floor: bool, pitch: float, alive: bool, delta: flo
 		_r_leg.rotation.z = 0.28 * push_r
 		_l_arm.rotation.x = 0.55 * (push_r - push_l)
 		_r_arm.rotation.x = 0.55 * (push_l - push_r)
+		if _throw_t > 0.0:
+			_throw_t -= delta
+			_r_arm.rotation.x = _throw_arm()
+		elif _aiming:
+			_r_arm.rotation.x = PI * 0.5   # the gun or the claw held out in front
 		head.rotation.x = -0.1 + _flinch * 0.35
 		_torso.rotation.x = _flinch * 0.22 - 0.22 * run
 		_torso.position.y = (SHOULDER_Y + HIP_Y) * 0.5 + sin(_phase * 0.45) * 0.008

@@ -33,8 +33,9 @@ trigger interrupts it), LMB switches who you watch when you are
 out in LAST STAND, Esc pauses (resume, settings, leave), F5
 reloads `tuning/*.json` in debug builds. Board controls: click ROLL or press Space; A D or the
 fork buttons at a fork; Q opens the item hotbar on your turn, 1–9 or the wheel pick a slot, E
-(or a click on it) uses the item; a bomb or swap then wants a player (click a row or A/D + Enter),
-the laser aims with the mouse and fires on a click (right click puts it away). Hover LEFT or
+(or a click on it) uses the item; a portal or a magnet then wants a player (click a row or A/D + Enter;
+the magnet only offers players within three spaces), the laser aims with the mouse and fires on a
+click, the bomb shows a ring of range and throws where you click (right click puts either away). Hover LEFT or
 RIGHT at a fork to see where the move lands; hold Tab for the whole board, and in a minigame
 for the scoreboard.
 E (or middle-click) pings the tile under the cursor for everyone; F1–F4 send an emote. Sound is synthesised at startup;
@@ -54,10 +55,13 @@ each as its machine spot, and a bridge runs from the space to the annex); pass o
 one with 10 coins and a toy pops out, then the machine moves to the other annex. First to 4 toys wins
 on the spot (the host sets FIRST TO, TURN TIME, ROUND CAP and TOY PRICE in the lobby's MATCH
 SETTINGS; `--toys_to_win=N`, `--toy_price=N` and `--machine_at=ID` in the harness). Spots: coin (+3),
-item (a random item: bomb, turbo, swap, shield or the laser gun), damage (−3 coins, a spiked
-ball), event (teleport, "?"), and one safe spot (cyan dome) that hands out a SHIELD which eats
-the next bomb, damage spot or laser hit. Everyone has 30 HP; the laser takes it by distance,
-and a downed player bleeds, drops half their coins to the shooter and respawns at the other annex.
+item (a random item: bomb, portal, shield, the laser gun or the magnet), damage (−3 coins, a spiked
+ball), event (teleport, "?"), and one safe spot (cyan dome) that hands out a SHIELD, a glowing aura
+that eats the next bomb, damage spot, laser hit or magnet grab. Everyone has 30 HP; the laser and the
+bomb take it by distance (the bomb also shoves everyone in its blast three spaces back), and a downed
+player bleeds, drops half their coins to the shooter and respawns at the other annex. The magnet is a
+retractable claw that pulls one item from a player within three spaces (three coins from an empty
+bar); the portal takes you to a player and pushes them back through it to your space.
 
 Useful flags after `--`: `--autoplay` (a bot drives your seat), `--seed=N`, `--soak=SECONDS`
 (quit and write `reports/<label>_summary.json` + `_traj.csv`), `--report=LABEL`, `--expect=N`
@@ -66,9 +70,10 @@ Useful flags after `--`: `--autoplay` (a bot drives your seat), `--seed=N`, `--s
 `--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results|laser|hill` to start the
 timer on an event, `--screenshot_event_index=N` on its Nth occurrence; `--hill_index=N` pins KING OF
 THE HILL's first spot and `--spawn_index=N` puts you at a chosen spawn for a frame; `--give_item=laser`,
-`--give_bots_item=laser`, `--hotbar_test` (the bar open), `--target_test` (the bomb aimed at a
-player), `--pop_test=ITEM` (a pickup icon over your pawn), `--aim_test=DEG` (the laser drawn at
-an angle) and `--board_auto_roll` exercise the board UI from a fresh match),
+`--give_bots_item=laser` (`--give_item` takes a comma list), `--hotbar_test` (the bar open), `--target_test`
+(the portal's player picker), `--pop_test=ITEM` (a pickup icon over your pawn), `--aim_test=DEG` (the
+laser drawn at an angle), `--throw_test=DEG` (the bomb's ring and reticle), `--magnet_test` (the claw
+fired at the first player in range) and `--board_auto_roll` exercise the board UI from a fresh match),
 `--ads_progress=0..1` (pins the scope-in for a frame), `--board_overview` (whole board),
 `--board_cam=x,y,z:tx,ty,tz` (camera anywhere on the board), `--render_scale=N` (pins the 3D
 render scale; the SETTINGS slider is the player's cap, default 1.5 supersampling, and the game

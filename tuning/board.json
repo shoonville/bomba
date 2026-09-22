@@ -29,16 +29,18 @@
   },
   "items": {
     "bomb": {
+      "_comment": "Thrown: lands anywhere within range_spaces (mean tile spacings) of the thrower; everyone within blast_spaces of the landing, the thrower included, takes damage_close at the centre falling to damage_far at the edge and is knocked back knockback spaces. At 0 HP the victim respawns and hands death_coin_share of their coins to the thrower.",
       "display_name": "BOMB",
-      "coins": -5,
-      "knockback": 3
+      "range_spaces": 3.0,
+      "blast_spaces": 1.0,
+      "damage_close": 20,
+      "damage_far": 8,
+      "knockback": 3,
+      "death_coin_share": 0.5
     },
-    "turbo": {
-      "display_name": "TURBO",
-      "roll_bonus": 3
-    },
-    "swap": {
-      "display_name": "SWAP"
+    "portal": {
+      "_comment": "A portal to the picked player: you go through, then push them back through it; the two swap spaces.",
+      "display_name": "PORTAL"
     },
     "shield": {
       "display_name": "SHIELD"
@@ -52,6 +54,12 @@
       "damage_close": 30,
       "damage_far": 10,
       "death_coin_share": 0.5
+    },
+    "magnet": {
+      "_comment": "The retractable claw: pulls one item at random from a player within range_spaces steps along the walkway, either way; coins_when_empty coins when they hold nothing. A shield eats the grab.",
+      "display_name": "MAGNET",
+      "range_spaces": 3,
+      "coins_when_empty": 3
     }
   },
   "default_board": "main",

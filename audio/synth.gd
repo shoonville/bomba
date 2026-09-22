@@ -171,12 +171,42 @@ static func names() -> PackedStringArray:
 	return PackedStringArray(["sniper_fire", "ar_fire", "hitmarker", "headshot", "kill", "death", "hurt",
 		"bolt", "reload_start", "reload_end", "dry", "swap", "jump", "land", "footstep", "respawn",
 		"ui_hover", "ui_click", "ui_back", "round_start", "round_end", "dice", "coin", "shell_in",
-		"ping", "emote", "laser", "splat", "hill_move", "hill_tick"])
+		"ping", "emote", "laser", "splat", "hill_move", "hill_tick", "bomb_throw", "bomb_blast", "portal", "claw"])
 
 
 ## Build a named sound as float samples. Unknown names return a short click so a typo is audible.
 static func build(name: String) -> PackedFloat32Array:
 	match name:
+		"bomb_throw":
+			# The bomb leaves the hand: a short rising whoosh.
+			var n := samples(0.28)
+			var out := mul(lowpass(highpass(noise(n, 201), 300.0), 2600.0), env_adsr(n, 0.05, 0.08, 0.5, 0.1))
+			return mix(out, mul(tone(n, 180.0, 420.0, "sine"), env_exp(n, 0.1)), 0.25)
+		"bomb_blast":
+			# The blast: a deep boom under a burst of noise, with a slap at the front.
+			var n := samples(0.7)
+			var out := mul(tone(n, 110.0, 34.0, "sine"), env_exp(n, 0.22))
+			out = mix(out, mul(lowpass(noise(n, 202), 1400.0), env_exp(n, 0.16)), 0.9)
+			out = mix(out, mul(lowpass(highpass(noise(samples(0.03), 203), 900.0), 6000.0), env_exp(samples(0.03), 0.006)), 0.9)
+			out = mix(out, mul(lowpass(noise(n, 204), 400.0), env_exp(n, 0.4, 0.05)), 0.45)
+			return softclip(out, 2.4)
+		"portal":
+			# A portal opens: a rising warble with a shimmer riding it.
+			var n := samples(0.55)
+			var out := mul(tone(n, 220.0, 660.0, "tri"), env_adsr(n, 0.03, 0.1, 0.6, 0.2))
+			out = mix(out, mul(tone(n, 1320.0, 1980.0, "sine"), env_adsr(n, 0.1, 0.1, 0.4, 0.2)), 0.22)
+			out = mix(out, mul(tone(n, 55.0, 55.0, "sine"), env_exp(n, 0.3)), 0.35)
+			return softclip(out, 1.3)
+		"claw":
+			# The claw shoots out on its cable: a mechanical zip of fast clicks, then a snap shut.
+			var n := samples(0.34)
+			var out := mul(lowpass(highpass(noise(n, 205), 1200.0), 5000.0), env_adsr(n, 0.01, 0.05, 0.35, 0.05))
+			var ticks := silence(n)
+			for i in 9:
+				ticks = mix(ticks, mul(lowpass(noise(samples(0.012), 206 + i), 3500.0), env_exp(samples(0.012), 0.003)), 0.8, samples(0.02 * i))
+			out = mix(out, ticks, 0.9)
+			out = mix(out, mul(tone(samples(0.06), 900.0, 300.0, "square"), env_exp(samples(0.06), 0.015)), 0.5, samples(0.25))
+			return softclip(out, 1.4)
 		"hill_move":
 			# KING OF THE HILL: the hill moves. Two rising soft notes with a felt tap under the first.
 			var n := samples(0.42)

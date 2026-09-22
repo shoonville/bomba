@@ -67,7 +67,6 @@ func test_roll_is_seeded_and_moves() -> void:
 	assert_eq(a.players[0].space, b.players[0].space)
 	assert_true(dice_a >= 1 and dice_a <= int(cfg["dice_sides"]), "d%d" % int(cfg["dice_sides"]))
 	assert_eq(int(ea[0]["roll"]), dice_a, "no bonus: roll is the value")
-	assert_eq(int(ea[0]["bonus"]), 0)
 	var landed := a.players[0].space
 	var teleported := ea.any(func(e): return e["kind"] == "teleport")
 	if not teleported:
@@ -79,7 +78,6 @@ func test_roll_is_seeded_and_moves() -> void:
 func test_fork_pauses_for_choice() -> void:
 	var s := _fresh(3)
 	s.players[0].space = "4"
-	s.players[0].roll_bonus = 0
 	var found := false
 	for seed_try in 40:
 		var t := _fresh(seed_try)
@@ -155,33 +153,69 @@ func test_toy_needs_coins() -> void:
 
 
 func test_items() -> void:
+	# The bomb is thrown at a point within range: everyone within the blast takes HP by distance
+	# and is knocked back three spaces, nearest first; the thrower is not excepted.
 	var s := _fresh(4)
 	var user := s.players[0]
 	var victim := s.players[1]
-	victim.space = "4"
-	victim.coins = 8
-	user.items = ["bomb", "turbo"]
-	var ev := BoardRules.use_item(s, graph, cfg, 1, "bomb", victim.peer_id)
-	assert_true(ev.size() >= 2)
-	assert_eq(victim.coins, 3)
-	assert_eq(victim.space, "1", "knocked back 3 from 4")
+	var bystander := s.players[2]
+	user.space = "1"
+	victim.space = "3"
+	bystander.space = "4"
+	user.items = ["bomb"]
+	var target := graph.get_space("3").position
+	var ev := BoardRules.use_item(s, graph, cfg, 1, "bomb", 0, {"x": target.x, "z": target.z})
+	var shots := ev.filter(func(e): return e["kind"] == "bomb")
+	assert_eq(shots.size(), 1)
+	var hits: Array = shots[0]["hits"]
+	assert_eq(hits.size(), 2, "the victim and the bystander a space on, not the thrower two spaces back")
+	assert_eq(int(hits[0]["peer"]), victim.peer_id, "nearest first")
+	assert_eq(int(hits[0]["damage"]), int((cfg["items"]["bomb"] as Dictionary)["damage_close"]))
+	assert_eq(victim.hp, 10)
+	assert_eq(victim.space, "0", "knocked back 3 from 3")
+	assert_eq((hits[0]["knock"] as Array).size(), 3)
+	assert_true(int(hits[1]["damage"]) < int(hits[0]["damage"]), "the edge of the blast hurts less")
+	assert_eq(bystander.hp, 30 - int(hits[1]["damage"]))
+	assert_eq(user.hp, 30, "out of the blast")
 	assert_false(user.items.has("bomb"))
-	var ev2 := BoardRules.use_item(s, graph, cfg, 1, "turbo", 1)
-	assert_eq(user.roll_bonus, 3)
-	var ev3 := BoardRules.roll(s, graph, cfg)
-	assert_eq(str(ev3[0]["kind"]), "roll")
-	assert_eq(int(ev3[0]["bonus"]), 3)
-	var total := int(ev3[0]["value"])
-	assert_true(total >= 4 and total <= int(cfg["dice_sides"]) + 3, "turbo adds 3: %d" % total)
-	assert_eq(total, int(ev3[0]["roll"]) + 3)
-	assert_eq(user.roll_bonus, 0)
-	# cannot use mid-turn (a roll in progress)
+	# A throw past the range lands at the range, and a throw at your own feet hurts you.
 	var t := _fresh(4)
-	t.players[0].items = ["turbo"]
-	t.dice = 3
-	t.steps_left = 3
-	assert_eq(BoardRules.use_item(t, graph, cfg, 1, "turbo", 1).size(), 0)
-	assert_true(t.players[0].items.has("turbo"), "item kept")
+	var me := t.players[0]
+	me.space = "0"
+	me.items = ["bomb"]
+	var origin := graph.get_space("0").position
+	var far := BoardRules.bomb_landing(graph, cfg, origin, Vector2(origin.x + 40.0, origin.z))
+	assert_near(Vector2(far.x - origin.x, far.z - origin.z).length(), BoardRules.bomb_range(graph, cfg), 0.001, "held to the range")
+	var ev2 := BoardRules.use_item(t, graph, cfg, 1, "bomb", 0, {"x": origin.x, "z": origin.z})
+	assert_eq(me.hp, 10, "your own bomb at your feet")
+	assert_true(ev2.any(func(e): return e["kind"] == "bomb"))
+	# A kill: the victim hands over half their coins and respawns at a machine spot, no knockback.
+	var u := _fresh(4)
+	var killer := u.players[0]
+	var prey := u.players[1]
+	killer.space = "1"
+	prey.space = "3"
+	prey.hp = 5
+	prey.coins = 10
+	killer.items = ["bomb"]
+	var at := graph.get_space("3").position
+	var ev3 := BoardRules.use_item(u, graph, cfg, 1, "bomb", 0, {"x": at.x, "z": at.z})
+	var hit: Dictionary = (ev3.filter(func(e): return e["kind"] == "bomb")[0]["hits"] as Array)[0]
+	assert_true(bool(hit["dead"]))
+	assert_eq(int(hit["coins"]), 5)
+	assert_eq(prey.coins, 5)
+	assert_eq(killer.coins, 10)
+	assert_eq(prey.hp, int(cfg["hp"]))
+	assert_true(graph.goal_candidates().has(prey.space) and prey.space != u.goal, "respawned at the other machine spot")
+	assert_true((hit["knock"] as Array).is_empty(), "the dead are not knocked back")
+	# cannot use mid-turn (a roll in progress)
+	var w := _fresh(4)
+	w.players[0].items = ["bomb"]
+	w.dice = 3
+	w.steps_left = 3
+	assert_eq(BoardRules.use_item(w, graph, cfg, 1, "bomb", 0, {"x": 0.0, "z": 0.0}).size(), 0)
+	assert_true(w.players[0].items.has("bomb"), "item kept")
+
 
 
 func test_round_minigame_and_finish() -> void:
@@ -240,12 +274,16 @@ func test_bots_pick_toward_goal_and_items() -> void:
 	s.goal = "8"
 	assert_eq(BoardRules.bot_choose(s, graph), 0)
 	var me := s.active_player()
+	me.space = "0"
 	me.items = ["bomb"]
-	s.players[1].toys = 1
-	var pick := BoardRules.bot_item(s)
+	s.players[1].space = "2"
+	var pick := BoardRules.bot_item(s, graph, cfg)
 	assert_eq(pick.size(), 3)
 	assert_eq(str(pick[0]), "bomb")
-	assert_eq(int(pick[1]), s.players[1].peer_id)
+	var at := graph.get_space("2").position
+	assert_near(float((pick[2] as Dictionary)["x"]), at.x, 0.02, "thrown at the other player's space")
+	assert_near(float((pick[2] as Dictionary)["z"]), at.z, 0.02)
+	assert_eq(BoardRules.bot_item(s).size(), 0, "no graph: the bot cannot judge a throw")
 
 
 func test_laser_hits_by_distance_and_line() -> void:
@@ -311,62 +349,70 @@ func test_bot_fires_the_laser_at_someone_in_range() -> void:
 	var s := _fresh(2, 3)
 	var me := s.active_player()
 	me.space = "2"
-	me.items = ["laser", "turbo"]
+	me.items = ["laser", "bomb"]
 	s.players[1].space = "4"
-	s.players[2].space = "17"
+	s.players[2].space = "9"
 	var pick := BoardRules.bot_item(s, graph, cfg)
 	assert_eq(pick.size(), 3)
-	assert_eq(str(pick[0]), "laser", "a target in the beam beats the turbo")
+	assert_eq(str(pick[0]), "laser", "a target in the beam beats the bomb")
 	assert_eq(int(pick[1]), s.players[1].peer_id)
 	assert_true(absf(float((pick[2] as Dictionary)["aim"])) < 0.05, "aimed along +x at 4: %.3f" % float((pick[2] as Dictionary)["aim"]))
-	s.players[1].space = "17"
+	s.players[1].space = "9"
 	var pick2 := BoardRules.bot_item(s, graph, cfg)
-	assert_eq(str(pick2[0]), "turbo", "nobody in range: the turbo instead")
+	assert_eq(pick2.size(), 0, "nobody in the beam and nobody within a throw: the bot passes")
 
 
-func test_swap_and_shield() -> void:
+func test_portal_and_shield() -> void:
 	var s := _fresh(6)
 	var user := s.players[0]
 	var other := s.players[1]
 	user.space = "2"
 	other.space = "9"
-	user.items = ["swap"]
-	var ev := BoardRules.use_item(s, graph, cfg, 1, "swap", other.peer_id)
+	user.items = ["portal"]
+	var ev := BoardRules.use_item(s, graph, cfg, 1, "portal", other.peer_id)
 	assert_eq(user.space, "9")
 	assert_eq(other.space, "2")
-	assert_eq(ev.filter(func(e): return e["kind"] == "teleport").size(), 2)
-	# shield eats a bomb
+	var portals := ev.filter(func(e): return e["kind"] == "portal")
+	assert_eq(portals.size(), 1)
+	assert_eq(str(portals[0]["from"]), "2")
+	assert_eq(str(portals[0]["to"]), "9")
+	# A shield eats a bomb's hit: no damage, no knockback, both spent.
 	var t := _fresh(6)
 	var attacker := t.players[0]
 	var victim := t.players[1]
+	attacker.space = "5"
+	victim.space = "7"
 	attacker.items = ["bomb"]
 	victim.items = ["shield"]
 	victim.coins = 9
-	victim.space = "6"
-	var ev2 := BoardRules.use_item(t, graph, cfg, 1, "bomb", victim.peer_id)
-	assert_eq(victim.coins, 9, "no coin loss behind a shield")
-	assert_eq(victim.space, "6", "no knockback behind a shield")
+	var at := graph.get_space("7").position
+	var ev2 := BoardRules.use_item(t, graph, cfg, 1, "bomb", 0, {"x": at.x, "z": at.z})
+	assert_eq(victim.hp, 30, "no damage behind a shield")
+	assert_eq(victim.coins, 9)
+	assert_eq(victim.space, "7", "no knockback behind a shield")
 	assert_false(victim.items.has("shield"), "shield spent")
 	assert_false(attacker.items.has("bomb"), "bomb spent")
 	assert_true(ev2.any(func(e): return e["kind"] == "shield"))
 	# item draws can produce all five kinds
 	var names := (cfg["items"] as Dictionary).keys()
 	assert_eq(names.size(), 5)
+	assert_true(names.has("magnet") and names.has("portal") and not names.has("turbo"))
 
 
-func test_bot_swaps_only_for_a_real_gain() -> void:
+
+func test_bot_portals_only_for_a_real_gain() -> void:
 	var s := _fresh(1)
 	var me := s.active_player()
-	me.items = ["swap"]
+	me.items = ["portal"]
 	s.goal = "13"
 	me.space = "1"
 	s.players[1].space = "12"
 	var pick := BoardRules.bot_item(s, graph)
-	assert_eq(pick.size(), 3, "swap with the player sitting next to the goal")
-	assert_eq(str(pick[0]), "swap")
+	assert_eq(pick.size(), 3, "portal to the player sitting next to the goal")
+	assert_eq(str(pick[0]), "portal")
 	assert_eq(int(pick[1]), s.players[1].peer_id)
 	s.players[1].space = "1"
-	assert_eq(BoardRules.bot_item(s, graph).size(), 0, "no gain, no swap")
+	assert_eq(BoardRules.bot_item(s, graph).size(), 0, "no gain, no portal")
 
 
 func test_every_board_validates_and_loops() -> void:
@@ -530,3 +576,63 @@ func test_machine_spot_is_far_from_the_players() -> void:
 	for f in spaces:
 		total_c += graph.distance(str(f), chosen)
 	assert_eq(int(round(total_c / spaces.size() * 100.0)), int(round(best_mean * 100.0)), "farthest on average")
+
+
+func test_magnet() -> void:
+	# The claw reaches three spaces along the walkway either way and pulls one item, else coins.
+	var s := _fresh(4)
+	var me := s.players[0]
+	var near := s.players[1]
+	var far := s.players[2]
+	me.space = "1"
+	near.space = "3"
+	far.space = "9"
+	me.items = ["magnet"]
+	near.items = ["laser"]
+	var targets := BoardRules.magnet_targets(s, graph, cfg, me)
+	assert_eq(targets.size(), 1)
+	assert_true(targets.has(near))
+	assert_eq(BoardRules.use_item(s, graph, cfg, 1, "magnet", far.peer_id).size(), 0, "out of range: nothing happens")
+	assert_true(me.items.has("magnet"), "kept")
+	var ev := BoardRules.use_item(s, graph, cfg, 1, "magnet", near.peer_id)
+	var grabs := ev.filter(func(e): return e["kind"] == "magnet")
+	assert_eq(grabs.size(), 1)
+	assert_eq(str(grabs[0]["item"]), "laser")
+	assert_eq(me.items, ["laser"])
+	assert_true(near.items.is_empty())
+	# Behind counts too (the short way round), and an empty bar gives coins.
+	var t := _fresh(4)
+	var thief := t.players[0]
+	var mark := t.players[1]
+	thief.space = "3"
+	mark.space = "1"
+	mark.coins = 5
+	thief.items = ["magnet"]
+	assert_true(BoardRules.magnet_targets(t, graph, cfg, thief).has(mark), "two spaces back")
+	var ev2 := BoardRules.use_item(t, graph, cfg, 1, "magnet", mark.peer_id)
+	var g2: Dictionary = ev2.filter(func(e): return e["kind"] == "magnet")[0]
+	assert_eq(int(g2["coins"]), 3)
+	assert_eq(mark.coins, 2)
+	assert_eq(thief.coins, 8)
+	# A shield eats the grab: nothing stolen, the shield spent.
+	var u := _fresh(4)
+	u.players[0].space = "1"
+	u.players[1].space = "2"
+	u.players[0].items = ["magnet"]
+	u.players[1].items = ["shield", "laser"]
+	var ev3 := BoardRules.use_item(u, graph, cfg, 1, "magnet", u.players[1].peer_id)
+	assert_true(bool((ev3.filter(func(e): return e["kind"] == "magnet")[0] as Dictionary).get("shielded", false)))
+	assert_eq(u.players[1].items, ["laser"])
+	assert_true(u.players[0].items.is_empty())
+	assert_true(ev3.any(func(e): return e["kind"] == "shield"))
+	# The bot grabs from the one in range with the most to lose.
+	var v := _fresh(4)
+	v.players[0].space = "1"
+	v.players[1].space = "2"
+	v.players[2].space = "3"
+	v.players[0].items = ["magnet"]
+	v.players[1].items = ["shield"]
+	v.players[2].items = ["laser"]
+	var pick := BoardRules.bot_item(v, graph, cfg)
+	assert_eq(str(pick[0]), "magnet")
+	assert_eq(int(pick[1]), v.players[2].peer_id, "the laser, not the shield")

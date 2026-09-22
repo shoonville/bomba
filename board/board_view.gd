@@ -46,6 +46,13 @@ var _aim_len: float = 9.0
 var _aim_peer: int = 0
 var _beam: MeshInstance3D
 var _beam_dot: MeshInstance3D
+var _throw: bool = false             # aiming the bomb: the range ring and the landing reticle
+var _throw_range: float = 9.0
+var _throw_radius: float = 3.0
+var _throw_point: Vector3 = Vector3.ZERO
+var _range_ring: MeshInstance3D
+var _reticle: Node3D
+var _swirl_vp: SubViewport         # the menu's swirl, rendered small for the portals' faces
 var _blood_root: Node3D
 var _blood_drawn: Dictionary = {}   # blood serial → true
 var _blood_mat: Material
@@ -453,9 +460,13 @@ func end_aim() -> void:
 		return
 	_aiming = false
 	var pawn: BoardPawn = pawns.get(_aim_peer, null)
-	if pawn != null:
+	if pawn != null and not _throw:
 		pawn.show_gun(false)
+	_throw = false
 	_hide_beam()
+	if _range_ring != null:
+		_range_ring.visible = false
+		_reticle.visible = false
 
 
 func is_aiming() -> bool:
@@ -487,6 +498,103 @@ func _update_aim(pawn: BoardPawn) -> void:
 	var d := Vector2(hit.x - pawn.global_position.x, hit.z - pawn.global_position.z)
 	if d.length() > 0.2:
 		_aim = atan2(d.y, d.x)
+
+
+## The local player aims the bomb: a ring on the ground shows how far it can be thrown, a reticle
+## the size of the blast follows the mouse inside it, and the pawn turns to face it.
+func begin_throw(peer_id: int, range_m: float, radius_m: float) -> void:
+	_aiming = true
+	_throw = true
+	_aim_peer = peer_id
+	_throw_range = range_m
+	_throw_radius = radius_m
+	var pawn: BoardPawn = pawns.get(peer_id, null)
+	if pawn == null:
+		return
+	_ensure_throw_marks()
+	(_range_ring.mesh as TorusMesh).inner_radius = range_m - 0.08
+	(_range_ring.mesh as TorusMesh).outer_radius = range_m + 0.08
+	var rt := (_reticle.get_child(0) as MeshInstance3D).mesh as TorusMesh
+	rt.inner_radius = radius_m - 0.09
+	rt.outer_radius = radius_m + 0.09
+	_range_ring.visible = true
+	_reticle.visible = true
+	_range_ring.global_position = pawn.global_position + Vector3(0, 0.05, 0)
+	_throw_point = pawn.global_position + Vector3(range_m * 0.6, 0.0, 0.0)
+	_focus(pawn.global_position)
+
+
+func throw_point() -> Vector3:
+	return _throw_point
+
+
+func _ensure_throw_marks() -> void:
+	if _range_ring != null:
+		return
+	_range_ring = MeshInstance3D.new()
+	var rm := TorusMesh.new()
+	rm.rings = 72
+	rm.ring_segments = 6
+	_range_ring.mesh = rm
+	_range_ring.material_override = _flat_mat(Color(Palette.hud_colour("score"), 0.8))
+	_range_ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_range_ring)
+	_reticle = Node3D.new()
+	add_child(_reticle)
+	var ring := MeshInstance3D.new()
+	var tm := TorusMesh.new()
+	tm.rings = 40
+	tm.ring_segments = 6
+	ring.mesh = tm
+	ring.material_override = _flat_mat(Color(Palette.hud_colour("danger"), 0.85))
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_reticle.add_child(ring)
+	var dot := MeshInstance3D.new()
+	var dm := CylinderMesh.new()
+	dm.top_radius = 0.22
+	dm.bottom_radius = 0.22
+	dm.height = 0.04
+	dot.mesh = dm
+	dot.material_override = _flat_mat(Color(Palette.hud_colour("danger"), 0.9))
+	dot.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_reticle.add_child(dot)
+
+
+## An unshaded translucent material drawn after the outline quad, which paints over transparent
+## geometry drawn before it.
+func _flat_mat(col: Color) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.albedo_color = col
+	m.render_priority = 3
+	return m
+
+
+## The landing point from the mouse: the point under the cursor on the plane at the pawn's feet,
+## held within the range. `--throw_test=DEG` pins it at 70 % of the range in that direction.
+func _update_throw(pawn: BoardPawn) -> void:
+	var base := pawn.global_position
+	if Game.args.has("throw_test"):
+		var a := deg_to_rad(float(Game.args["throw_test"]))
+		_throw_point = base + Vector3(cos(a), 0.0, sin(a)) * _throw_range * 0.7
+	elif camera != null:
+		var mouse := get_viewport().get_mouse_position()
+		var origin := camera.project_ray_origin(mouse)
+		var normal := camera.project_ray_normal(mouse)
+		if absf(normal.y) > 0.001:
+			var t := (base.y - origin.y) / normal.y
+			if t > 0.0:
+				var hit := origin + normal * t
+				var d := Vector2(hit.x - base.x, hit.z - base.z)
+				if d.length() > _throw_range:
+					d = d.normalized() * _throw_range
+				_throw_point = Vector3(base.x + d.x, base.y, base.z + d.y)
+	var to := _throw_point - base
+	if Vector2(to.x, to.z).length() > 0.2:
+		pawn.face_angle(atan2(to.z, to.x))
+	_range_ring.global_position = base + Vector3(0, 0.05, 0)
+	_reticle.global_position = _throw_point + Vector3(0, 0.06, 0)
 
 
 ## The shot everyone sees: a thick beam that fades over a third of a second.
@@ -1298,6 +1406,7 @@ func _on_state(state: BoardState) -> void:
 		_focus(director.space_position(ap.space))
 	if first:
 		_draw_blood_from_state()
+		_sync_shields()
 	# Low HP bleeds until a respawn refills it.
 	var low := int(director.cfg.get("bleed_below_hp", 10))
 	for p in state.players:
@@ -1334,6 +1443,7 @@ func _play_next() -> void:
 		if director.state != null and director.state.goal != "" and director.state.goal != _goal_spot:
 			_show_goal(director.state.goal)
 		_draw_blood_from_state()
+		_sync_shields()
 		return
 	_playing = true
 	var e: Dictionary = _queue.pop_front()
@@ -1399,12 +1509,16 @@ func _play_next() -> void:
 			# The HUD pops the item's icon over the pawn's head (Sean: an icon, not the name); a
 			# minigame reward shows when the winner's turn comes instead (the results card is up now).
 			Events.board_item_picked.emit(int(e["peer"]), str(e["item"]), bool(e.get("reward", false)))
+			if str(e["item"]) == "shield":
+				var sp: BoardPawn = pawns.get(int(e["peer"]), null)
+				if sp != null:
+					sp.set_shield(true)
 			Audio.play("ui_click", -2.0)
 			wait = 0.5 if not bool(e.get("reward", false)) else 0.1
 		"item_used":
 			_float_label(int(e["peer"]), str(e["item"]).to_upper() + "!", Palette.hud_colour("danger"))
 			Audio.play("dice", 0.0)
-			wait = 0.5 if str(e["item"]) != "laser" else 0.15
+			wait = 0.15 if str(e["item"]) in ["laser", "bomb", "magnet", "portal"] else 0.5
 		"laser":
 			# The shooter turns to the aim and draws, the beam flashes down the line, and every
 			# player in it flinches, bleeds and loses HP; a downed one comes back at the annex.
@@ -1462,6 +1576,177 @@ func _play_next() -> void:
 					if is_instance_valid(shooter) and not _aiming:
 						shooter.show_gun(false))
 			wait = 0.9 + 0.5 * deaths
+		"bomb":
+			# The thrower turns, winds up and throws; the bomb arcs to the landing point and goes off;
+			# everyone in the blast flinches, bleeds, loses HP and is shoved back along the walkway;
+			# a downed one comes back at the annex.
+			var thrower: BoardPawn = pawns.get(int(e["peer"]), null)
+			var at_arr: Array = e["at"]
+			var at := Vector3(float(at_arr[0]), float(at_arr[1]), float(at_arr[2]))
+			var radius := float(e["radius"])
+			var hits: Array = e.get("hits", [])
+			var deaths := 0
+			if thrower != null:
+				var d := at - thrower.global_position
+				if Vector2(d.x, d.z).length() > 0.2:
+					thrower.face_angle(atan2(d.z, d.x))
+				thrower.throw()
+				_focus(thrower.global_position.lerp(at, 0.5))
+				Audio.play("bomb_throw", -6.0)
+				await get_tree().create_timer(0.28).timeout
+				if not is_inside_tree():
+					_playing = false
+					return
+				if not Game.headless:
+					await _fly_bomb(thrower.hand_position(), at, 0.62)
+				else:
+					await get_tree().create_timer(0.62).timeout
+				if not is_inside_tree():
+					_playing = false
+					return
+				if not Game.headless:
+					_blast(at, radius)
+				Audio.play("bomb_blast", 0.0)
+				var longest := 0
+				for h in hits:
+					var victim: BoardPawn = pawns.get(int(h["peer"]), null)
+					if victim == null or bool(h.get("shielded", false)):
+						continue   # the shield event that follows shows it
+					victim.flinch()
+					victim.hit_bleed()
+					_blood_burst(victim.global_position)
+					if h.has("blood"):
+						_draw_blood(h["blood"])
+					_float_label(victim.peer_id, "-%d" % int(h["damage"]), Palette.hud_colour("danger"))
+					if bool(h.get("dead", false)):
+						deaths += 1
+					var knock: Array = h.get("knock", [])
+					if not knock.is_empty():
+						longest = maxi(longest, knock.size())
+						_knock_back(victim, knock)
+				if longest > 0:
+					await get_tree().create_timer(_hop * 0.8 * longest + 0.1).timeout
+					if not is_inside_tree():
+						_playing = false
+						return
+				if deaths > 0:
+					await get_tree().create_timer(0.5).timeout
+					if not is_inside_tree():
+						_playing = false
+						return
+					for h in hits:
+						if not bool(h.get("dead", false)):
+							continue
+						var victim: BoardPawn = pawns.get(int(h["peer"]), null)
+						if victim == null:
+							continue
+						_float_label(victim.peer_id, "DOWN!", Palette.hud_colour("danger"))
+						if not Game.headless:
+							Burst.spawn(self, victim.global_position + Vector3(0, 0.6, 0), Palette.player_colour(0), 0.8, 0.3, 8)
+						victim.snap_to(director.space_position(str(h["respawn"])))
+						victim.set_bleeding(false)
+						Audio.play("respawn", -4.0)
+						if int(h.get("coins", 0)) > 0 and victim != thrower:
+							_float_label(thrower.peer_id, "+%d" % int(h["coins"]), Palette.player_colour(3))
+			wait = 0.6 + 0.4 * deaths
+		"portal":
+			# A portal opens a step ahead of the user, who skates in and steps out of a second one
+			# beside the mark, shoves them through it, and takes their space while they come out
+			# of the first portal where the user stood (Sean's description, in that order).
+			var user: BoardPawn = pawns.get(int(e["peer"]), null)
+			var mark: BoardPawn = pawns.get(int(e["target"]), null)
+			var from_pos := director.space_position(str(e["from"]))
+			var to_pos := director.space_position(str(e["to"]))
+			if user != null and mark != null and not Game.headless:
+				var dir := mark.global_position - user.global_position
+				dir.y = 0.0
+				dir = dir.normalized() if dir.length() > 0.05 else Vector3.RIGHT
+				var p1 := user.global_position + dir * 1.4
+				var p2 := mark.global_position - dir * 1.4
+				user.face_angle(atan2(dir.z, dir.x))
+				var ring1 := _open_portal(p1, dir)
+				Audio.play("portal", -4.0)
+				_focus(p1)
+				await get_tree().create_timer(0.35).timeout
+				if not is_inside_tree():
+					_playing = false
+					return
+				user.hop_to(p1, 0.3)
+				await get_tree().create_timer(0.3).timeout
+				await _vanish(user, true)
+				var ring2 := _open_portal(p2, dir)
+				Audio.play("portal", -4.0)
+				_focus(mark.global_position)
+				await get_tree().create_timer(0.3).timeout
+				if not is_inside_tree():
+					_playing = false
+					return
+				user.snap_to(p2)
+				user.face_angle(atan2(dir.z, dir.x))
+				await _vanish(user, false)
+				await get_tree().create_timer(0.15).timeout
+				user.hop_to(p2 + dir * 0.6, 0.15)
+				await get_tree().create_timer(0.15).timeout
+				mark.flinch()
+				Audio.play("swap", -6.0)
+				mark.hop_to(p2, 0.3, false)
+				await get_tree().create_timer(0.3).timeout
+				await _vanish(mark, true)
+				_close_portal(ring2)
+				if not is_inside_tree():
+					_playing = false
+					return
+				mark.snap_to(from_pos)
+				await _vanish(mark, false)
+				_close_portal(ring1)
+				user.hop_to(to_pos, 0.25)
+				await get_tree().create_timer(0.25).timeout
+				_focus(to_pos)
+				Audio.play("respawn", -8.0)
+			else:
+				if user != null:
+					user.snap_to(to_pos)
+				if mark != null:
+					mark.snap_to(from_pos)
+			wait = 0.4
+		"magnet":
+			# The claw: the thief turns, the arm comes up, the claw flies out on its cable to the mark,
+			# who flinches, and retracts with the item, whose icon pops over the thief's head.
+			var thief: BoardPawn = pawns.get(int(e["peer"]), null)
+			var mark: BoardPawn = pawns.get(int(e["target"]), null)
+			if thief != null and mark != null:
+				var d := mark.global_position - thief.global_position
+				if Vector2(d.x, d.z).length() > 0.05:
+					thief.face_angle(atan2(d.z, d.x))
+				thief.show_claw(true)
+				_focus((thief.global_position + mark.global_position) * 0.5)
+				await get_tree().create_timer(0.3).timeout
+				if not is_inside_tree():
+					_playing = false
+					return
+				Audio.play("claw", -4.0)
+				if not Game.headless:
+					await thief.claw_to(mark.global_position + Vector3(0, 1.05, 0), 0.25)
+				else:
+					await get_tree().create_timer(0.25).timeout
+				mark.flinch()
+				if not Game.headless:
+					Burst.spawn(self, mark.global_position + Vector3(0, 1.0, 0), mark.colour, 0.5, 0.2, 7)
+					await thief.claw_back(0.32)
+				else:
+					await get_tree().create_timer(0.32).timeout
+				thief.show_claw(false)
+				if bool(e.get("shielded", false)):
+					pass   # the shield event that follows shows it
+				elif str(e["item"]) != "":
+					Events.board_item_picked.emit(thief.peer_id, str(e["item"]), false)
+					_float_label(mark.peer_id, "-%s" % str(e["item"]).to_upper(), Palette.hud_colour("danger"))
+					Audio.play("coin", -6.0)
+				elif int(e.get("coins", 0)) > 0:
+					_float_label(mark.peer_id, "-%d" % int(e["coins"]), Palette.hud_colour("danger"))
+					_float_label(thief.peer_id, "+%d" % int(e["coins"]), Palette.player_colour(3))
+					Audio.play("coin", -6.0)
+			wait = 0.5
 		"toy":
 			var pawn: BoardPawn = pawns.get(int(e["peer"]), null)
 			var col := Palette.hud_colour("score")
@@ -1483,6 +1768,7 @@ func _play_next() -> void:
 		"shield":
 			var pawn: BoardPawn = pawns.get(int(e["peer"]), null)
 			if pawn != null:
+				pawn.set_shield(false)
 				if not Game.headless:
 					Burst.spawn(self, pawn.global_position + Vector3(0, 0.8, 0), Palette.player_colour(5), 1.1, 0.45, 12)
 				_focus(pawn.global_position)
@@ -1522,6 +1808,174 @@ func _play_next() -> void:
 		_playing = false
 		return
 	_play_next()
+
+
+## The thrown bomb: a dark sphere with a cap and a spark, along a parabola from the hand to the
+## landing point, tumbling; gone when it lands.
+func _fly_bomb(from: Vector3, to: Vector3, seconds: float) -> void:
+	var shadow := Palette.map_colour("board", "shadow_tint")
+	var bomb := Node3D.new()
+	add_child(bomb)
+	var body := MeshInstance3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = 0.24
+	sm.height = 0.48
+	sm.radial_segments = 12
+	sm.rings = 6
+	body.mesh = sm
+	body.material_override = CelMaterial.for_colour(Color.from_hsv(0.62, 0.35, 0.16), shadow)
+	bomb.add_child(body)
+	var cap := MeshInstance3D.new()
+	var cb := BoxMesh.new()
+	cb.size = Vector3(0.12, 0.08, 0.12)
+	cap.mesh = cb
+	cap.position.y = 0.26
+	cap.material_override = CelMaterial.for_colour(Palette.hud_colour("paper"), shadow)
+	bomb.add_child(cap)
+	var spark := MeshInstance3D.new()
+	var ss := SphereMesh.new()
+	ss.radius = 0.07
+	ss.height = 0.14
+	ss.radial_segments = 6
+	ss.rings = 3
+	spark.mesh = ss
+	spark.position = Vector3(0.08, 0.4, 0.0)
+	spark.material_override = CelMaterial.for_colour(Palette.hud_colour("score"), shadow, 1.6)
+	bomb.add_child(spark)
+	bomb.global_position = from
+	var tw := create_tween()
+	tw.tween_method(_bomb_arc.bind(bomb, from, to), 0.0, 1.0, seconds)
+	await tw.finished
+	if is_instance_valid(bomb):
+		bomb.queue_free()
+
+
+func _bomb_arc(t: float, bomb: Node3D, from: Vector3, to: Vector3) -> void:
+	if not is_instance_valid(bomb):
+		return
+	var p := from.lerp(to, t)
+	p.y += 2.4 * 4.0 * t * (1.0 - t)
+	bomb.global_position = p
+	bomb.rotation.z = t * TAU * 1.5
+
+
+## The blast: two bursts and a ring racing out to the blast's radius.
+func _blast(at: Vector3, radius: float) -> void:
+	Burst.spawn(self, at + Vector3(0, 0.5, 0), Palette.hud_colour("danger"), radius * 0.55, 0.42, 12)
+	Burst.spawn(self, at + Vector3(0, 0.9, 0), Palette.hud_colour("score"), radius * 0.3, 0.25, 8)
+	var ring := MeshInstance3D.new()
+	var tm := TorusMesh.new()
+	tm.inner_radius = 0.2
+	tm.outer_radius = 0.42
+	tm.rings = 48
+	tm.ring_segments = 6
+	ring.mesh = tm
+	var m := _flat_mat(Color(Palette.hud_colour("danger"), 0.9))
+	ring.material_override = m
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(ring)
+	ring.global_position = at + Vector3(0, 0.08, 0)
+	ring.scale = Vector3.ONE * 0.2
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(ring, "scale", Vector3.ONE * (radius / 0.31), 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(m, "albedo_color:a", 0.0, 0.34)
+	tw.chain().tween_callback(ring.queue_free)
+
+
+## A shove backwards along the walkway, one space at a time, still facing the blast.
+func _knock_back(victim: BoardPawn, knock: Array) -> void:
+	for sid in knock:
+		if not is_inside_tree() or not is_instance_valid(victim):
+			return
+		victim.hop_to(director.space_position(str(sid)), _hop * 0.8, false)
+		await get_tree().create_timer(_hop * 0.8).timeout
+
+
+## The menu's marbled swirl (Sean: "the exact vibe", untouched), rendered small into a viewport
+## once, for the inside of every portal.
+func _swirl_texture() -> Texture2D:
+	if _swirl_vp == null:
+		_swirl_vp = SubViewport.new()
+		_swirl_vp.size = Vector2i(256, 384)
+		_swirl_vp.disable_3d = true
+		_swirl_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		add_child(_swirl_vp)
+		var bg := UiStyle.swirl_background()
+		bg.size = Vector2(256, 384)
+		_swirl_vp.add_child(bg)
+	return _swirl_vp.get_texture()
+
+
+## A standing portal facing `dir` (Sean: a rectangle, with the main menu's swirl inside): a
+## framed doorway a pawn fits through, the swirl moving on its face, opening with a pop.
+func _open_portal(pos: Vector3, dir: Vector3) -> Node3D:
+	var node := Node3D.new()
+	add_child(node)
+	var w := 1.5
+	var h := 2.3
+	var t := 0.12
+	node.global_position = pos + Vector3(0, h * 0.5 + 0.02, 0)
+	if Vector2(dir.x, dir.z).length() > 0.01:
+		node.look_at(node.global_position + Vector3(dir.x, 0.0, dir.z), Vector3.UP)
+	var col := Palette.player_colour(5)
+	var shadow := Palette.map_colour("board", "shadow_tint")
+	var frame := CelMaterial.for_colour(col, shadow, 1.2)
+	var stud := CelMaterial.for_colour(Palette.hud_colour("paper"), shadow, 0.6)
+	_prop_box(node, Vector3(w + t, t, t), Vector3(0, h * 0.5, 0), frame)
+	_prop_box(node, Vector3(w + t, t, t), Vector3(0, -h * 0.5, 0), frame)
+	_prop_box(node, Vector3(t, h, t), Vector3(-w * 0.5, 0, 0), frame)
+	_prop_box(node, Vector3(t, h, t), Vector3(w * 0.5, 0, 0), frame)
+	for sx: float in [-1.0, 1.0]:
+		for sy: float in [-1.0, 1.0]:
+			_prop_box(node, Vector3(t * 1.6, t * 1.6, t * 1.3), Vector3(sx * w * 0.5, sy * h * 0.5, 0), stud)
+	var face := MeshInstance3D.new()
+	var qm := QuadMesh.new()
+	qm.size = Vector2(w - t * 0.5, h - t * 0.5)
+	face.mesh = qm
+	var fmat := StandardMaterial3D.new()
+	fmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	fmat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	fmat.albedo_texture = _swirl_texture()
+	fmat.render_priority = 2
+	face.material_override = fmat
+	face.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	node.add_child(face)
+	node.scale = Vector3.ONE * 0.05
+	var tw := node.create_tween()
+	tw.tween_property(node, "scale", Vector3.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	Burst.spawn(self, node.global_position, col, 0.9, 0.3, 9)
+	return node
+
+
+func _close_portal(node: Node3D) -> void:
+	if node == null or not is_instance_valid(node):
+		return
+	var tw := node.create_tween()
+	tw.tween_property(node, "scale", Vector3.ONE * 0.05, 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_callback(node.queue_free)
+
+
+## A pawn shrinks into a portal (`out`) or grows back out of one.
+func _vanish(pawn: BoardPawn, out: bool) -> void:
+	if out:
+		pawn.scale = Vector3.ONE
+	else:
+		pawn.scale = Vector3.ONE * 0.02
+	var tw := pawn.create_tween()
+	tw.tween_property(pawn, "scale", Vector3.ONE * (0.02 if out else 1.0), 0.16).set_trans(Tween.TRANS_QUAD)
+	await tw.finished
+
+
+## Every pawn's aura agrees with the state's shields (the first state, and the end of a playback:
+## the events between animate the changes).
+func _sync_shields() -> void:
+	if director.state == null:
+		return
+	for p in director.state.players:
+		var pawn: BoardPawn = pawns.get(p.peer_id, null)
+		if pawn != null:
+			pawn.set_shield(p.items.has("shield"))
 
 
 func _float_label(peer_id: int, text: String, colour: Color) -> void:
@@ -1581,7 +2035,9 @@ func _process(delta: float) -> void:
 	_cam_yaw = _rotate_toward_angle(_cam_yaw, _cam_yaw_target, delta * 1.8)
 	if _aiming:
 		var pawn: BoardPawn = pawns.get(_aim_peer, null)
-		if pawn != null:
+		if pawn != null and _throw:
+			_update_throw(pawn)
+		elif pawn != null:
 			_update_aim(pawn)
 			pawn.face_angle(_aim)
 			_place_beam(pawn.gun_tip(), _aim, _aim_len, 0.07, 0.9)

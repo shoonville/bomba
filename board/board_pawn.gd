@@ -22,6 +22,13 @@ var _blood_mat: Material
 var _lean: Node3D
 var _lean_amount: float = 0.0
 var _lean_target: float = 0.0
+var _claw: Node3D            # the retractable claw's head, in world space while it is out
+var _claw_hand: Node3D       # the claw folded in the hand
+var _cable: MeshInstance3D
+var _claw_out: bool = false
+var _aura: MeshInstance3D    # the shield's glow
+var _aura_on: bool = false
+var _aura_tween: Tween
 
 
 func _process(delta: float) -> void:
@@ -36,6 +43,10 @@ func _process(delta: float) -> void:
 	_vspeed = lerpf(_vspeed, d.y / delta, 0.35)
 	_last_pos = global_position
 	_figure.animate(_speed, absf(_vspeed) < 1.0, 0.0, true, delta)
+	if _claw_out and _claw != null:
+		_place_cable()
+	if _aura_on and _aura != null and (_aura_tween == null or not _aura_tween.is_running()):
+		_aura.scale = Vector3.ONE * (1.0 + 0.04 * sin(_clock * 3.2))
 	if (_bleeding or _clock < _bleed_until) and not Game.headless:
 		_bleed_t -= delta
 		if _bleed_t <= 0.0:
@@ -86,6 +97,44 @@ func setup(p_peer_id: int, p_colour: Color, p_name: String) -> void:
 	_gun_tip = Node3D.new()
 	_gun_tip.position = Vector3(-0.1, -0.27, 0.0)
 	_gun.add_child(_gun_tip)
+	# The retractable claw (MAGNET): folded in the hand like the gun, and a head on a cable that
+	# flies out to the mark and back. Hidden until it is used.
+	var tint := CelMaterial.for_colour(colour, shadow)
+	_claw_hand = _build_claw(dark, tint)
+	_claw_hand.position = Vector3(0, -0.62, 0)
+	_claw_hand.rotation.x = -PI * 0.5   # its jaws along the arm's -Y, forward when the arm is up
+	_claw_hand.visible = false
+	hand.add_child(_claw_hand)
+	_claw = _build_claw(dark, tint)
+	_claw.visible = false
+	add_child(_claw)
+	_cable = MeshInstance3D.new()
+	var cbm := BoxMesh.new()
+	cbm.size = Vector3(0.045, 0.045, 1.0)
+	_cable.mesh = cbm
+	_cable.material_override = dark
+	_cable.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_cable.visible = false
+	add_child(_cable)
+	# The shield's aura (Sean: a glowing aura round the character): a translucent sphere in the
+	# safe spot's cyan, drawn after the outline quad, pulsing while the shield is held.
+	_aura = MeshInstance3D.new()
+	var am := SphereMesh.new()
+	am.radius = 0.95
+	am.height = 1.9
+	am.radial_segments = 20
+	am.rings = 10
+	_aura.mesh = am
+	_aura.position.y = 0.95
+	var aura_mat := StandardMaterial3D.new()
+	aura_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	aura_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	aura_mat.albedo_color = Color(Palette.hud_colour("meter"), 0.24)
+	aura_mat.render_priority = 2
+	_aura.material_override = aura_mat
+	_aura.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_aura.visible = false
+	add_child(_aura)
 	# The name tag is drawn by the board HUD (projected, de-overlapped), not as a Label3D.
 
 
@@ -103,13 +152,14 @@ func _prop(parent: Node3D, size: Vector3, pos: Vector3, mat: Material) -> MeshIn
 ## Skate to a world position over `seconds`, facing the direction of travel: a level glide (no
 ## arc; Sean: the hops looked like flying up and down), leaning into it, the figure's push-glide
 ## legs doing the rest. Consecutive calls run into one another, so a move reads as one skate.
-func hop_to(target: Vector3, seconds: float) -> void:
+## `turn` false keeps the pawn facing where it was (a shove backwards).
+func hop_to(target: Vector3, seconds: float, turn: bool = true) -> void:
 	if _hop_tween != null and _hop_tween.is_valid():
 		_hop_tween.kill()
 	var from := global_position
 	var flat := target - from
 	flat.y = 0.0
-	if flat.length() > 0.01:
+	if turn and flat.length() > 0.01:
 		_body.look_at(global_position + flat, Vector3.UP)
 		_body.rotate_y(PI)
 	_lean_target = 1.0
@@ -154,6 +204,99 @@ func gun_tip() -> Vector3:
 func flinch() -> void:
 	if _figure != null:
 		_figure.flinch()
+
+
+## A claw: a base block, a hinge and two jaws opening along -Z, the tips in the player's colour.
+func _build_claw(dark: Material, tint: Material) -> Node3D:
+	var root := Node3D.new()
+	_prop(root, Vector3(0.14, 0.1, 0.12), Vector3(0, 0, 0.04), dark)
+	_prop(root, Vector3(0.18, 0.06, 0.06), Vector3(0, 0, -0.03), tint)
+	for side: float in [-1.0, 1.0]:
+		var jaw := Node3D.new()
+		jaw.position = Vector3(side * 0.06, 0, -0.05)
+		jaw.rotation.y = side * 0.55
+		root.add_child(jaw)
+		_prop(jaw, Vector3(0.035, 0.05, 0.16), Vector3(0, 0, -0.08), dark)
+		_prop(jaw, Vector3(0.04, 0.05, 0.05), Vector3(0, 0, -0.17), tint)
+	return root
+
+
+## The claw out in the hand (the arm comes up) or folded away.
+func show_claw(on: bool) -> void:
+	if _claw_hand != null:
+		_claw_hand.visible = on
+	if _figure != null:
+		_figure.set_aiming(on)
+
+
+## The claw's head flies out on its cable to a world point.
+func claw_to(target: Vector3, seconds: float) -> void:
+	if _claw == null:
+		return
+	_claw_hand.visible = false
+	_claw_out = true
+	_claw.visible = true
+	_cable.visible = true
+	_claw.global_position = hand_position()
+	if _claw.global_position.distance_to(target) > 0.05:
+		_claw.look_at(target, Vector3.UP)
+	_place_cable()
+	var tw := create_tween()
+	tw.tween_property(_claw, "global_position", target, seconds).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	await tw.finished
+
+
+## ...and retracts into the hand.
+func claw_back(seconds: float) -> void:
+	if _claw == null or not _claw_out:
+		return
+	var tw := create_tween()
+	tw.tween_property(_claw, "global_position", hand_position(), seconds).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	await tw.finished
+	_claw_out = false
+	_claw.visible = false
+	_cable.visible = false
+	_claw_hand.visible = true
+
+
+func _place_cable() -> void:
+	var from := hand_position()
+	var to := _claw.global_position
+	var d := from.distance_to(to)
+	_cable.global_position = (from + to) * 0.5
+	if d > 0.02:
+		_cable.look_at(to, Vector3.UP if absf((to - from).normalized().y) < 0.99 else Vector3.RIGHT)
+		_cable.scale = Vector3(1.0, 1.0, d)
+
+
+## Where the right hand is, in world space (0.62 down the arm from the shoulder).
+func hand_position() -> Vector3:
+	if _figure == null:
+		return global_position + Vector3(0, 1.3, 0)
+	return _figure.hand_node().to_global(Vector3(0, -0.62, 0))
+
+
+## The bomb throw: the figure's arm winds up and whips over.
+func throw() -> void:
+	if _figure != null:
+		_figure.throw()
+
+
+## The shield's aura on (pops in) or off (shrinks away).
+func set_shield(on: bool) -> void:
+	if _aura == null or on == _aura_on:
+		return
+	_aura_on = on
+	if _aura_tween != null and _aura_tween.is_valid():
+		_aura_tween.kill()
+	_aura_tween = create_tween()
+	if on:
+		_aura.visible = true
+		_aura.scale = Vector3.ONE * 0.15
+		_aura_tween.tween_property(_aura, "scale", Vector3.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	else:
+		_aura_tween.tween_property(_aura, "scale", Vector3.ONE * 0.05, 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		_aura_tween.tween_callback(func(): _aura.visible = false)
 
 
 ## A hit: a fast drip for a couple of seconds.
