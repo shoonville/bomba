@@ -178,29 +178,15 @@ static func names() -> PackedStringArray:
 static func build(name: String) -> PackedFloat32Array:
 	match name:
 		"sniper_fire":
-			# Sean: like the Halo sniper. Its signature is a hard crack with a deep punch and a
-			# high metallic ring that hangs and falls after the shot: an 8 ms broadband snap, a
-			# 3.5 kHz crack, a 140→55 Hz punch, a 900→260 Hz saw bark, then two rings (2.9→2.4 kHz
-			# and 4.3→3.8 kHz) decaying over 0.6 s with a slow wobble, and a low room tail.
-			var n := samples(1.1)
-			var snap := mul(lowpass(highpass(noise(n, 11), 800.0), 9000.0), env_exp(n, 0.006))
-			var crack := mul(lowpass(noise(n, 12), 3500.0), env_exp(n, 0.03))
-			var punch := mul(tone(n, 140.0, 55.0, "sine"), env_exp(n, 0.16))
-			var bark := mul(lowpass(tone(n, 900.0, 260.0, "saw"), 2400.0), env_exp(n, 0.055))
-			var ring := mul(tone(n, 2900.0, 2400.0, "tri"), env_exp(n, 0.55))
-			var ring2 := mul(tone(n, 4300.0, 3800.0, "sine"), env_exp(n, 0.32))
-			var wobble := tone(n, 6.0, 6.0, "sine")
-			for i in n:
-				ring[i] *= 0.8 + 0.2 * wobble[i]
-			var tail := mul(lowpass(noise(n, 13), 900.0), env_exp(n, 0.4, 0.03))
-			var out := mix(silence(n), snap, 1.0)
-			out = mix(out, crack, 0.9)
-			out = mix(out, punch, 1.2)
-			out = mix(out, bark, 0.5)
-			out = mix(out, ring, 0.4, samples(0.012))
-			out = mix(out, ring2, 0.16, samples(0.012))
-			out = mix(out, tail, 0.4)
-			return softclip(out, 2.4)
+			# The original (Sean: the Halo-shaped take "sounds like a bazooka"; this one stays).
+			var n := samples(0.95)
+			var crack := mul(lowpass(noise(n, 11), 3200.0), env_exp(n, 0.07))
+			var boom := mul(tone(n, 190.0, 42.0, "sine"), env_exp(n, 0.26))
+			var tail := mul(lowpass(noise(n, 12), 700.0), env_exp(n, 0.42, 0.03))
+			var out := mix(silence(n), crack, 1.0)
+			out = mix(out, boom, 1.1)
+			out = mix(out, tail, 0.45)
+			return softclip(out, 2.2)
 		"ar_fire":
 			# Crisp, not a thud (Sean): a hard 1.5–7 kHz snap, a mid crack, a short low kick that
 			# is over in 30 ms, and a tiny action click behind it.

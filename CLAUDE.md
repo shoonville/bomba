@@ -35,7 +35,8 @@ that travels with the repo.
   egg domes); never add machine pads or more spots.
 - Hitmarker: a dice tick, "similar to the sound the dice makes" (two takes before it were too
   high-pitched). Muzzle flash: a round red-orange puff (the cyan star was "tacky"); impact stars small.
-  Sniper sound: Halo-shaped. Board pawns rollerskate (no hopping); no BOMBA BAY sign. Music: off
+  Sniper sound: the ORIGINAL crack-boom-tail (the Halo-shaped take "sounds like a bazooka"; do not
+  redo it). Board pawns rollerskate (no hopping); no BOMBA BAY sign. Music: off
   (`Audio.MUSIC_ENABLED`).
 
 ## Verify before claiming
