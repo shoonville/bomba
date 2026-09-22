@@ -99,6 +99,15 @@ Nothing needs Python: the report tools (`tools/report.gd`: `traj_diff`, `soak_re
 `remote_diff`, `frame_stats`) run in Godot. Only `tools/gen_board.py`, which regenerates the board, is Python. The
 harnesses use their own ports (27077, 27101, 27103) so a running game on 27015 never fails a check.
 
+## Exporting for friends
+
+`tools/export_windows.sh` writes `export/BOMBA.exe`, one file with the pack embedded, from the
+"Windows Desktop" preset in `export_presets.cfg` (checked in; no signing, no secrets). It needs
+Godot's 4.7.2 export templates installed once (Editor → Manage Export Templates → Download and
+Install, or the curl + unzip lines in the script's header); the script says so and stops if they
+are missing. Friends need nothing else: the exe hosts, joins by friend code through the relay,
+and keeps its settings in `%APPDATA%Godotpp_userdataBOMBA`.
+
 ## Layout
 
 One folder per subsystem (`DESIGN.md` §4): `core/` bootstrap and services, `board/` the turn-based
