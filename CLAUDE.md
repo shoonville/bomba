@@ -34,7 +34,9 @@ that travels with the repo.
   The vending machine lives on the two annexes only (his "original two spots", the bridges to the
   egg domes); never add machine pads or more spots.
 - Hitmarker: a dice tick, "similar to the sound the dice makes" (two takes before it were too
-  high-pitched). No muzzle burst on either weapon ("tacky"). Music: off (`Audio.MUSIC_ENABLED`).
+  high-pitched). Muzzle flash: a round red-orange puff (the cyan star was "tacky"); impact stars small.
+  Sniper sound: Halo-shaped. Board pawns rollerskate (no hopping); no BOMBA BAY sign. Music: off
+  (`Audio.MUSIC_ENABLED`).
 
 ## Verify before claiming
 - `tools/check_all.sh`: tests + compile-all, determinism, a headless board match. `SOAK=1` adds the

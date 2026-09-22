@@ -24,7 +24,13 @@ const SHOULDER_Y := 1.42
 const HIP_Y := 0.98
 
 
-func build(colour: Color, map_id: String, head_y: float = 1.62, with_gun: bool = false) -> void:
+var _skates: bool = false
+
+
+## `skates`: rollerskates under the boots and the push-glide walk (the board pawns; Sean did not
+## want them hopping across the board).
+func build(colour: Color, map_id: String, head_y: float = 1.62, with_gun: bool = false, skates: bool = false) -> void:
+	_skates = skates
 	# Built to reference/char1.webp and char2.jpg.webp (Bomb Rush Cyberfunk's robots): a boxy
 	# screen head with side ears on a thin neck, an open bomber jacket in the identity colour
 	# over a dark mechanical core, a belt, thin jointed arms with cream forearm guards and dark
@@ -129,6 +135,13 @@ func _leg(pivot: Vector3, pants_mat: Material, joint_mat: Material, boot_mat: Ma
 	_box(n, Vector3(0.21, 0.03, 0.35), Vector3(0, -0.965, -0.04), sole_mat)
 	_box(n, Vector3(0.2, 0.08, 0.1), Vector3(0, -0.9, -0.18), cap_mat)
 	_box(n, Vector3(0.21, 0.03, 0.12), Vector3(0, -0.84, -0.04), stripe_mat)
+	if _skates:
+		# Rollerskates: a plate under the sole and two wheels each side, axles across the boot.
+		_box(n, Vector3(0.16, 0.025, 0.3), Vector3(0, -0.99, -0.04), joint_mat)
+		for wz: float in [-0.15, 0.07]:
+			for wx: float in [-0.075, 0.075]:
+				var wheel := _cyl(n, 0.045, 0.035, Vector3(wx, -1.03, wz), boot_mat)
+				wheel.rotation.z = PI * 0.5
 	return n
 
 
@@ -170,6 +183,22 @@ func animate(speed: float, on_floor: bool, pitch: float, alive: bool, delta: flo
 	var run := clampf(speed / 6.0, 0.0, 1.0)
 	_phase += delta * (5.0 + speed * 1.7)
 	var swing := sin(_phase) * 0.8 * run
+	if _skates:
+		# The push-glide: one leg sweeps back and out to the side while the other carries the
+		# weight, then they swap; the arms swing against the legs and the torso leans in.
+		var t := _phase * 0.5
+		var push_l := maxf(0.0, sin(t)) * run
+		var push_r := maxf(0.0, -sin(t)) * run
+		_l_leg.rotation.x = -0.9 * push_l + 0.15 * run * (1.0 - push_l)
+		_r_leg.rotation.x = -0.9 * push_r + 0.15 * run * (1.0 - push_r)
+		_l_leg.rotation.z = -0.28 * push_l
+		_r_leg.rotation.z = 0.28 * push_r
+		_l_arm.rotation.x = 0.55 * (push_r - push_l)
+		_r_arm.rotation.x = 0.55 * (push_l - push_r)
+		head.rotation.x = -0.1 + _flinch * 0.35
+		_torso.rotation.x = _flinch * 0.22 - 0.22 * run
+		_torso.position.y = (SHOULDER_Y + HIP_Y) * 0.5 + sin(_phase * 0.45) * 0.008
+		return
 	if on_floor:
 		_l_leg.rotation.x = swing
 		_r_leg.rotation.x = -swing

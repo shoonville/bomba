@@ -579,3 +579,11 @@ measured at 1920×1080 unless noted, on the 5090, and extrapolated.
   its icon over the head instead of the name; the hitmarker is a dice tick (headshot two), and the
   muzzle burst is gone. Frames: `arena_hip_sniper.png`, `arena_spectator.png`, `arena_hip_ar.png`,
   `board_items.png` (target mode), `board_item_pop.png`. His verdict pending.
+- **Sean's ten notes** (2026-09-21): the muzzle flash is back as a round red-orange puff and the
+  impact stars are 45 % of their size; a Halo-shaped sniper crack with the hanging ring; the
+  BOMBA BAY sign is gone; the rocket has a skirt, a bell and right-triangle fins; the AR's dot
+  is 30 % smaller and its body is a receiver, handguard, barrel, magazine, grip and stock; the
+  minigame reward's icon pops over the winner's head as their turn begins; the turn order is
+  the last minigame's ranking (tested); the pawns rollerskate across the board (a level glide,
+  a push-glide walk, wheels under the boots). Frames: `arena_hip_ar.png`, `arena_burst.png`,
+  `board_turn.png`, `board_hop.png`, `board_reward_card.png`. His verdict pending.

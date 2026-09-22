@@ -66,11 +66,56 @@ static func spawn(parent: Node, at: Vector3, colour: Color, size: float = 0.35, 
 	tw.chain().tween_callback(root.queue_free)
 
 
+## A wobbly disc: `points` vertices at 85–100 % of `r`, for the muzzle flash (round, not spiky).
+static func _disc(points: int, r: float, seed_value: int) -> ArrayMesh:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	var verts := PackedVector3Array()
+	var rim := PackedVector3Array()
+	for i in points:
+		var a := float(i) / float(points) * TAU
+		var rr := r * rng.randf_range(0.85, 1.0)
+		rim.append(Vector3(cos(a) * rr, sin(a) * rr, 0.0))
+	for i in points:
+		verts.append(Vector3.ZERO)
+		verts.append(rim[i])
+		verts.append(rim[(i + 1) % points])
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return mesh
+
+
+## The muzzle flash (Sean: back, red/orange, and not the spiky star): a round red-orange puff
+## with a hot yellow core and an ink rim, drawn over the weapon, gone in 70 ms.
+static func spawn_muzzle(parent: Node, at: Vector3) -> void:
+	if parent == null or not parent.is_inside_tree():
+		return
+	var root := Node3D.new()
+	parent.add_child(root)
+	root.global_position = at
+	var seed_value := int(at.x * 131.0 + at.y * 17.0 + at.z * 7.0) + Time.get_ticks_msec()
+	var mats: Array[StandardMaterial3D] = []
+	mats.append(_layer(root, _disc(14, 0.15, seed_value), Palette.hud_colour("ink"), 1, false))
+	mats.append(_layer(root, _disc(14, 0.125, seed_value), Palette.under_ceiling(Color.from_hsv(14.0 / 360.0, 0.88, 0.85)), 2, false))
+	mats.append(_layer(root, _disc(10, 0.062, seed_value + 1), Palette.under_ceiling(Color.from_hsv(44.0 / 360.0, 0.55, 0.9)), 3, false))
+	root.scale = Vector3.ONE * 0.5
+	var tw := root.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(root, "scale", Vector3.ONE, 0.04).set_ease(Tween.EASE_OUT)
+	for m in mats:
+		tw.tween_property(m, "albedo_color:a", 0.0, 0.07).set_delay(0.03)
+	tw.chain().tween_callback(root.queue_free)
+
+
+## The impact star at the hit point, small (Sean: "a lot smaller"; these were 0.42 / 0.34 / 0.22).
 static func spawn_impact(parent: Node, at: Vector3, hit_kind: int) -> void:
 	match hit_kind:
 		HitscanResolver.HEAD:
-			spawn(parent, at, Palette.hud_colour("score"), 0.42, 0.2, 9)
+			spawn(parent, at, Palette.hud_colour("score"), 0.19, 0.2, 9)
 		HitscanResolver.BODY:
-			spawn(parent, at, Palette.hud_colour("danger"), 0.34, 0.16, 8)
+			spawn(parent, at, Palette.hud_colour("danger"), 0.15, 0.16, 8)
 		HitscanResolver.WORLD:
-			spawn(parent, at, Palette.hud_colour("meter"), 0.22, 0.12, 7)
+			spawn(parent, at, Palette.hud_colour("meter"), 0.10, 0.12, 7)

@@ -767,19 +767,35 @@ func _build_moon(g: BoardGraph, shadow: Color) -> void:
 				ring.scale = Vector3(1.0, 0.3, 1.0)
 				ring.material_override = accent_mat
 				prop.add_child(ring)
+				# The rocket's foot (Sean: the bottom was "random triangles pasted on it"): the
+				# body ends in a wider skirt, an engine bell hangs under it, and three fins are
+				# right-triangle plates standing on the pad with their straight edge against the
+				# skirt and the body, the slope running out to the tip.
+				_prop_cyl(prop, 0.72, 3.6, Vector3(0, 2.5, 0), paper_mat)     # body, foot at 0.7
+				_prop_cyl(prop, 0.74, 0.5, Vector3(0, 2.0, 0), accent_mat)    # band
+				_prop_cyl(prop, 0.8, 0.36, Vector3(0, 0.88, 0), accent_mat)   # skirt
+				var bell := MeshInstance3D.new()
+				var bellm := CylinderMesh.new()
+				bellm.top_radius = 0.34
+				bellm.bottom_radius = 0.58
+				bellm.height = 0.46
+				bellm.radial_segments = 14
+				bell.mesh = bellm
+				bell.position.y = 0.47
+				bell.material_override = ink_mat
+				prop.add_child(bell)
+				_prop_cyl(prop, 0.3, 0.06, Vector3(0, 0.3, 0), metal_mat)     # the throat
 				for fk in 3:
+					var fa := fk * TAU / 3.0 + 0.5
 					var fin := MeshInstance3D.new()
 					var fm := PrismMesh.new()
-					fm.size = Vector3(1.4, 1.6, 0.12)
+					fm.size = Vector3(1.0, 1.5, 0.1)
+					fm.left_to_right = 0.0   # the apex over the inner edge: a right triangle
 					fin.mesh = fm
-					fin.position = Vector3(cos(fk * TAU / 3.0) * 0.95, 0.95, sin(fk * TAU / 3.0) * 0.95)
-					fin.rotation.y = -fk * TAU / 3.0 + PI * 0.5
-					fin.rotation.z = -PI * 0.5
+					fin.position = Vector3(cos(fa) * 1.2, 0.99, sin(fa) * 1.2)
+					fin.rotation.y = -fa   # local +x points out from the axis
 					fin.material_override = accent_mat
 					prop.add_child(fin)
-				_prop_cyl(prop, 0.5, 0.5, Vector3(0, 0.45, 0), ink_mat)
-				_prop_cyl(prop, 0.72, 3.6, Vector3(0, 2.5, 0), paper_mat)
-				_prop_cyl(prop, 0.74, 0.5, Vector3(0, 2.0, 0), accent_mat)
 				var nose := MeshInstance3D.new()
 				var nm := CylinderMesh.new()
 				nm.top_radius = 0.0
@@ -927,18 +943,35 @@ func _build_space(g: BoardGraph, shadow: Color) -> void:
 				1:   # beacon
 					_prop_cyl(prop, 0.08, 2.4, Vector3(0, 1.2, 0), ink_mat)
 					_prop_sphere(prop, 0.35, Vector3(0, 2.6, 0), alien_mat)
-				2:   # wrecked rocket, nose in the rock
-					var wreck := MeshInstance3D.new()
-					var wm := CylinderMesh.new()
-					wm.top_radius = 0.5
-					wm.bottom_radius = 0.5
-					wm.height = 2.6
-					wreck.mesh = wm
+				2:   # wrecked rocket, nose in the rock, its tail with the fins and bell in the air
+					var wreck := Node3D.new()
 					wreck.position = Vector3(0, 0.9, 0)
 					wreck.rotation = Vector3(0.6, 0.0, 0.4)
-					wreck.material_override = paper_mat
 					prop.add_child(wreck)
-					_prop_box(prop, Vector3(1.2, 0.9, 0.1), Vector3(0.5, 2.0, 0.3), accent_mat)
+					_prop_cyl(wreck, 0.5, 2.6, Vector3.ZERO, paper_mat)
+					_prop_cyl(wreck, 0.56, 0.3, Vector3(0, 1.15, 0), accent_mat)   # skirt at the tail
+					var wbell := MeshInstance3D.new()
+					var wbm := CylinderMesh.new()
+					wbm.top_radius = 0.42
+					wbm.bottom_radius = 0.24
+					wbm.height = 0.36
+					wbm.radial_segments = 12
+					wbell.mesh = wbm
+					wbell.position.y = 1.48
+					wbell.material_override = ink_mat
+					wreck.add_child(wbell)
+					for fk in 3:
+						var fa := fk * TAU / 3.0
+						var fin := MeshInstance3D.new()
+						var fm := PrismMesh.new()
+						fm.size = Vector3(0.7, 1.0, 0.08)
+						fm.left_to_right = 0.0
+						fin.mesh = fm
+						fin.position = Vector3(cos(fa) * 0.83, 0.8, sin(fa) * 0.83)
+						fin.rotation.y = -fa
+						fin.rotation.z = PI   # the tail is up: the straight edge stays against the body, the slope runs down
+						fin.material_override = accent_mat
+						wreck.add_child(fin)
 				_:   # a lamp, because someone lives out here
 					_prop_cyl(prop, 0.08, 2.2, Vector3(0, 1.1, 0), ink_mat)
 					_prop_box(prop, Vector3(0.6, 0.3, 0.6), Vector3(0, 2.3, 0), ink_mat)
@@ -1310,6 +1343,7 @@ func _play_next() -> void:
 			var p := director.state.player(int(e["peer"])) if director.state != null else null
 			if p != null:
 				_focus(director.space_position(p.space))
+			Events.board_turn_shown.emit(int(e["peer"]))
 			wait = 0.3
 		"roll":
 			var pawn: BoardPawn = pawns.get(int(e["peer"]), null)
@@ -1362,10 +1396,11 @@ func _play_next() -> void:
 			Audio.play("coin" if int(e["delta"]) >= 0 else "hurt", -6.0)
 			wait = 0.5
 		"item":
-			# The HUD pops the item's icon over the pawn's head (Sean: an icon, not the name).
-			Events.board_item_picked.emit(int(e["peer"]), str(e["item"]))
+			# The HUD pops the item's icon over the pawn's head (Sean: an icon, not the name); a
+			# minigame reward shows when the winner's turn comes instead (the results card is up now).
+			Events.board_item_picked.emit(int(e["peer"]), str(e["item"]), bool(e.get("reward", false)))
 			Audio.play("ui_click", -2.0)
-			wait = 0.5
+			wait = 0.5 if not bool(e.get("reward", false)) else 0.1
 		"item_used":
 			_float_label(int(e["peer"]), str(e["item"]).to_upper() + "!", Palette.hud_colour("danger"))
 			Audio.play("dice", 0.0)

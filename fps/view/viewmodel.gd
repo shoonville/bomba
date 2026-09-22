@@ -117,13 +117,31 @@ func setup(p: Player) -> void:
 	_sphere(sniper, 0.02, Vector3(0.105, 0.028, 0.03), dark_mat)
 	_arm(sniper, Vector3(0.0, -0.12, 0.05), accent_mat, dark_mat)
 	add_child(sniper)
-	# AR: compact. Receiver, short barrel, magazine, grip, a screen.
+	# AR (Sean: the body was a solid block; give it the shape of a real assault rifle). Same
+	# footprint and the same grip point, so the pose is unchanged: an upper receiver stepped
+	# over a lower, a vented handguard with a top rail and a front post, a round barrel with a
+	# muzzle device, a charging handle, an ejection port, a trigger guard, a curved magazine, a
+	# pistol grip, a buffer tube and a stock with a butt pad. The sight is as it was.
 	var ar := Node3D.new()
 	ar.name = "AR"
-	_box(ar, Vector3(0.10, 0.12, 0.40), Vector3(0, 0, -0.05), body_mat)
-	_box(ar, Vector3(0.05, 0.05, 0.28), Vector3(0, 0.015, -0.38), dark_mat)
-	_box(ar, Vector3(0.05, 0.16, 0.08), Vector3(0, -0.13, -0.02), accent_mat)
-	_box(ar, Vector3(0.04, 0.14, 0.07), Vector3(0, -0.11, 0.14), dark_mat)
+	_box(ar, Vector3(0.09, 0.07, 0.30), Vector3(0, 0.02, -0.02), body_mat)          # upper receiver
+	_box(ar, Vector3(0.085, 0.06, 0.20), Vector3(0, -0.04, 0.02), dark_mat)         # lower receiver
+	_box(ar, Vector3(0.002, 0.03, 0.06), Vector3(0.046, 0.025, -0.02), tan_mat)     # ejection port
+	_box(ar, Vector3(0.05, 0.02, 0.03), Vector3(0, 0.05, 0.135), dark_mat)          # charging handle
+	_box(ar, Vector3(0.075, 0.075, 0.24), Vector3(0, 0.01, -0.29), dark_mat)        # handguard
+	_box(ar, Vector3(0.04, 0.012, 0.24), Vector3(0, 0.054, -0.29), body_mat)        # top rail
+	for sx: float in [-0.039, 0.039]:
+		for k in 3:
+			_box(ar, Vector3(0.004, 0.014, 0.045), Vector3(sx, 0.022, -0.22 - k * 0.065), tan_mat)   # vents
+	_box(ar, Vector3(0.02, 0.045, 0.02), Vector3(0, 0.07, -0.40), dark_mat)         # front post
+	_cyl(ar, 0.016, 0.22, Vector3(0, 0.015, -0.52), dark_mat)                       # barrel
+	_cyl(ar, 0.024, 0.06, Vector3(0, 0.015, -0.62), dark_mat)                       # muzzle device
+	_box(ar, Vector3(0.03, 0.006, 0.07), Vector3(0, -0.085, 0.09), dark_mat)        # trigger guard
+	_box(ar, Vector3(0.01, 0.03, 0.008), Vector3(0, -0.075, 0.075), tan_mat)        # trigger
+	_box(ar, Vector3(0.05, 0.09, 0.075), Vector3(0, -0.11, -0.02), accent_mat)      # magazine
+	_box(ar, Vector3(0.05, 0.09, 0.075), Vector3(0, -0.185, -0.035), accent_mat)    # its curve
+	_box(ar, Vector3(0.052, 0.02, 0.078), Vector3(0, -0.235, -0.043), dark_mat)     # base plate
+	_box(ar, Vector3(0.04, 0.14, 0.07), Vector3(0, -0.11, 0.14), dark_mat)          # pistol grip
 	# The sight as it was, but its screen is a translucent pane with the red dot drawn in the
 	# middle of it (Sean: "on the screen of the AR, in the middle"). At ADS the screen's centre
 	# sits on the camera axis, so you aim through the tinted glass with the dot at the point.
@@ -156,8 +174,8 @@ func setup(p: Player) -> void:
 	dot_mat.render_priority = 3
 	var dot := MeshInstance3D.new()
 	var dm := SphereMesh.new()
-	dm.radius = 0.0035
-	dm.height = 0.007
+	dm.radius = 0.00245   # 30 % smaller than the 0.0035 it was (Sean)
+	dm.height = 0.0049
 	dm.radial_segments = 10
 	dm.rings = 5
 	dot.mesh = dm
@@ -166,7 +184,9 @@ func setup(p: Player) -> void:
 	dot.layers = 2
 	dot.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	ar.add_child(dot)
-	_box(ar, Vector3(0.07, 0.07, 0.18), Vector3(0, -0.02, 0.22), body_mat)
+	_cyl(ar, 0.02, 0.14, Vector3(0, 0.01, 0.20), dark_mat)                          # buffer tube
+	_box(ar, Vector3(0.06, 0.09, 0.12), Vector3(0, -0.02, 0.29), body_mat)          # stock
+	_box(ar, Vector3(0.065, 0.1, 0.02), Vector3(0, -0.02, 0.36), dark_mat)          # butt pad
 	_arm(ar, Vector3(0.0, -0.11, 0.14), accent_mat, dark_mat)
 	add_child(ar)
 	models = [sniper, ar]

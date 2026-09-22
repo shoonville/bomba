@@ -19,12 +19,18 @@ var _bleed_until: float = 0.0    # a fast drip right after a hit
 var _bleed_t: float = 0.0
 var _clock: float = 0.0
 var _blood_mat: Material
+var _lean: Node3D
+var _lean_amount: float = 0.0
+var _lean_target: float = 0.0
 
 
 func _process(delta: float) -> void:
 	if _figure == null or delta <= 0.0:
 		return
 	_clock += delta
+	_lean_amount = move_toward(_lean_amount, _lean_target, delta * 5.0)
+	if _lean != null:
+		_lean.rotation.x = -0.14 * _lean_amount   # into the glide
 	var d := global_position - _last_pos
 	_speed = lerpf(_speed, minf(Vector2(d.x, d.z).length() / delta, 12.0), 0.35)
 	_vspeed = lerpf(_vspeed, d.y / delta, 0.35)
@@ -44,10 +50,13 @@ func setup(p_peer_id: int, p_colour: Color, p_name: String) -> void:
 	var ink := Palette.map_colour("board", "line")
 	_body = Node3D.new()
 	add_child(_body)
+	_lean = Node3D.new()
+	_body.add_child(_lean)
 	_figure = Figure.new()
 	_figure.name = "Figure"
-	_body.add_child(_figure)
-	_figure.build(colour, "board", 1.62, false)
+	_lean.add_child(_figure)
+	_figure.build(colour, "board", 1.62, false, true)
+	_figure.position.y = 0.05   # up on the skates' wheels
 	var ring := MeshInstance3D.new()
 	var tm := TorusMesh.new()
 	tm.inner_radius = 0.48
@@ -91,7 +100,9 @@ func _prop(parent: Node3D, size: Vector3, pos: Vector3, mat: Material) -> MeshIn
 	return mi
 
 
-## Hop to a world position over `seconds`, facing the direction of travel.
+## Skate to a world position over `seconds`, facing the direction of travel: a level glide (no
+## arc; Sean: the hops looked like flying up and down), leaning into it, the figure's push-glide
+## legs doing the rest. Consecutive calls run into one another, so a move reads as one skate.
 func hop_to(target: Vector3, seconds: float) -> void:
 	if _hop_tween != null and _hop_tween.is_valid():
 		_hop_tween.kill()
@@ -101,22 +112,20 @@ func hop_to(target: Vector3, seconds: float) -> void:
 	if flat.length() > 0.01:
 		_body.look_at(global_position + flat, Vector3.UP)
 		_body.rotate_y(PI)
+	_lean_target = 1.0
 	_hop_tween = create_tween()
 	_hop_tween.set_parallel(true)
-	_hop_tween.tween_property(self, "global_position:x", target.x, seconds)
-	_hop_tween.tween_property(self, "global_position:z", target.z, seconds)
-	var peak := maxf(from.y, target.y) + 0.9
-	var up := _hop_tween.tween_property(self, "global_position:y", peak, seconds * 0.5).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
-	_hop_tween.chain().tween_property(self, "global_position:y", target.y, seconds * 0.5).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
-	var squash := _hop_tween.parallel()
-	_body.scale = Vector3(1.15, 0.85, 1.15)
-	_hop_tween.parallel().tween_property(_body, "scale", Vector3.ONE, seconds * 0.6)
+	_hop_tween.tween_property(self, "global_position:x", target.x, seconds).set_trans(Tween.TRANS_LINEAR)
+	_hop_tween.tween_property(self, "global_position:z", target.z, seconds).set_trans(Tween.TRANS_LINEAR)
+	_hop_tween.tween_property(self, "global_position:y", target.y, seconds).set_trans(Tween.TRANS_LINEAR)
+	_hop_tween.chain().tween_callback(func(): _lean_target = 0.0)
 
 
 func snap_to(target: Vector3) -> void:
 	if _hop_tween != null and _hop_tween.is_valid():
 		_hop_tween.kill()
 	global_position = target
+	_lean_target = 0.0
 	_body.scale = Vector3.ONE
 
 

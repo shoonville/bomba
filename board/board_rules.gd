@@ -386,7 +386,19 @@ static func apply_minigame(state: BoardState, cfg: Dictionary, ranked_peer_ids: 
 				names.sort()
 				var item: String = names[rng(state).randi_range(0, names.size() - 1)]
 				p.items.append(item)
-				events.append({"kind": "item", "peer": p.peer_id, "item": item})
+				# "reward": the HUD shows this one over the winner's head when their turn comes.
+				events.append({"kind": "item", "peer": p.peer_id, "item": item, "reward": true})
+	# The turn order follows the ranking (Sean): the winner rolls first next round, second
+	# second, and so on; anyone the ranking left out keeps their place at the back.
+	var ordered: Array[BoardState.PlayerState] = []
+	for pid in ranked_peer_ids:
+		var p := state.player(int(pid))
+		if p != null and not ordered.has(p):
+			ordered.append(p)
+	for p in state.players:
+		if not ordered.has(p):
+			ordered.append(p)
+	state.players = ordered
 	state.round += 1
 	if state.rounds > 0 and state.round > state.rounds:
 		_finish(state, events)

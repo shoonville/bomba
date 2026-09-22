@@ -33,6 +33,8 @@ var _hotbar_sel: int = 0
 var _hotbar_rects: Array = []
 var _aiming: bool = false
 var _item_pops: Array = []   # [{peer, item, t}]: an item's icon rising over the pawn that picked it up
+var _turn_pops: Dictionary = {}   # peer → item: a minigame reward waiting for that player's turn
+var _turn_shown_for: int = 0      # whose turn the view last showed
 var _test_done: bool = false
 var _pop_test_done: bool = false
 var _pop_test_t: float = 0.0
@@ -67,8 +69,24 @@ func attach(p_director: BoardDirector) -> void:
 		_dice_value = v
 		_dice_t = 1.3
 	)
-	Events.board_item_picked.connect(func(peer_id: int, item: String):
-		_item_pops.append({"peer": peer_id, "item": item, "t": 1.6})
+	Events.board_item_picked.connect(func(peer_id: int, item: String, at_turn: bool):
+		if at_turn:
+			# A minigame reward: shown when that player's turn comes (Sean). The reward's turn
+			# event follows the item in the same batch, and the winner rolls first now, so it
+			# usually comes a fraction of a second later; if that turn was already shown (the
+			# view plays the turn ahead of the item pop on a rebuilt board), pop it now.
+			if _turn_shown_for == peer_id:
+				_item_pops.append({"peer": peer_id, "item": item, "t": 2.4, "life": 2.4, "rise": 0.1})
+			else:
+				_turn_pops[peer_id] = item
+		else:
+			_item_pops.append({"peer": peer_id, "item": item, "t": 1.6})
+	)
+	Events.board_turn_shown.connect(func(peer_id: int):
+		_turn_shown_for = peer_id
+		if _turn_pops.has(peer_id):
+			_item_pops.append({"peer": peer_id, "item": str(_turn_pops[peer_id]), "t": 2.4, "life": 2.4, "rise": 0.1})
+			_turn_pops.erase(peer_id)
 	)
 
 
@@ -100,6 +118,7 @@ func _on_events(events: Array) -> void:
 				_intro_small = false
 				_intro_t = 2.6
 				_dice_t = 0.0
+				_turn_shown_for = 0   # the next turn shown is the round's first, after the reward
 				Audio.play("round_end", -6.0)
 			"laser":
 				for h in e.get("hits", []):
@@ -684,11 +703,13 @@ func _draw_item_pops() -> void:
 		if a == Vector3.INF or cam.is_position_behind(a):
 			continue
 		var t: float = pop["t"]
-		var age := 1.6 - t
+		var age := float(pop.get("life", 1.6)) - t
 		var grow := clampf(age / 0.14, 0.0, 1.0)
 		var scale := 1.0 + 0.35 * sin(grow * PI)   # a little overshoot as it lands
 		var alpha := clampf(t / 0.35, 0.0, 1.0)
-		var sp := cam.unproject_position(a + Vector3(0, 0.55 + age * 0.35, 0))
+		# A pickup drifts up 0.35 m/s; the longer reward pop at a turn only 0.1, so it stays
+		# over the head while the player rolls.
+		var sp := cam.unproject_position(a + Vector3(0, 0.55 + age * float(pop.get("rise", 0.35)), 0))
 		var r := 34.0 * scale * grow
 		draw_circle(sp, r + 4.0, Color(UiStyle.accent(), alpha))
 		draw_circle(sp, r, Color(UiStyle.ink(), 0.92 * alpha))

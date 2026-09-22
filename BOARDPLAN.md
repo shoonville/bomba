@@ -11,7 +11,7 @@ of its board or its item list.
 
 A match is `rounds` rounds (tuning `board.rounds`, 5 for now). A round is:
 
-1. **Turns.** Each player in turn order: use an item (optional, before rolling) → roll a d6 →
+1. **Turns.** Each player in turn order (the last minigame's ranking, winner first; the lobby order in round 1): use an item (optional, before rolling) → roll a d6 →
    move that many spaces, choosing at forks → the landing space fires its effect.
 2. **Minigame.** Everyone plays one minigame (the arena, shortened to
    `board.minigame_round_seconds`). Placement pays coins (`board.rewards.coins_by_rank`), the

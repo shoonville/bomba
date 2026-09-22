@@ -12,7 +12,7 @@ extends Node3D
 ##     one, fuel tanks, a solar array and the telescope dome on the other; on the slab a solar
 ##     farm, cargo stacks, a comms mast,
 ##     antenna masts, a telescope dome, a drill rig over a crater, oxygen tanks, landing lights
-##     around the pad, a welcome sign, a pad sign, an arrow post.
+##     around the pad, a pad sign, an arrow post.
 ##   Alive: a patrol drone flying the loop, a buggy driving the longest clear stretch of rim,
 ##     blinking lights, a shooting star now and then, a space station turning on the horizon.
 ## Deterministic from the board id, so every peer sees the same base.
@@ -947,40 +947,8 @@ func _signs_and_pennants(landmarks: Array) -> void:
 	var nxt: Vector3 = g.get_space(start.next[0]).position if not start.next.is_empty() else sp0 + Vector3(0, 0, 1)
 	var dir := Vector2(nxt.x - sp0.x, nxt.z - sp0.z).normalized()
 	var side := Vector2(-dir.y, dir.x)
-	# The welcome sign beside the start, facing it.
-	var placed_sign := false
-	for s: float in [1.0, -1.0]:
-		var at := Vector2(sp0.x, sp0.z) + side * s * 3.8
-		if _tile_clear(at.x, at.y, 2.3) and _prop_clear(at.x, at.y, 1.8) and _inside(at.x, at.y, 0.98):
-			_occupied.append(Vector3(at.x, at.y, 1.8))
-			var yaw := atan2(-(at.x - sp0.x), -(at.y - sp0.z))
-			var sn := _node(Vector3(at.x, _top, at.y), yaw)
-			for px: float in [-1.5, 1.5]:
-				_cyl(sn, 0.09, 0.11, 2.8, Vector3(px, 1.4, 0), "counter_dark")
-			_box(sn, Vector3(3.6, 1.3, 0.12), Vector3(0, 2.9, 0), "paper")
-			_box(sn, Vector3(3.66, 1.36, 0.1), Vector3(0, 2.9, -0.09), "counter_dark")   # its back
-			_box(sn, Vector3(3.7, 0.16, 0.16), Vector3(0, 3.6, 0), "accent_lit")
-			_box(sn, Vector3(3.7, 0.16, 0.16), Vector3(0, 2.2, 0), "accent_lit")
-			_label(sn, "BOMBA BAY", Vector3(0, 3.05, 0.08), 96, Palette.map_colour("board", "line"), 0.0, 0)
-			_label(sn, "WELCOME · MIND THE GAP", Vector3(0, 2.55, 0.08), 34, Palette.map_colour("board", "counter_dark"), 0.0, 0)
-			var b := _sphere(sn, 0.12, Vector3(1.5, 2.95, 0), "glow_yellow", Vector3.ONE, false, 8)
-			_blinkers.append({"node": b, "period": 0.6, "phase": 0.0})
-			var b2 := _sphere(sn, 0.12, Vector3(-1.5, 2.95, 0), "glow_yellow", Vector3.ONE, false, 8)
-			_blinkers.append({"node": b2, "period": 0.6, "phase": 0.3})
-			_count("welcome sign")
-			placed_sign = true
-			break
-	if not placed_sign:
-		var alt := _spot_near(sp0.x, sp0.z, 3.5, 7.0, 2.3, 1.8, 300)
-		if alt != Vector2.INF:
-			var yaw := atan2(-(alt.x - sp0.x), -(alt.y - sp0.z))
-			var sn := _node(Vector3(alt.x, _top, alt.y), yaw)
-			for px: float in [-1.5, 1.5]:
-				_cyl(sn, 0.09, 0.11, 2.8, Vector3(px, 1.4, 0), "counter_dark")
-			_box(sn, Vector3(3.6, 1.3, 0.12), Vector3(0, 2.9, 0), "paper")
-			_label(sn, "BOMBA BAY", Vector3(0, 3.05, 0.08), 96, Palette.map_colour("board", "line"), 0.0, 0)
-			_count("welcome sign")
-	# The start line: two posts beside the start tile and a sagging string of pennants over it,
+	# The start line (the welcome sign that stood here is gone, Sean: "dont like it"): two posts
+	# beside the start tile and a sagging string of pennants over it,
 	# high enough to clear a hopping pawn.
 	var pa := Vector2(sp0.x, sp0.z) + side * 2.3
 	var pb := Vector2(sp0.x, sp0.z) - side * 2.3

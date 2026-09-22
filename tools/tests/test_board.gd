@@ -193,9 +193,16 @@ func test_round_minigame_and_finish() -> void:
 	var ev := BoardRules.apply_minigame(s, cfg, [-1, 1, -2])
 	assert_eq(s.player(-1).coins, int(cfg["start_coins"]) + 10 + _coins_from_board(s, -1), "winner +10 (plus board coins)")
 	assert_true(s.player(-1).items.size() >= 1, "winner drew an item")
+	assert_true(ev.any(func(e): return e["kind"] == "item" and bool(e.get("reward", false))), "the reward item is flagged")
 	assert_eq(s.round, 2)
 	assert_eq(s.phase, BoardState.PHASE_TURNS)
 	assert_eq(s.active, 0)
+	# The turn order is the ranking: the winner first, then second, then third.
+	assert_eq(s.players[0].peer_id, -1, "the winner rolls first")
+	assert_eq(s.players[1].peer_id, 1)
+	assert_eq(s.players[2].peer_id, -2)
+	assert_eq(s.active_player().peer_id, -1)
+	assert_eq(s.players.size(), 3, "nobody lost")
 	for i in 3:
 		_play_turn(s)
 	BoardRules.apply_minigame(s, cfg, [1, -1, -2])
