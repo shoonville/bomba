@@ -459,7 +459,12 @@ func _on_minigame_start(id: String, seed_value: int, players_data: Array, config
 	if _menu != null and is_instance_valid(_menu):
 		_menu.queue_free()
 		_menu = null
+	if wipe != null:
+		wipe.hold()   # a full cover at once; the match builds under it over the next ticks
 	for child in world.get_children():
+		if board != null and is_instance_valid(board) and child == board.view:
+			board.sleep_view()   # the board view sleeps through the minigame and wakes after it
+			continue
 		# Remove first: a queued-free node keeps its name until the end of the frame, and a
 		# duplicate name would be auto-renamed differently on each peer, breaking RPC paths.
 		world.remove_child(child)
@@ -484,12 +489,10 @@ func _on_minigame_start(id: String, seed_value: int, players_data: Array, config
 	world.add_child(active_minigame)
 	active_minigame.finished.connect(_on_minigame_finished.bind(id))
 	var t2 := Time.get_ticks_usec()
-	active_minigame.setup(players, seed_value, config)
+	active_minigame.setup(players, seed_value, config)   # the simulation, this frame
 	var t3 := Time.get_ticks_usec()
 	Events.minigame_started.emit(id)
 	Audio.music("music_match")
-	if wipe != null:
-		wipe.slam()
 	_clear_hud()
 	if not headless and ResourceLoader.exists(HUD_SCENE):
 		_hud = load(HUD_SCENE).instantiate()
@@ -500,6 +503,13 @@ func _on_minigame_start(id: String, seed_value: int, players_data: Array, config
 	Log.info("game", "Minigame %s started with %d players, seed %d" % [id, players.size(), seed_value])
 	Log.info("perf", "Minigame build: scene load %d ms, instantiate+add %d ms, setup %d ms, hud %d ms" % [
 		(t1 - t0) / 1000, (t2 - t1) / 1000, (t3 - t2) / 1000, (t4 - t3) / 1000])
+	# The look, one chunk per frame under the held cover; then the reveal.
+	var built := active_minigame
+	await built.build_visuals()
+	if active_minigame != built or not is_instance_valid(built) or not built.is_inside_tree():
+		return   # the peer left or the match was replaced mid-build
+	if wipe != null:
+		wipe.slam()
 
 
 func _on_minigame_finished(result: MinigameResult, id: String) -> void:
@@ -586,9 +596,11 @@ func _process(delta: float) -> void:
 		var nodes := int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
 		var resources := int(Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT))
 		var pipes := _pipeline_counts()
-		Log.info("perf", "Frame hitch %d ms (%s) vram %d MB (%+d MB) objects %d | process %.0f ms physics %.0f ms | netfox loop %.1f ms rollback %.1f ms (%d ticks) | nodes %d (%+d) resources %d (%+d) | pipelines canvas %+d mesh %+d surface %+d draw %+d spec %+d" % [
-			gap, where, vmem / 1048576, (vmem - _last_vmem) / 1048576,
+		var rid_h := get_viewport().get_viewport_rid()
+		Log.info("perf", "Frame hitch %d ms frame %d (%s) vram %d MB (%+d MB) objects %d | render cpu %.1f ms gpu %.1f ms | process %.0f ms physics %.0f ms | netfox loop %.1f ms rollback %.1f ms (%d ticks) | nodes %d (%+d) resources %d (%+d) | pipelines canvas %+d mesh %+d surface %+d draw %+d spec %+d" % [
+			gap, Engine.get_process_frames(), where, vmem / 1048576, (vmem - _last_vmem) / 1048576,
 			int(Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)),
+			RenderingServer.viewport_get_measured_render_time_cpu(rid_h), RenderingServer.viewport_get_measured_render_time_gpu(rid_h),
 			Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0,
 			Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0,
 			NetworkPerformance.get_network_loop_duration_ms(), NetworkPerformance.get_rollback_loop_duration_ms(),

@@ -51,6 +51,11 @@ that travels with the repo.
   FpsMatch hooks it added stay for the next objective minigame.
 - Effects share meshes and materials (`Burst`, `Tracer`): a new mesh or material per shot compiled a
   GPU pipeline on the shot's frame and was the arena "skipping frames". Never build per-shot resources.
+- Scene switches: a minigame's `setup()` builds the simulation on the RPC's frame (never spread it:
+  a player spawned a tick late broke determinism) and `build_visuals()` builds the look one chunk
+  per frame under `Wipe.hold()`; the board view sleeps through minigames (`BoardView.sleep/wake`),
+  never freed and rebuilt. A StandardMaterial3D's shader dies with its last user: keep shared
+  instances (the viewmodel's, the warm-up's `_keep`), never a fresh one per match.
 
 ## Verify before claiming
 - `tools/check_all.sh`: tests + compile-all, determinism, a headless board match. `SOAK=1` adds the

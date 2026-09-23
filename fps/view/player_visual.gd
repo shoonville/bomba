@@ -20,11 +20,13 @@ var hide_tag: bool = false   # the spectator camera sits behind this player: its
 func setup(p: Player, p_cfg: MovementConfig) -> void:
 	player = p
 	cfg = p_cfg
+	var t0 := Time.get_ticks_usec()
 	figure = Figure.new()
 	figure.name = "Figure"
 	add_child(figure)
 	figure.build(player.colour, "arena", cfg.head_center_height, true)
 	head_node = figure.head
+	var t_fig := Time.get_ticks_usec()
 	# Name over the head for everyone but yourself (you never see your own figure anyway).
 	name_label = Label3D.new()
 	name_label.text = player.display_name.to_upper()
@@ -38,6 +40,7 @@ func setup(p: Player, p_cfg: MovementConfig) -> void:
 	name_label.no_depth_test = false
 	name_label.position.y = cfg.head_center_height + 0.5
 	add_child(name_label)
+	Log.debug("perf", "Visual %s: figure %d ms, name tag %d ms" % [player.display_name, (t_fig - t0) / 1000, (Time.get_ticks_usec() - t_fig) / 1000])
 
 
 func _process(delta: float) -> void:

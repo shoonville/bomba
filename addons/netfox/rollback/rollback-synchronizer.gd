@@ -99,6 +99,7 @@ var _history_recorder: _RollbackHistoryRecorder
 ## Call this after any change to configuration. Updates based on authority too
 ## ( calls process_authority ).
 func process_settings() -> void:
+	_settings_processed = true   # PATCH #9
 	_property_cache.root = root
 	_property_cache.clear()
 	_freshness_store.clear()
@@ -234,7 +235,7 @@ func _ready() -> void:
 		# Wait for time sync to complete
 		await NetworkTime.after_sync
 
-	process_settings.call_deferred()
+	_process_settings_if_pending.call_deferred()   # PATCH #9
 
 func _connect_signals() -> void:
 	NetworkTime.before_tick.connect(_before_tick)
@@ -334,6 +335,7 @@ func _get_configuration_warnings() -> PackedStringArray:
 func _enter_tree() -> void:
 	if Engine.is_editor_hint():
 		return
+	_settings_processed = false   # PATCH #9
 
 	if not visibility_filter:
 		visibility_filter = PeerVisibilityFilter.new()
@@ -353,7 +355,7 @@ func _enter_tree() -> void:
 		# Wait for time sync to complete
 		await NetworkTime.after_sync
 	_connect_signals.call_deferred()
-	process_settings.call_deferred()
+	_process_settings_if_pending.call_deferred()   # PATCH #9
 
 func _exit_tree() -> void:
 	if Engine.is_editor_hint():
@@ -450,6 +452,18 @@ func _run_rollback_tick(tick: int) -> void:
 func _push_simset_metrics():
 	# Push metrics
 	NetworkPerformance.push_rollback_nodes_simulated(_simset.size())
+
+# PATCH #9: process_settings() ran three times per node on spawn (the game's own call once the
+# authority is set, then the deferred calls from _enter_tree and _ready), 2.9 ms each in BOMBA's
+# player. The deferred calls now skip when settings were already processed since the node entered
+# the tree; a node that never calls process_settings() itself still gets the deferred one.
+var _settings_processed: bool = false
+
+
+func _process_settings_if_pending() -> void:
+	if not _settings_processed and not Engine.is_editor_hint():
+		process_settings()
+
 
 func _reprocess_settings() -> void:
 	if not _properties_dirty or Engine.is_editor_hint():

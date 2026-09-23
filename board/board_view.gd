@@ -26,6 +26,8 @@ var _bounds_radius: float = 20.0
 var _map_blend: float = 0.0
 var _anim_t: float = 0.0
 var camera: Camera3D
+var _env_node: WorldEnvironment
+var _env: Environment
 var markers: Array = []
 var _marker_t: float = 0.0
 var _cam_target: Vector3 = Vector3.ZERO
@@ -57,6 +59,33 @@ var _swirl_vp: SubViewport         # the menu's swirl, rendered small for the po
 var _blood_root: Node3D
 var _blood_drawn: Dictionary = {}   # blood serial → true
 var _blood_mat: Material
+
+
+## Dormant through a minigame (2026-09-22): hidden, not processing (its tweens pause with it),
+## the camera released and the environment withdrawn, everything else kept, so the return to
+## the board costs nothing instead of the 120–150 ms rebuild of 2800 nodes that stalled the wipe
+## every round. A hidden WorldEnvironment still applies its environment, and the minigame brings
+## its own, so the environment comes off the node while asleep and back on at wake.
+func sleep() -> void:
+	visible = false
+	process_mode = Node.PROCESS_MODE_DISABLED
+	if camera != null:
+		camera.current = false
+	if _env_node != null:
+		_env_node.environment = null
+
+
+func wake() -> void:
+	if _env_node != null and _env != null:
+		_env_node.environment = _env
+	visible = true
+	process_mode = Node.PROCESS_MODE_INHERIT
+	if camera != null and not Game.headless:
+		camera.current = true
+
+
+func is_asleep() -> bool:
+	return not visible
 
 
 func setup(p_director: BoardDirector) -> void:
@@ -114,6 +143,8 @@ func _build_environment() -> void:
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
+	_env_node = we
+	_env = env
 	var sun := DirectionalLight3D.new()
 	sun.light_color = Color(1.0, 0.96, 0.9)
 	sun.shadow_enabled = true

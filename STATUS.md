@@ -701,8 +701,10 @@ determinism identical, a headless four-seat board match over two rounds with ran
 Measured on his desktop after the shot-effects fix: pacing 0.1–0.5 % late frames, motion even to the
 millimetre (35.8 mm every frame while walking), GPU 2.9 ms of a 6 ms frame at 5K, worst physics step
 3.3 ms (4 seats, host). What is left, by what a player would feel:
-1. The switch into a minigame stalls 93–200 ms under the wipe (the wipe visibly freezes): build the
-   match over several frames or during the board's NEXT UP card.
+1. DONE (2026-09-22, later the same day): the switch into a minigame stalled 150–200 ms and the
+   return 119–148 ms; now 27 ms in and 17 ms back (the look built over frames under a held cover,
+   the board view asleep through the minigame instead of rebuilt, shared viewmodel materials,
+   one unit box mesh, netfox patch #9). Left: the first board build of a match, 140 ms once.
 2. Six seats with real clients: the host's tick loop measured 7.0 ms mean (2026-09-19), which at
    165 Hz misses a refresh on every tick-carrying frame; fine at 60 Hz. Profile the loop with three
    clients and cut it (netfox's per-property apply, bot AI every other tick) before calling the host

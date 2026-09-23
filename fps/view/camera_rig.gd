@@ -22,15 +22,22 @@ func attach(p: Player) -> void:
 	camera.cull_mask = 0xFFFFF
 	add_child(camera)
 	camera.current = true
-	viewmodel = Viewmodel.new()
-	viewmodel.name = "Viewmodel"
-	camera.add_child(viewmodel)
-	viewmodel.setup(player)
 	post = PostStack.new()
 	post.name = "Post"
 	camera.add_child(post)
 	post.setup("arena")
 	_sync()
+
+
+## The weapons in view, built on a frame of their own by the match (the two models are the
+## bulk of the rig's cost); the shot effects and the HUD check for it before reading it.
+func add_viewmodel() -> void:
+	if viewmodel != null or camera == null:
+		return
+	viewmodel = Viewmodel.new()
+	viewmodel.name = "Viewmodel"
+	camera.add_child(viewmodel)
+	viewmodel.setup(player)
 
 
 func _process(_delta: float) -> void:

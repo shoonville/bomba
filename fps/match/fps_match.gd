@@ -92,27 +92,29 @@ func _on_setup() -> void:
 	var t0 := Time.get_ticks_usec()
 	layout = _layout()
 	MapDressing.dress(layout, _palette_map())   # decor only: boxes, spawns and the bot graph untouched
-	MapBuilder.build(map_root, layout, _palette_map())
-	var t_map := Time.get_ticks_usec()
-	_build_environment()
+	MapBuilder.build_boxes(map_root, layout, _palette_map())
 	spawn_selector.configure(layout["spawns"], arena_cfg, move_cfg.eye_height)
 	_ctx = MatchContext.new()
 	_ctx.arena = self
+	if is_authority() and multiplayer.multiplayer_peer is OfflineMultiplayerPeer and not NetworkTime.is_initial_sync_done():
+		# Offline (harness) run: nothing started the clock, and the chunks below wait on it.
+		NetworkTime.start()
+	var t_map := Time.get_ticks_usec()
 
+	# The simulation, all in this call and in this order: the players' bodies and brains, the tick
+	# hooks and the round clock. Their look (figures, viewmodel, decor, sky) comes in
+	# build_visuals(), in chunks on later frames under the wipe's held cover; the whole build in
+	# one frame used to stall the wipe 90–200 ms. Only the look moves: a player spawned after a
+	# tick loop drifted the determinism harness by 0.4 mm on one seat (2026-09-22).
 	var sorted := players.duplicate()
 	sorted.sort_custom(func(a: MinigamePlayer, b: MinigamePlayer): return a.peer_id < b.peer_id)
 	for i in sorted.size():
 		_spawn_player(sorted[i], i)
-
 	NetworkTime.on_tick.connect(_on_tick)
 	NetworkTime.after_tick_loop.connect(_after_tick_loop)
 	Events.local_shot_fx.connect(_on_local_shot_fx)
-	_attach_camera()
-
+	var t_players := Time.get_ticks_usec()
 	if is_authority():
-		if multiplayer.multiplayer_peer is OfflineMultiplayerPeer and not NetworkTime.is_initial_sync_done():
-			# Offline (harness) run: nothing started the clock.
-			NetworkTime.start()
 		var warm := int(float(arena_cfg.get("warmup_seconds", 3)) * NetworkTime.tickrate)
 		var secs := int(config.get("round_seconds", 0))
 		if secs <= 0 and manifest != null and manifest.time_limit_seconds > 0:
@@ -122,7 +124,72 @@ func _on_setup() -> void:
 		var start := NetworkTime.tick + warm
 		_rpc_round.rpc(start, start + secs * NetworkTime.tickrate)
 	Log.info("arena", "Setup %s: %d players, %d boxes, %d spawns, weapons %s" % [manifest.id if manifest != null else "?", _players.size(), layout["boxes"].size(), layout["spawns"].size(), weapon_defs.map(func(d): return d.id)])
-	Log.info("perf", "Match built: map %d ms, rest %d ms" % [(t_map - t0) / 1000, (Time.get_ticks_usec() - t_map) / 1000])
+	Log.info("perf", "Match simulation built on frame %d: map %d ms | players %d ms" % [Engine.get_process_frames(), (t_map - t0) / 1000, (t_players - t_map) / 1000])
+
+
+## The look, one chunk per rendered frame under the wipe's held cover (Game awaits this, then
+## reveals): a figure per frame, the camera rig and viewmodel, the decor in quarters, the sky and
+## sun last. Every chunk checks the match is still in the tree (a peer can leave mid-build).
+func build_visuals() -> void:
+	var times: Array = []
+	var frames: Array = []
+	var t := Time.get_ticks_usec()
+	var sorted: Array = _players.values()
+	sorted.sort_custom(func(a: Player, b: Player): return a.peer_id < b.peer_id)
+	for p in sorted:
+		await _next_frame()
+		if not is_inside_tree():
+			return
+		_add_visual(p)
+		frames.append(Engine.get_process_frames())
+		times.append((Time.get_ticks_usec() - t) / 1000)
+		t = Time.get_ticks_usec()
+	await _next_frame()
+	if not is_inside_tree():
+		return
+	_attach_camera()
+	var t_cam := (Time.get_ticks_usec() - t) / 1000
+	t = Time.get_ticks_usec()
+	await _next_frame()
+	if not is_inside_tree():
+		return
+	if _camera_rig != null and _camera_rig.has_method("add_viewmodel"):
+		_camera_rig.add_viewmodel()
+	var t_vm := (Time.get_ticks_usec() - t) / 1000
+	t = Time.get_ticks_usec()
+	var decor_count: int = layout.get("decor", []).size()
+	var decor_times: Array = []
+	for k in 4:
+		await _next_frame()
+		if not is_inside_tree():
+			return
+		MapBuilder.build_decor(map_root, layout, _palette_map(), decor_count * k / 4, decor_count * (k + 1) / 4)
+		decor_times.append((Time.get_ticks_usec() - t) / 1000)
+		t = Time.get_ticks_usec()
+	await _next_frame()
+	if not is_inside_tree():
+		return
+	_build_environment()
+	var t_env := (Time.get_ticks_usec() - t) / 1000
+	Log.info("perf", "Match look built over %d frames (figures on frames %s, last on %d): figures %s ms | camera %d ms | viewmodel %d ms | decor %s ms (%d pieces) | environment %d ms" % [
+		sorted.size() + 7, str(frames), Engine.get_process_frames(), str(times), t_cam, t_vm, str(decor_times), decor_count, t_env])
+
+
+## The next rendered frame, never this one: the start RPC can land before this frame's
+## process_frame signal, and one await would then resume in the same frame it was issued from
+## (measured: the first figure landing on the setup frame, 55 ms together).
+func _next_frame() -> void:
+	var f := Engine.get_process_frames()
+	await get_tree().process_frame
+	if Engine.get_process_frames() == f:
+		await get_tree().process_frame
+
+
+## The figure and name tag other players see (the look; the body was spawned in setup).
+func _add_visual(p: Player) -> void:
+	var vis := PlayerVisual.new()
+	p.visual.add_child(vis)
+	vis.setup(p, move_cfg)
 
 
 ## Hooks for minigame folders.
@@ -307,9 +374,6 @@ func _spawn_player(mp: MinigamePlayer, index: int) -> void:
 	p.configure(mp, _ctx, move_cfg, weapon_defs, swap_ticks, int(arena_cfg.get("health", 100)))
 	p.input.set_look(float(sp["yaw"]), 0.0)
 	_players[mp.peer_id] = p
-	var vis := PlayerVisual.new()
-	p.visual.add_child(vis)
-	vis.setup(p, move_cfg)
 	var wants_brain := false
 	if mp.is_bot and is_authority():
 		wants_brain = true

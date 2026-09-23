@@ -36,6 +36,7 @@ var _bob_t: float = 0.0
 
 
 func setup(p: Player) -> void:
+	var t0 := Time.get_ticks_usec()
 	player = p
 	var colour := Palette.under_ceiling(player.colour)
 	var ink := Palette.map_colour("arena", "line")
@@ -53,24 +54,9 @@ func setup(p: Player) -> void:
 	# charcoal step lighter so the shapes still separate under the cel bands.
 	var scope_mat := CelMaterial.for_colour(Color(0.04, 0.035, 0.05), shadow, 0.0, true)
 	var scope_ring_mat := CelMaterial.for_colour(Color(0.16, 0.15, 0.18), shadow, 0.0, true)
-	# Lens glass: translucent, metallic and smooth so it catches the sky and the sun (a
-	# StandardMaterial3D, the one place the viewmodel is not cel-shaded).
-	var lens_mat := StandardMaterial3D.new()
-	lens_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	lens_mat.albedo_color = Color(0.55, 0.85, 1.0, 0.5)
-	lens_mat.metallic = 0.85
-	lens_mat.roughness = 0.12
-	lens_mat.metallic_specular = 0.9
-	lens_mat.emission_enabled = true
-	lens_mat.emission = Color(0.25, 0.6, 0.85)
-	lens_mat.emission_energy_multiplier = 0.35
-	lens_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	# The cel viewmodel parts squash their depth toward the near plane (so they never clip into
-	# walls); a normal-depth lens would lose that test and hide behind the eyepiece cap. The
-	# glass sits at the very ends of the scope, so drawing it without the depth test is safe.
-	lens_mat.no_depth_test = true
-	lens_mat.render_priority = 2
+	var lens_mat := lens_material()
 	# Sniper: long and thin. Barrel, receiver, scope, stock, bolt handle.
+	var t_mats := Time.get_ticks_usec()
 	var sniper := Node3D.new()
 	sniper.name = "Sniper"
 	# Intervention-shaped: long round barrel with a big brake and a folded bipod, a tube
@@ -109,6 +95,7 @@ func setup(p: Player) -> void:
 	# The bolt cycle is still the whole rifle's dip after a shot (bolt_off in _process).
 	_arm(sniper, Vector3(0.0, -0.12, 0.05), accent_mat, dark_mat)
 	add_child(sniper)
+	var t_sniper := Time.get_ticks_usec()
 	# AR (Sean: the body was a solid block; give it the shape of a real assault rifle). Same
 	# footprint and the same grip point, so the pose is unchanged: an upper receiver stepped
 	# over a lower, a vented handguard with a top rail and a front post, a round barrel with a
@@ -141,14 +128,7 @@ func setup(p: Player) -> void:
 	_box(ar, Vector3(0.058, 0.008, 0.02), Vector3(0, 0.099, 0.03), dark_mat)   # screen base
 	for sx: float in [-0.028, 0.028]:
 		_box(ar, Vector3(0.006, 0.05, 0.02), Vector3(sx, 0.125, 0.03), dark_mat)   # screen posts
-	var screen_mat := StandardMaterial3D.new()
-	screen_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	screen_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	var tint := Palette.hud_colour("meter")
-	screen_mat.albedo_color = Color(tint.r, tint.g, tint.b, 0.32)
-	screen_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	screen_mat.no_depth_test = true
-	screen_mat.render_priority = 2
+	var screen_mat := screen_material()
 	var screen := MeshInstance3D.new()
 	var sm := BoxMesh.new()
 	sm.size = Vector3(0.05, 0.044, 0.003)
@@ -158,12 +138,7 @@ func setup(p: Player) -> void:
 	screen.layers = 2
 	screen.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	ar.add_child(screen)
-	var dot_mat := StandardMaterial3D.new()
-	dot_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	dot_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	dot_mat.albedo_color = Palette.hud_colour("danger")
-	dot_mat.no_depth_test = true
-	dot_mat.render_priority = 3
+	var dot_mat := dot_material()
 	var dot := MeshInstance3D.new()
 	var dm := SphereMesh.new()
 	dm.radius = 0.001715   # 30 % smaller again (Sean, twice): 0.0035 → 0.00245 → 0.001715
@@ -181,9 +156,68 @@ func setup(p: Player) -> void:
 	_box(ar, Vector3(0.065, 0.1, 0.02), Vector3(0, -0.02, 0.36), dark_mat)          # butt pad
 	_arm(ar, Vector3(0.0, -0.11, 0.14), accent_mat, dark_mat)
 	add_child(ar)
+	var t_ar := Time.get_ticks_usec()
 	models = [sniper, ar]
+	Log.info("perf", "Viewmodel built: materials %d ms, sniper %d ms, AR %d ms" % [(t_mats - t0) / 1000, (t_sniper - t_mats) / 1000, (t_ar - t_sniper) / 1000])
 	scale = Vector3.ONE * 1.22
 	Events.local_fired.connect(_on_fired)
+
+
+static var _lens_mat: StandardMaterial3D
+static var _screen_mat: StandardMaterial3D
+static var _dot_mat: StandardMaterial3D
+
+
+## The three StandardMaterial3Ds of the viewmodel, built once and kept for the run. Godot frees a
+## StandardMaterial3D's compiled shader with its last user, so a fresh material per match meant
+## a shader compile on the switch frame (the lens, the screen and the dot: 22 ms together,
+## measured 2026-09-22); the pipeline warm-up draws these same instances at boot.
+## Lens glass: translucent, metallic and smooth so it catches the sky and the sun (the one
+## place the viewmodel is not cel-shaded).
+static func lens_material() -> StandardMaterial3D:
+	if _lens_mat == null:
+		_lens_mat = StandardMaterial3D.new()
+		_lens_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_lens_mat.albedo_color = Color(0.55, 0.85, 1.0, 0.5)
+		_lens_mat.metallic = 0.85
+		_lens_mat.roughness = 0.12
+		_lens_mat.metallic_specular = 0.9
+		_lens_mat.emission_enabled = true
+		_lens_mat.emission = Color(0.25, 0.6, 0.85)
+		_lens_mat.emission_energy_multiplier = 0.35
+		_lens_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		# The cel viewmodel parts squash their depth toward the near plane (so they never clip
+		# into walls); a normal-depth lens would lose that test and hide behind the eyepiece cap.
+		# The glass sits at the very ends of the scope, so drawing it without the depth test is safe.
+		_lens_mat.no_depth_test = true
+		_lens_mat.render_priority = 2
+	return _lens_mat
+
+
+## The AR sight's translucent screen pane.
+static func screen_material() -> StandardMaterial3D:
+	if _screen_mat == null:
+		_screen_mat = StandardMaterial3D.new()
+		_screen_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_screen_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		var tint := Palette.hud_colour("meter")
+		_screen_mat.albedo_color = Color(tint.r, tint.g, tint.b, 0.32)
+		_screen_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		_screen_mat.no_depth_test = true
+		_screen_mat.render_priority = 2
+	return _screen_mat
+
+
+## The red dot on the AR's screen.
+static func dot_material() -> StandardMaterial3D:
+	if _dot_mat == null:
+		_dot_mat = StandardMaterial3D.new()
+		_dot_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_dot_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_dot_mat.albedo_color = Palette.hud_colour("danger")
+		_dot_mat.no_depth_test = true
+		_dot_mat.render_priority = 3
+	return _dot_mat
 
 
 func _mesh_node(parent: Node3D, mesh: Mesh, pos: Vector3, mat: Material) -> MeshInstance3D:

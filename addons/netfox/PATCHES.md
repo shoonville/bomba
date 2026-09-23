@@ -84,3 +84,13 @@ Keep this list current. Re-apply when upgrading netfox, or drop a patch once ups
    a kill the feed showed and the score did not. With the patch a pure host never re-simulates a
    tick; the kill and death counters were also taken out of the rollback state (BOMBA's own
    change), since a host with lagging clients still re-simulates partially. Candidate for upstream.
+
+9. **Synchronizer: one process_settings() per spawn** — `rollback/rollback-synchronizer.gd`
+   (`_settings_processed`, `_process_settings_if_pending`). Unpatched, a node's settings were
+   processed three times when it entered the tree: the game's own `process_settings()` once the
+   authority is set (BOMBA's player does this), then the deferred calls from `_enter_tree` and
+   `_ready`, each a full rebuild of the property cache, the freshness store and the node set:
+   2.9 ms per player in BOMBA, eight redundant calls per four-seat match landing on the frame
+   of the switch (23 ms of a 54 ms frame, 2026-09-22). The deferred calls now skip when settings
+   were processed since the node entered the tree; a node that never calls `process_settings()`
+   itself behaves as before. Candidate for upstream.

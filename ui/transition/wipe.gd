@@ -5,10 +5,11 @@ extends Control
 ## full cover for switches that must happen synchronously (RPC-driven scene changes).
 
 var progress: float = 0.0
-var phase: String = "idle"
+var phase: String = "idle"   # idle, cover, hold (a full cover held while a scene builds), reveal
 var _accent: Color
 var _ink: Color
 var _paper: Color
+var _tw: Tween
 
 
 func _ready() -> void:
@@ -31,28 +32,40 @@ func run(on_covered: Callable, duration: float = 0.24) -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	phase = "cover"
 	progress = 0.0
-	var tw := create_tween()
-	tw.tween_method(_set_progress, 0.0, 1.0, duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tw.tween_callback(func():
+	_tw = create_tween()
+	_tw.tween_method(_set_progress, 0.0, 1.0, duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_tw.tween_callback(func():
 		on_covered.call()
 		phase = "reveal"
 		progress = 0.0
 	)
-	tw.tween_method(_set_progress, 0.0, 1.0, duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tw.tween_callback(_finish)
+	_tw.tween_method(_set_progress, 0.0, 1.0, duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_tw.tween_callback(_finish)
 
 
-## Reveal from a full cover (the switch already happened).
+## Cover the screen at once and hold it, for a switch that builds over several frames under it;
+## slam() reveals when it is done. A reveal in flight (the board's own) is cut, or it would open
+## the cover over the half-built scene.
+func hold() -> void:
+	if _tw != null and _tw.is_valid():
+		_tw.kill()
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	phase = "hold"
+	progress = 0.0
+	queue_redraw()
+
+
+## Reveal from a full cover (the switch already happened, or was built under hold()).
 func slam(duration: float = 0.3) -> void:
-	if is_busy():
+	if is_busy() and phase != "hold":
 		return
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	phase = "reveal"
 	progress = 0.0
 	queue_redraw()
-	var tw := create_tween()
-	tw.tween_method(_set_progress, 0.0, 1.0, duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tw.tween_callback(_finish)
+	_tw = create_tween()
+	_tw.tween_method(_set_progress, 0.0, 1.0, duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_tw.tween_callback(_finish)
 
 
 func _finish() -> void:
@@ -80,6 +93,7 @@ func _draw() -> void:
 		poly = PackedVector2Array([Vector2(-skew * 3.0, 0), Vector2(x + skew, 0), Vector2(x - skew, h), Vector2(-skew * 3.0, h)])
 		stripe = PackedVector2Array([Vector2(x + skew - edge_w, 0), Vector2(x + skew, 0), Vector2(x - skew, h), Vector2(x - skew - edge_w, h)])
 	else:
+		# reveal, and hold (progress 0: the band covers everything)
 		var x := lerpf(-skew * 2.0, w + skew * 2.0, progress)
 		poly = PackedVector2Array([Vector2(x + skew, 0), Vector2(w + skew * 3.0, 0), Vector2(w + skew * 3.0, h), Vector2(x - skew, h)])
 		stripe = PackedVector2Array([Vector2(x + skew, 0), Vector2(x + skew + edge_w, 0), Vector2(x - skew + edge_w, h), Vector2(x - skew, h)])

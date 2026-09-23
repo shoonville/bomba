@@ -86,11 +86,14 @@ func start(players_data: Array, seed_value: int, p_board_id: String) -> void:
 
 func _show_board() -> void:
 	if view != null and is_instance_valid(view):
-		return
-	view = VIEW_SCRIPT.new()
-	view.name = "Board"
-	Game.world.add_child(view)
-	view.setup(self)
+		if not view.is_asleep():
+			return
+		view.wake()   # kept through the minigame: nothing to build
+	else:
+		view = VIEW_SCRIPT.new()
+		view.name = "Board"
+		Game.world.add_child(view)
+		view.setup(self)
 	if state != null:
 		state_changed.emit(state)
 	Audio.music("music_menu")
@@ -98,9 +101,23 @@ func _show_board() -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 
+## The view sleeps through the minigame (hidden, not processing, its environment withdrawn) and
+## wakes on the way back; freeing and rebuilding it cost 120–150 ms every round (2026-09-22).
 func _hide_board() -> void:
 	if view != null and is_instance_valid(view):
-		Game.world.remove_child(view)
+		view.sleep()
+
+
+## Game calls this when the minigame start RPC lands while the view is still awake (a client
+## guesses when to hide it), so no board geometry shows inside the arena.
+func sleep_view() -> void:
+	_hide_board()
+
+
+func _destroy_board() -> void:
+	if view != null and is_instance_valid(view):
+		if view.get_parent() != null:
+			view.get_parent().remove_child(view)
 		view.queue_free()
 	view = null
 
@@ -427,4 +444,4 @@ func space_position(space_id: String) -> Vector3:
 func _exit_tree() -> void:
 	if Events.minigame_finished.is_connected(_on_minigame_finished):
 		Events.minigame_finished.disconnect(_on_minigame_finished)
-	_hide_board()
+	_destroy_board()

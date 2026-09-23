@@ -16,6 +16,7 @@ var config: Dictionary = {}
 var _finished: bool = false
 
 
+## Build the simulation: everything the round and the netcode need, on every peer, in one call.
 func setup(p_players: Array[MinigamePlayer], p_seed: int, p_config: Dictionary) -> void:
 	players = p_players
 	match_seed = p_seed
@@ -25,6 +26,15 @@ func setup(p_players: Array[MinigamePlayer], p_seed: int, p_config: Dictionary) 
 
 ## Override. Called once every peer has the same players and seed.
 func _on_setup() -> void:
+	pass
+
+
+## Optional override, a coroutine: the look (figures, decor, sky, the camera) built after setup,
+## in chunks with `await` between them, while Game holds the wipe's cover; the screen is revealed
+## when it returns. Keeping the simulation in setup() and only the look here is what lets the
+## chunks fall on separate frames without touching the tick the players spawn on (the
+## determinism harness compares 60 and 240 fps to the byte).
+func build_visuals() -> void:
 	pass
 
 

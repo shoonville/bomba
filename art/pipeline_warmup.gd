@@ -81,36 +81,15 @@ func _build() -> void:
 	sphere.height = 0.6
 	_mesh(sphere, Vector3(0.0, 1.4, 0.0), CelMaterial.for_colour(Color(0.3, 0.6, 0.9), shadow, 0.5))
 
-	# The sniper's lens glass, the AR's screen pane and red dot (viewmodel.gd).
-	var lens := StandardMaterial3D.new()
-	lens.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	lens.albedo_color = Color(0.55, 0.85, 1.0, 0.5)
-	lens.metallic = 0.85
-	lens.roughness = 0.12
-	lens.metallic_specular = 0.9
-	lens.emission_enabled = true
-	lens.emission = Color(0.25, 0.6, 0.85)
-	lens.emission_energy_multiplier = 0.35
-	lens.cull_mode = BaseMaterial3D.CULL_DISABLED
-	lens.no_depth_test = true
-	_mesh(sphere, Vector3(-0.8, 1.4, 1.0), lens)
-	var screen := StandardMaterial3D.new()
-	screen.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	screen.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	screen.albedo_color = Color(0.4, 0.9, 0.9, 0.32)
-	screen.cull_mode = BaseMaterial3D.CULL_DISABLED
-	screen.no_depth_test = true
-	screen.render_priority = 2
-	_mesh(BoxMesh.new(), Vector3(0.8, 1.4, 1.0), screen)
-	var dot := StandardMaterial3D.new()
-	dot.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	dot.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	dot.albedo_color = Palette.hud_colour("danger")
-	dot.no_depth_test = true
-	dot.render_priority = 3
-	_mesh(sphere, Vector3(0.8, 1.6, 1.2), dot)
+	# The sniper's lens glass, the AR's screen pane and red dot: the viewmodel's own shared
+	# instances, so the shaders compiled here are the ones every match uses (Godot frees a
+	# StandardMaterial3D's shader with its last user; a copy here warmed nothing).
+	_mesh(sphere, Vector3(-0.8, 1.4, 1.0), Viewmodel.lens_material())
+	_mesh(BoxMesh.new(), Vector3(0.8, 1.4, 1.0), Viewmodel.screen_material())
+	_mesh(sphere, Vector3(0.8, 1.6, 1.2), Viewmodel.dot_material())
 
-	# The board's speech bubble (unshaded billboard quad).
+	# The board's speech bubble (unshaded billboard quad); kept alive with the other warm-up
+	# materials (_keep) so its shader survives the warm-up scene.
 	var bubble := StandardMaterial3D.new()
 	bubble.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	bubble.albedo_color = Palette.hud_colour("paper")
@@ -121,7 +100,7 @@ func _build() -> void:
 
 	# Name tags, die numbers, the "?" sign: alpha-cut Label3D (opaque pass, inked by the post).
 	var label := Label3D.new()
-	label.text = "BOMBA"
+	label.text = "ABCDEFGHIJKLMNOPQRSTUVWXYZ 0123456789"   # every glyph a name tag can use, at its size and outline: the first tag used to rasterise them (29 ms)
 	label.font_size = 40
 	label.pixel_size = 0.005
 	label.outline_size = 12
@@ -142,9 +121,15 @@ func _build() -> void:
 	Burst.spawn_impact(self, Vector3(0.8, 1.0, 1.0), HitscanResolver.WORLD)
 
 
+## Every material drawn here stays referenced for the run: a StandardMaterial3D's compiled
+## shader is freed with its last user, and the point is that the first match finds it compiled.
+static var _keep: Array[Material] = []
+
+
 func _mesh(mesh: Mesh, at: Vector3, mat: Material) -> void:
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
 	mi.position = at
 	mi.material_override = mat
+	_keep.append(mat)
 	add_child(mi)
