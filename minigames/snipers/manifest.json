@@ -11,5 +11,7 @@
   ],
   "bot_profile": "fps",
   "scene": "minigame.tscn",
+  "description": "Bolt-action rifles only, one round at a time. Scope in to hit anything; a headshot counts double.",
+  "controls": ["WASD  move", "SPACE  jump", "LEFT CLICK  fire", "RIGHT CLICK  scope", "R  reload a round", "TAB  scores"],
   "tagline": "HEADSHOTS COUNT DOUBLE"
 }

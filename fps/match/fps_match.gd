@@ -14,7 +14,7 @@ class MatchContext:
 	var arena: FpsMatch
 
 	func can_fire_at(tick: int) -> bool:
-		return arena.round_start_tick < 0 or tick >= arena.round_start_tick
+		return not arena._briefing_active and (arena.round_start_tick < 0 or tick >= arena.round_start_tick)
 
 	func on_player_died(player: Node, tick: int) -> void:
 		arena._on_player_died(player, tick)
@@ -134,16 +134,117 @@ func _on_setup() -> void:
 	Events.local_shot_fx.connect(_on_local_shot_fx)
 	var t_players := Time.get_ticks_usec()
 	if is_authority():
-		var warm := int(float(arena_cfg.get("warmup_seconds", 3)) * NetworkTime.tickrate)
-		var secs := int(config.get("round_seconds", 0))
-		if secs <= 0 and manifest != null and manifest.time_limit_seconds > 0:
-			secs = manifest.time_limit_seconds
-		if secs <= 0:
-			secs = int(arena_cfg.get("round_seconds", 180))
-		var start := NetworkTime.tick + warm
-		_rpc_round.rpc(start, start + secs * NetworkTime.tickrate)
+		if _briefing_wanted():
+			# The briefing (Sean, 2026-09-22): the screen with the name, the rules, the controls and
+			# a live look at the map; everyone frozen until every human is ready or the host forces
+			# it. The round's clock starts then (_start_round).
+			_rpc_briefing.rpc(true)
+		else:
+			_start_round()
 	Log.info("arena", "Setup %s: %d players, %d boxes, %d spawns, weapons %s" % [manifest.id if manifest != null else "?", _players.size(), layout["boxes"].size(), layout["spawns"].size(), weapon_defs.map(func(d): return d.id)])
 	Log.info("perf", "Match simulation built on frame %d: map %d ms | players %d ms" % [Engine.get_process_frames(), (t_map - t0) / 1000, (t_players - t_map) / 1000])
+
+
+## Host: the warm-up countdown and the round's clock from now.
+func _start_round() -> void:
+	var warm := int(float(arena_cfg.get("warmup_seconds", 3)) * NetworkTime.tickrate)
+	var secs := int(config.get("round_seconds", 0))
+	if secs <= 0 and manifest != null and manifest.time_limit_seconds > 0:
+		secs = manifest.time_limit_seconds
+	if secs <= 0:
+		secs = int(arena_cfg.get("round_seconds", 180))
+	var start := NetworkTime.tick + warm
+	_rpc_round.rpc(start, start + secs * NetworkTime.tickrate)
+
+
+# --- the briefing ----------------------------------------------------------------------------
+# Before the round: a screen with the minigame's name, its rules, its controls and a live look at
+# the map (ui/briefing), with everyone frozen, until every human has pressed READY or the host
+# forces the start. Host-driven: the ready set is replicated, the round RPC ends it everywhere.
+# The harness (headless, --autoplay, --screenshot, --soak) skips it unless --briefing is given;
+# --no_briefing skips it anywhere.
+
+var _briefing_active: bool = false
+var _ready_peers: Array = []
+
+
+func _briefing_wanted() -> bool:
+	if Game.headless or Game.args.has("no_briefing"):
+		return false
+	if Game.args.has("briefing"):
+		return true
+	return not (Game.args.has("autoplay") or Game.args.has("screenshot") or Game.args.has("soak"))
+
+
+func briefing_active() -> bool:
+	return _briefing_active
+
+
+## The seats that must ready up: every human in the match.
+func humans() -> Array:
+	var out := []
+	for p in players:
+		if not (p as MinigamePlayer).is_bot:
+			out.append(p)
+	return out
+
+
+func is_ready(peer_id: int) -> bool:
+	return _ready_peers.has(peer_id)
+
+
+func local_ready() -> bool:
+	return is_ready(local_peer_id())
+
+
+## READY or not, for this peer: the host applies it, a client asks the host.
+func set_local_ready(ready: bool) -> void:
+	if not _briefing_active:
+		return
+	if is_authority():
+		_set_ready(local_peer_id(), ready)
+	else:
+		_rpc_request_ready.rpc_id(1, ready)
+
+
+## Host only: start now, ready or not.
+func force_start() -> void:
+	if is_authority() and _briefing_active:
+		_rpc_briefing.rpc(false)
+		_start_round()
+
+
+func _set_ready(peer_id: int, ready: bool) -> void:
+	if ready and not _ready_peers.has(peer_id):
+		_ready_peers.append(peer_id)
+	elif not ready:
+		_ready_peers.erase(peer_id)
+	_rpc_ready_state.rpc(_ready_peers.duplicate())
+	var all_ready := true
+	for h in humans():
+		if not _ready_peers.has((h as MinigamePlayer).peer_id):
+			all_ready = false
+	if all_ready and _briefing_active:
+		_rpc_briefing.rpc(false)
+		_start_round()
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_request_ready(ready: bool) -> void:
+	if is_authority() and _briefing_active:
+		_set_ready(multiplayer.get_remote_sender_id(), ready)
+
+
+@rpc("authority", "call_local", "reliable")
+func _rpc_ready_state(peers: Array) -> void:
+	_ready_peers = peers.duplicate()
+
+
+@rpc("authority", "call_local", "reliable")
+func _rpc_briefing(active: bool) -> void:
+	_briefing_active = active
+	if active:
+		_ready_peers.clear()
 
 
 ## The look, one chunk per rendered frame under the wipe's held cover (Game awaits this, then
@@ -468,6 +569,7 @@ func _update_figure_test(delta: float) -> void:
 
 func _process(delta: float) -> void:
 	_update_round_over(delta)
+	_update_briefing(delta)
 	_update_spectator()
 	_update_figure_test(delta)
 	# --fx_test: keep spawning drawn bursts and tracers so a screenshot can catch them.
@@ -694,7 +796,7 @@ func _final_kill_candidate() -> Dictionary:
 
 
 func _is_frozen(tick: int) -> bool:
-	return _over_tick >= 0 and tick >= _over_tick
+	return _briefing_active or (_over_tick >= 0 and tick >= _over_tick)
 
 
 ## The HUD's centre during the end: {phase: "over"|"killcam", title, subtitle}; {} in play.
@@ -760,6 +862,7 @@ func _rpc_round_over(result: Dictionary, over_tick: int) -> void:
 
 @rpc("authority", "call_local", "reliable")
 func _rpc_round(start_tick: int, end_tick: int) -> void:
+	_briefing_active = false
 	round_start_tick = start_tick
 	round_end_tick = end_tick
 	Events.round_started.emit(end_tick)
@@ -813,3 +916,17 @@ func _name_of(id: int) -> String:
 	if p == null:
 		return "world" if id == 0 else "#%d" % id
 	return p.display_name
+
+
+var _briefing_since: float = 0.0
+
+
+## Harness: --auto_ready=SECONDS readies this peer's seat that long into the briefing (a host
+## and a headless client can be run through the READY flow without a hand on a key).
+func _update_briefing(delta: float) -> void:
+	if not _briefing_active:
+		_briefing_since = 0.0
+		return
+	_briefing_since += delta
+	if Game.args.has("auto_ready") and not local_ready() and _briefing_since >= float(Game.args["auto_ready"]):
+		set_local_ready(true)

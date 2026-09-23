@@ -20,6 +20,7 @@ var rounds_left: int = 0
 var wipe: Wipe
 var _menu: Node
 var _hud: Node
+var _briefing: Node
 var _pause: PauseMenu
 var _soak_elapsed: float = 0.0
 var _quitting: bool = false
@@ -508,6 +509,14 @@ func _on_minigame_start(id: String, seed_value: int, players_data: Array, config
 	await built.build_visuals()
 	if active_minigame != built or not is_instance_valid(built) or not built.is_inside_tree():
 		return   # the peer left or the match was replaced mid-build
+	if not headless and built.has_method("briefing_active") and built.briefing_active():
+		# The briefing screen over the built match: name, rules, controls, a live look at the map,
+		# READY (or the host's FORCE START); it leaves with a wipe when the round starts.
+		_briefing = Briefing.new()
+		_briefing.name = "Briefing"
+		ui_layer.add_child(_briefing)
+		_briefing.setup(built)
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	if wipe != null:
 		wipe.slam()
 
@@ -571,6 +580,9 @@ func _clear_hud() -> void:
 	if _hud != null and is_instance_valid(_hud):
 		_hud.queue_free()
 	_hud = null
+	if _briefing != null and is_instance_valid(_briefing):
+		_briefing.queue_free()
+	_briefing = null
 
 
 func _process(delta: float) -> void:

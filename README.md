@@ -63,6 +63,13 @@ player bleeds, drops half their coins to the shooter and respawns at the other a
 three spaces along its aim and grabs one item from the first player in its path (three coins from
 an empty bar); the portal takes you to a player and pushes them back through it to your space.
 
+Before every minigame a briefing screen shows its name, a live look at the map, how it plays and
+the controls; everyone presses READY (Space) or the host presses FORCE START, then the GET READY
+countdown runs. At the round's end everyone freezes, ROUND OVER and the winner show, the final
+kill replays from the killer's eyes, and the board returns. Harness runs (`--autoplay`,
+`--screenshot`, `--soak`, headless) skip the briefing unless `--briefing` is given; `--no_briefing`
+skips it anywhere; `--auto_ready=SECONDS` readies your seat that long in.
+
 Useful flags after `--`: `--autoplay` (a bot drives your seat), `--seed=N`, `--soak=SECONDS`
 (quit and write `reports/<label>_summary.json` + `_traj.csv`), `--report=LABEL`, `--expect=N`
 (host waits for N humans before `--start`), `--round_seconds=N`, `--log=0..4`,

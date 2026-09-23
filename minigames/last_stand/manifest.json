@@ -12,5 +12,7 @@
   ],
   "bot_profile": "fps",
   "scene": "minigame.tscn",
+  "description": "One life each in the dusk pit. No respawns: fall and you watch the rest; the later you fall the higher you place, and the last one standing wins.",
+  "controls": ["WASD  move", "SPACE  jump", "LEFT CLICK  fire", "RIGHT CLICK  scope or sights", "1 · 2 · Q  weapons", "R  reload", "LEFT CLICK  switch who you watch when out"],
   "tagline": "ONE LIFE. LAST ONE STANDING WINS"
 }

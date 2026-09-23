@@ -12,5 +12,7 @@
   ],
   "bot_profile": "fps",
   "scene": "minigame.tscn",
+  "description": "Free-for-all in the city. A sniper and an assault rifle each, instant respawn with a moment of protection. Most kills when the clock runs out wins.",
+  "controls": ["WASD  move", "SPACE  jump", "LEFT CLICK  fire", "RIGHT CLICK  scope or sights", "1 · 2 · Q  weapons", "R  reload", "TAB  scores"],
   "tagline": "MOST KILLS WINS"
 }

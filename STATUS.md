@@ -731,3 +731,8 @@ millimetre (35.8 mm every frame while walking), GPU 2.9 ms of a 6 ms frame at 5K
   ring every body keeps), then the switch; 5.7 s in all, 2.4 s with no kill in reach. Headless
   hosts hold nothing. `round_over.png`, `killcam.png`. Verified: check_all, a host and a client
   through two 12 s rounds.
+- **The briefing** (note 2): before every minigame, a screen with the name, tagline, a live
+  orbiting look at the map, HOW IT PLAYS, CONTROLS (two new manifest fields), seat cards with
+  their READY state, READY (Space) and the host's FORCE START; everyone frozen until then.
+  `briefing.png`. Harness: skipped unless `--briefing`; `--auto_ready=N` for unattended runs.
+  Verified with a host and a headless client through the READY flow.

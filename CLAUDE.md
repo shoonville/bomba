@@ -48,7 +48,10 @@ that travels with the repo.
   redo it). No match start or end sound (2026-09-22). Board pawns rollerskate (no hopping), facing
   their travel; no BOMBA BAY sign. Music: off (`Audio.MUSIC_ENABLED`).
 - Minigames: ARENA, SNIPERS, LAST STAND. KING OF THE HILL was removed on his word (2026-09-22); the
-  FpsMatch hooks it added stay for the next objective minigame.
+  FpsMatch hooks it added stay for the next objective minigame. Every minigame opens with the
+  briefing (name, live map, rules, controls, READY / FORCE START) and ends with the hold: ROUND OVER,
+  the final-kill cam from the killer's eyes, then the board. Hands hold the weapons in the
+  character's colour (a colour choice comes with his customisation screen later).
 - Effects share meshes and materials (`Burst`, `Tracer`): a new mesh or material per shot compiled a
   GPU pipeline on the shot's frame and was the arena "skipping frames". Never build per-shot resources.
 - Scene switches: a minigame's `setup()` builds the simulation on the RPC's frame (never spread it:
@@ -72,6 +75,9 @@ that travels with the repo.
   `--social_test`, `--show_scoreboard`, `--figure_test`, `--ads_progress=0..1`, `--force_weapon=0|1`,
   `--force_ads`, `--give_item=ID`, `--give_bots_item=ID`, `--hotbar_test`, `--target_test`, `--pop_test=ITEM`, `--aim_test=DEG`,
   `--machine_at=ID`, `--minigame=ID`, `--render_scale=N`, `--port=N`, `--no_warmup`,
+  `--briefing` (show the pre-minigame briefing in a harness run; `--no_briefing` never; `--auto_ready=N`
+  readies the seat N s in), `--round_seconds=N` (a short round to reach ROUND OVER and the kill cam;
+  `--screenshot_event=results --screenshot_at=0.8` is the hold, `3.6` the kill cam),
   `--perf` (GPU/CPU ms summary at soak end plus a PACING line: median frame, frames over 1.5× and 2×
   the median, pipelines compiled while playing), `--hitch_ms=N` (log every frame over N ms with what
   it did; 150 by default), `--motion_log[=path]` (a MOTION line: how even the camera's step from frame to

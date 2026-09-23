@@ -13,6 +13,8 @@ var time_limit_seconds: int = 0
 var weapons: PackedStringArray = []
 var bot_profile: String = "fps"
 var scene_path: String = ""
+var description: String = ""             # the briefing: how it plays, a few lines
+var controls: PackedStringArray = []     # the briefing: "KEY  what it does", one per line
 
 
 static func from_json(d: Dictionary, folder: String) -> MinigameManifest:
@@ -29,4 +31,7 @@ static func from_json(d: Dictionary, folder: String) -> MinigameManifest:
 		m.weapons.append(str(w))
 	m.bot_profile = str(d.get("bot_profile", "fps"))
 	m.scene_path = folder.path_join(str(d.get("scene", "minigame.tscn")))
+	m.description = str(d.get("description", ""))
+	for c in d.get("controls", []):
+		m.controls.append(str(c))
 	return m
