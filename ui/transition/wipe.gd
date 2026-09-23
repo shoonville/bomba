@@ -13,7 +13,9 @@ var _tw: Tween
 
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# Anchors alone (set_anchors_preset) left this control at 0 × 0 under its CanvasLayer: every
+	# draw was a zero-height polygon and no wipe ever showed (found 2026-09-23). Offsets too.
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_accent = Palette.map_colour("menu", "accent")
 	_ink = Palette.map_colour("menu", "line")
@@ -36,6 +38,11 @@ func run(on_covered: Callable, duration: float = 0.24) -> void:
 	_tw.tween_method(_set_progress, 0.0, 1.0, duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	_tw.tween_callback(func():
 		on_covered.call()
+		if phase == "hold":
+			# The callback held the cover (a scene builds under it over the next frames) and
+			# killed this tween; slam() reveals when the build is done. Setting "reveal" here
+			# used to leave the wipe stuck: slam() refuses a reveal already in flight.
+			return
 		phase = "reveal"
 		progress = 0.0
 	)
