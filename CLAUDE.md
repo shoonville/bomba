@@ -28,18 +28,29 @@ that travels with the repo.
   upright, no tagline, no orange (his BRC-vibe verdict is still pending).
 - Characters: rebuilt to his Canti reference (`reference/canti.webp`, FLCL, the late-90s mecha look he
   asked for on 2026-09-22): monitor head, visor slit, armoured chest, pauldrons, red pelvis and toe caps.
+  The head is ONE piece (an iMac G3 profile as a single mesh, `Figure.head_mesh`): a bezel on a dome
+  read as "a mask on a normal circle head".
 - Sniper: the ORIGINAL hip pose (he rejected every re-angle), cream body, black scope, glass on the
-  eyepiece only, one-round-at-a-time reload with a heavy sound. AR: the old boxy sight, red dot ON its
-  screen (a translucent pane at ADS), crisp snap sound, untouched otherwise.
+  eyepiece only, one-round-at-a-time reload with a heavy sound. The eyepiece and its reflective glass
+  are "the best feature": NEVER remove or change them (removed once by mistake on 2026-09-22, reverted
+  on his word within the hour). No bolt handle (the tan bolt and its knob sat in the bottom-right
+  corner of the hip view; that was the part he wanted gone). AR: the old boxy sight on a 3.5 cm base
+  (30 % lower than it was), red dot ON its screen (a translucent pane at ADS; the dot is 30 % smaller
+  twice over, radius 0.001715), crisp snap sound, the purple body untouched.
 - Board: one board (BOMBA BAY, `tools/gen_board.py`), pink sky kept, moon-base theme under it, floating
   spinning markers (flat stamps were "ugly"), close Pummel-Party camera, eight-sided die, no water.
   The vending machine lives on the two annexes only (his "original two spots", the bridges to the
   egg domes); never add machine pads or more spots.
 - Hitmarker: a dice tick, "similar to the sound the dice makes" (two takes before it were too
-  high-pitched). Muzzle flash: a round red-orange puff (the cyan star was "tacky"); impact stars small.
+  high-pitched). Muzzle flash: NONE (the red-orange puff was "distracting"; before it the cyan star
+  was "tacky"); impact stars small and never red; nothing red on screen when shooting.
   Sniper sound: the ORIGINAL crack-boom-tail (the Halo-shaped take "sounds like a bazooka"; do not
-  redo it). Board pawns rollerskate (no hopping); no BOMBA BAY sign. Music: off
-  (`Audio.MUSIC_ENABLED`).
+  redo it). No match start or end sound (2026-09-22). Board pawns rollerskate (no hopping), facing
+  their travel; no BOMBA BAY sign. Music: off (`Audio.MUSIC_ENABLED`).
+- Minigames: ARENA, SNIPERS, LAST STAND. KING OF THE HILL was removed on his word (2026-09-22); the
+  FpsMatch hooks it added stay for the next objective minigame.
+- Effects share meshes and materials (`Burst`, `Tracer`): a new mesh or material per shot compiled a
+  GPU pipeline on the shot's frame and was the arena "skipping frames". Never build per-shot resources.
 
 ## Verify before claiming
 - `tools/check_all.sh`: tests + compile-all, determinism, a headless board match. `SOAK=1` adds the
@@ -49,14 +60,16 @@ that travels with the repo.
   file LF; if a script dies on `\r`, strip them: `git ls-files --eol | grep w/crlf`, `sed -i 's/\r$//'`.
 - `tools/test.sh` re-imports first; REQUIRED after adding any `class_name` script.
 - Screenshots: `-- --screenshot=out.png --screenshot_at=N --screenshot_quit`, with
-  `--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results|shield|roll|move|laser|hill` to arm
+  `--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results|shield|roll|move|laser` to arm
   on an event (`--screenshot_event_index=N` for its Nth occurrence; a `myturn` frame needs
   `--screenshot_at=5` or more, the view is still playing the previous turn's hops before that).
-  Handy flags: `--board_overview`, `--board_map`, `--hill_index=N`, `--spawn_index=N`, `--board_cam=x,y,z:tx,ty,tz`, `--hover_fork=left`,
+  Handy flags: `--board_overview`, `--board_map`, `--spawn_index=N`, `--board_cam=x,y,z:tx,ty,tz`, `--hover_fork=left`,
   `--social_test`, `--show_scoreboard`, `--figure_test`, `--ads_progress=0..1`, `--force_weapon=0|1`,
   `--force_ads`, `--give_item=ID`, `--give_bots_item=ID`, `--hotbar_test`, `--target_test`, `--pop_test=ITEM`, `--aim_test=DEG`,
   `--machine_at=ID`, `--minigame=ID`, `--render_scale=N`, `--port=N`, `--no_warmup`,
-  `--perf` (GPU/CPU ms summary at soak end), `--vsync=0|1`, `--window=fullscreen|windowed`, and
+  `--perf` (GPU/CPU ms summary at soak end plus a PACING line: median frame, frames over 1.5× and 2×
+  the median, pipelines compiled while playing), `--hitch_ms=N` (log every frame over N ms with what
+  it did; 150 by default), `--vsync=0|1`, `--window=fullscreen|windowed`, and
   Godot's own `--resolution 1920x1080` (the friends' resolution: judge looks and cost there, not at
   Sean's 5120×2160; his monitor "doesn't matter"). `tools/report.gd -- frame_stats IMAGE...` prints the
   STYLE.md appendix numbers (saturated, grey, dark, v95) for a frame; judge a visual pass by them.
@@ -70,6 +83,6 @@ that travels with the repo.
 ## Where things are
 `core/` boot, game flow, settings · `board/` graph, rules, director, view, dice, pawns · `fps/` player,
 weapons, view (viewmodel, figure, spectator), `fps/match/` the shared FPS match · `minigames/` SDK plus
-`arena/`, `snipers/`, `last_stand/`, `hill/` · `bots/` · `audio/` synthesised sounds · `art/` shaders, cel material,
+`arena/`, `snipers/`, `last_stand/` · `bots/` · `audio/` synthesised sounds · `art/` shaders, cel material,
 post stack, palette · `ui/` menu, HUD, board HUD, results, settings · `tuning/` every number · `tools/`
 harnesses and tests · `docs/screenshots/` the verified frames.

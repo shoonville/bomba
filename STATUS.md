@@ -649,3 +649,50 @@ measured at 1920×1080 unless noted, on the 5090, and extrapolated.
 3. The display face (OFL candidates listed in session 4), a fifth minigame (Jenga needs synced
    physics props; Duck Hunt and Monster Trucks the vehicle controller), and the netfox late-
    simulation pass if the one-tick victim rewind ever shows in play.
+
+## 2026-09-22 — session 9: Sean's nine notes, the arena stutter
+
+Everything below was run on Sean's desktop today (`tools/check_all.sh`: 79 tests, 97 scripts,
+determinism identical, a headless four-seat board match over two rounds with random minigames).
+
+- **KING OF THE HILL removed** (his note 1): the folder, its tuning, five tests, two sounds, two
+  events, the layout's eight spots, two harness flags, four frames, its MINIGAMES.md section. The
+  five FpsMatch hooks and the bots' objective code stay with defaults. Rotation: ARENA, SNIPERS,
+  LAST STAND.
+- **Shooting has nothing red** (note 2): no muzzle flash on either weapon; the body-hit star is
+  paper; the headshot hitmarker is the score yellow. **AR** (notes 3, 4): dot radius 0.001715
+  (30 % smaller again), the sight base 3.5 cm tall (30 % lower), the screen assembly down 1.5 cm
+  with it and the ADS position matched: `ar_ads.png` has the dot at the frame's centre.
+- **Sniper** (note 9): the eyepiece and its reflective glass were removed by mistake and put back
+  byte for byte on his word ("the best feature"; a settled verdict now). The part in his picture
+  was the bolt handle (tan bolt + dark knob, the bottom-right corner of the hip view at his 2.37:1
+  aspect); found by hiding each rear part in turn. Gone. `arena_hip_sniper.png` retaken.
+- **Pawns face their travel** (note 5): `hop_to` no longer half-turns after `look_at`; three
+  frames into the first glide show the face forward. `board_hop.png` retaken.
+- **One-piece head** (note 6): `Figure.head_mesh()`, a superellipsoid, boxy front to round back,
+  one mesh in the identity colour; bezel, brow, cheek and chin pieces gone. `figures.png` retaken.
+- **No match start or end sound** (note 8): `round_start` and `round_end` gone from the arena
+  and the board HUD, and from the synth.
+- **The arena stutter** (note 7), measured on his machine fullscreen (5120×2160, 165 Hz, vsync,
+  host + 3 bots + autoplay, 25 s, `--perf --hitch_ms=12`):
+
+  | | before | after |
+  |---|---|---|
+  | frames over 1.5× the 6.00 ms median | 48 (1.3 %) | 11 (0.3 %) |
+  | frames over 2× the median | 28 | 1 |
+  | frames over 12 ms in play | 29 (13–22 ms) | 2 (14 ms, and the quit) |
+  | pipelines compiled while playing | 49 surface + 48 spec | 0 + 2 |
+  | GPU ms mean / p95 | 2.86 / 3.54 | 2.90 / 3.48 |
+
+  Cause: every shot built new meshes and materials for its burst and tracer, each a pipeline
+  compilation on the shot's frame (27 of the 29 slow frames carried a shot's effects; the "physics
+  13–16 ms" on those frames was the local shot's effects inside the tick loop). `Burst` and
+  `Tracer` now share meshes and materials, size by node scale, fade by instance transparency, and
+  the boot warm-up draws them. New harness aids: `--hitch_ms=N`, the `PACING` line under `--perf`.
+
+### Next
+1. Sean plays: the arena with friends (does it feel smooth now; the hitch log at `--hitch_ms=12`
+   will say what any remaining slow frame did), the AR sight and dot, the sniper's corner, the
+   heads, the pawns' facing, the silent match start and end.
+2. If a windowed run still stutters for him (windowed showed runs of consecutive slow frames that
+   fullscreen never did), the WINDOW setting → FULLSCREEN is the first thing to try.
