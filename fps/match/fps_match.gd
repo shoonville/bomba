@@ -46,6 +46,9 @@ class MatchContext:
 	func objective_position() -> Vector3:
 		return arena.objective_position()
 
+	func is_frozen(tick: int) -> bool:
+		return arena._is_frozen(tick)
+
 	func notify_shot(shooter: Node, tick: int, origin: Vector3, end_point: Vector3, hit_kind: int) -> void:
 		arena._notify_shot(shooter, tick, origin, end_point, hit_kind)
 
@@ -71,6 +74,22 @@ var _pending_shots: Array = []
 var _finished_sent: bool = false
 var _camera_rig: Node3D
 var _spectator: SpectatorRig
+
+# The round's end (Sean, 2026-09-22: "wait a couple seconds before it actually ends... a final
+# kill cam like COD"): at the end tick everyone freezes, ROUND OVER and the winner show for
+# OVER_HOLD, the final kill replays from the killer's eyes (KillCam) when one is in reach of the
+# replay buffers, then the host sends the finish. The host schedules the finish by tick; every
+# peer plays the presentation from the same over tick.
+const OVER_HOLD := 2.0
+const OVER_TAIL := 0.4
+var _over_tick: int = -1          # replicated: the tick the round ended on
+var _result_dict: Dictionary = {}
+var _finish_at_tick: int = -1     # host: when to send the finish
+var _final_sent: bool = false
+var _over_since: float = -1.0     # wall clock, this peer
+var _final_kill: Dictionary = {}  # the kill log's entry {killer, victim, weapon, headshot, tick}, or {}
+var _killcam: KillCam
+var _killcam_done: bool = false
 
 @onready var players_root: Node3D = $Players
 @onready var map_root: Node3D = $Map
@@ -448,6 +467,7 @@ func _update_figure_test(delta: float) -> void:
 
 
 func _process(delta: float) -> void:
+	_update_round_over(delta)
 	_update_spectator()
 	_update_figure_test(delta)
 	# --fx_test: keep spawning drawn bursts and tracers so a screenshot can catch them.
@@ -595,7 +615,12 @@ func _exit_tree() -> void:
 
 
 func _on_tick(_delta: float, tick: int) -> void:
-	if not is_inside_tree() or not is_authority() or _finished_sent:
+	if not is_inside_tree() or not is_authority():
+		return
+	if _finished_sent:
+		if _finish_at_tick >= 0 and tick >= _finish_at_tick and not _final_sent:
+			_final_sent = true
+			_rpc_finish.rpc(_result_dict)
 		return
 	if round_end_tick > 0 and tick >= round_end_tick:
 		_finish_round()
@@ -643,7 +668,92 @@ func _finish_round() -> void:
 		var pl := p as Player
 		result.add(pl.peer_id, _score_for(pl), pl.display_name, _score_label(pl))
 	result.finalize()
-	_rpc_finish.rpc(result.to_dict())
+	_result_dict = result.to_dict()
+	# The hold before the finish: none in a headless run (the harness), else ROUND OVER and, when a
+	# kill is within the replay buffers, the kill cam.
+	var hold := 0.0
+	if not Game.headless:
+		hold = OVER_HOLD + OVER_TAIL + (KillCam.SECONDS if not _final_kill_candidate().is_empty() else 0.0)
+	_finish_at_tick = NetworkTime.tick + int(hold * NetworkTime.tickrate)
+	_rpc_round_over.rpc(_result_dict, NetworkTime.tick)
+
+
+## The last kill of the log when the replay buffers still hold its lead-up; {} otherwise.
+func _final_kill_candidate() -> Dictionary:
+	if kill_log.is_empty():
+		return {}
+	var k: Dictionary = kill_log.back()
+	var kill_tick := int(k["tick"])
+	if NetworkTime.tick - kill_tick > Player.REPLAY_TICKS - KillCam.BEFORE_TICKS - 20:
+		return {}
+	var killer := int(k["killer"])
+	var victim := int(k["victim"])
+	if get_player(killer) == null or get_player(victim) == null or killer == victim:
+		return {}
+	return k
+
+
+func _is_frozen(tick: int) -> bool:
+	return _over_tick >= 0 and tick >= _over_tick
+
+
+## The HUD's centre during the end: {phase: "over"|"killcam", title, subtitle}; {} in play.
+func overlay_state() -> Dictionary:
+	if _over_since < 0.0:
+		return {}
+	if _killcam != null and is_instance_valid(_killcam):
+		var k := _final_kill
+		return {"phase": "killcam", "title": "FINAL KILL",
+			"subtitle": "%s  ▸  %s%s" % [_name_of(int(k["killer"])), _name_of(int(k["victim"])), "   ·   HEADSHOT" if bool(k["headshot"]) else ""]}
+	var winner := ""
+	var rankings: Array = _result_dict.get("rankings", [])
+	if not rankings.is_empty():
+		winner = str(rankings[0].get("display_name", ""))
+	return {"phase": "over", "title": "ROUND OVER", "subtitle": ("WINNER   " + winner) if winner != "" else ""}
+
+
+func _update_round_over(_delta: float) -> void:
+	if _over_since < 0.0 or Game.headless:
+		return
+	var t := Time.get_ticks_msec() / 1000.0 - _over_since
+	if _killcam == null and not _killcam_done and t >= OVER_HOLD and not _final_kill.is_empty():
+		_start_killcam()
+	if _killcam != null and is_instance_valid(_killcam) and _killcam.finished:
+		_end_killcam()
+
+
+func _start_killcam() -> void:
+	var killer := get_player(int(_final_kill["killer"]))
+	var victim := get_player(int(_final_kill["victim"]))
+	if killer == null or victim == null:
+		_killcam_done = true
+		return
+	_killcam = KillCam.new()
+	_killcam.name = "KillCam"
+	add_child(_killcam)
+	_killcam.setup(self, killer, victim, int(_final_kill["tick"]), str(_final_kill["weapon"]), bool(_final_kill["headshot"]), move_cfg.eye_height)
+
+
+func _end_killcam() -> void:
+	_killcam_done = true
+	if _killcam != null and is_instance_valid(_killcam):
+		_killcam.end()
+		_killcam.queue_free()
+	_killcam = null
+	# The view goes back to whoever had it: the spectator rig, else the player's own camera.
+	if _spectator != null and is_instance_valid(_spectator) and _spectator.camera != null:
+		_spectator.camera.current = true
+	elif _camera_rig != null and is_instance_valid(_camera_rig) and _camera_rig.camera != null:
+		_camera_rig.camera.current = true
+
+
+@rpc("authority", "call_local", "reliable")
+func _rpc_round_over(result: Dictionary, over_tick: int) -> void:
+	_over_tick = over_tick
+	_result_dict = result
+	_final_kill = _final_kill_candidate()
+	_over_since = Time.get_ticks_msec() / 1000.0
+	Events.round_ended.emit()
 
 
 # --- RPCs ---------------------------------------------------------------------------------
@@ -691,7 +801,10 @@ func _apply_shot_fx(shooter_id: int, origin: Vector3, end_point: Vector3, hit_ki
 
 @rpc("authority", "call_local", "reliable")
 func _rpc_finish(data: Dictionary) -> void:
-	Events.round_ended.emit()
+	if _over_since < 0.0:
+		Events.round_ended.emit()   # a finish with no round-over first (never, but the HUD would wait)
+	if _killcam != null and is_instance_valid(_killcam):
+		_end_killcam()
 	finish(MinigameResult.from_dict(data))
 
 

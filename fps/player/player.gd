@@ -149,6 +149,56 @@ func aim_direction(yaw: float, pitch: float) -> Vector3:
 static var sim_us_this_loop: int = 0
 static var sim_node_ticks_this_loop: int = 0
 
+## The last REPLAY_TICKS ticks of this body as this peer saw them, for the final-kill cam: per
+## tick x, y, z, yaw, head pitch, health, weapon slot and the tick itself, one entry per tick
+## loop (a loop that ran several ticks records only its last; replay_sample steps back to the
+## nearest recorded tick).
+const REPLAY_TICKS := 300
+const REPLAY_STRIDE := 8
+var _replay := PackedFloat32Array()
+
+
+func _record_replay(tick: int) -> void:
+	if _replay.is_empty():
+		_replay.resize(REPLAY_TICKS * REPLAY_STRIDE)
+		_replay.fill(-1.0)
+	var i := posmod(tick, REPLAY_TICKS) * REPLAY_STRIDE
+	_replay[i] = global_position.x
+	_replay[i + 1] = global_position.y
+	_replay[i + 2] = global_position.z
+	_replay[i + 3] = yaw
+	_replay[i + 4] = head_pitch
+	_replay[i + 5] = float(health)
+	_replay[i + 6] = float(weapons.slot)
+	_replay[i + 7] = float(tick)
+
+
+func _replay_at(tick: int) -> Dictionary:
+	if _replay.is_empty():
+		return {}
+	for back in 8:
+		var tk := tick - back
+		var i := posmod(tk, REPLAY_TICKS) * REPLAY_STRIDE
+		if int(_replay[i + 7]) == tk:
+			return {"pos": Vector3(_replay[i], _replay[i + 1], _replay[i + 2]), "yaw": _replay[i + 3],
+				"pitch": _replay[i + 4], "health": int(_replay[i + 5]), "slot": int(_replay[i + 6])}
+	return {}
+
+
+## The body's pose at a (fractional) tick, interpolated between recorded ticks; {} when the
+## buffer does not reach it.
+func replay_sample(t: float) -> Dictionary:
+	var t0 := int(floor(t))
+	var a := _replay_at(t0)
+	if a.is_empty():
+		return {}
+	var b := _replay_at(t0 + 1)
+	if b.is_empty():
+		return a
+	var f := t - float(t0)
+	return {"pos": (a["pos"] as Vector3).lerp(b["pos"], f), "yaw": lerp_angle(a["yaw"], b["yaw"], f),
+		"pitch": lerpf(a["pitch"], b["pitch"], f), "health": a["health"], "slot": a["slot"]}
+
 
 func _rollback_tick(delta: float, tick: int, is_fresh: bool) -> void:
 	var t0 := Time.get_ticks_usec()
@@ -171,11 +221,14 @@ func _rollback_tick_body(delta: float, tick: int, _is_fresh: bool) -> void:
 	head_pitch = clampf(input.pitch, -deg_to_rad(cfg.pitch_limit_deg), deg_to_rad(cfg.pitch_limit_deg))
 	head.rotation.x = head_pitch
 
-	# Movement (MovementModel is pure; move_and_slide applies it).
+	# Movement (MovementModel is pure; move_and_slide applies it). Frozen ticks (the round over,
+	# the briefing before it starts) take no movement input: a tick-based rule from replicated
+	# state, so every peer freezes on the same tick.
+	var frozen := ctx != null and ctx.is_frozen(tick)
 	if alive:
 		_force_update_is_on_floor()
-		var r := MovementModel.step(velocity, is_on_floor(), input.move, rotation.y, input.jump,
-			jump_buffer, coyote, delta, cfg)
+		var r := MovementModel.step(velocity, is_on_floor(), Vector2.ZERO if frozen else input.move, rotation.y,
+			input.jump and not frozen, jump_buffer, coyote, delta, cfg)
 		velocity = r.velocity
 		jump_buffer = r.jump_buffer
 		coyote = r.coyote
@@ -187,7 +240,7 @@ func _rollback_tick_body(delta: float, tick: int, _is_fresh: bool) -> void:
 
 	# Weapons. Inputs queued before the player learned of a death do not fire the fresh body.
 	var recoil_before := Vector2(weapons.recoil_yaw, weapons.recoil_pitch)
-	var can_use_weapons := alive and tick >= respawn_tick + respawn_fire_lockout_ticks \
+	var can_use_weapons := alive and not frozen and tick >= respawn_tick + respawn_fire_lockout_ticks \
 		and (ctx == null or ctx.can_fire_at(tick))
 	var out := weapons.step(tick, can_use_weapons, input)
 	var predicting := rollback_synchronizer.is_predicting()
@@ -315,6 +368,7 @@ func _before_tick_loop() -> void:
 func _after_tick_loop() -> void:
 	if not is_inside_tree():
 		return
+	_record_replay(NetworkTime.tick)
 	if respawn_count != _acked_respawns:
 		tick_interpolator.teleport()
 		_acked_respawns = respawn_count

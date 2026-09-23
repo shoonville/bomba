@@ -43,8 +43,51 @@ func setup(p: Player, p_cfg: MovementConfig) -> void:
 	Log.debug("perf", "Visual %s: figure %d ms, name tag %d ms" % [player.display_name, (t_fig - t0) / 1000, (Time.get_ticks_usec() - t_fig) / 1000])
 
 
+## The final-kill cam drives this figure from the replay buffer instead of its body: a pose per
+## frame, the walk cycle from how far it moved, down when it was down.
+var _replay: bool = false
+var _rp_pos: Vector3 = Vector3.ZERO
+var _rp_yaw: float = 0.0
+var _rp_pitch: float = 0.0
+var _rp_alive: bool = true
+
+
+func begin_replay() -> void:
+	_replay = true
+	top_level = true
+	_rp_pos = global_position
+	_last_pos = global_position
+
+
+func replay_pose(pos: Vector3, yaw: float, pitch: float, alive: bool) -> void:
+	_rp_pos = pos
+	_rp_yaw = yaw
+	_rp_pitch = pitch
+	_rp_alive = alive
+
+
+func end_replay() -> void:
+	_replay = false
+	top_level = _remote_mode
+	if not _remote_mode:
+		position = Vector3.ZERO
+		rotation = Vector3.ZERO
+
+
 func _process(delta: float) -> void:
 	if player == null or not is_instance_valid(player):
+		return
+	if _replay:
+		global_position = _rp_pos
+		global_rotation = Vector3(0.0, _rp_yaw, 0.0)
+		if delta > 0.0:
+			var d := global_position - _last_pos
+			_speed = lerpf(_speed, minf(Vector2(d.x, d.z).length() / delta, 12.0), 0.3)
+		_last_pos = global_position
+		if figure != null:
+			figure.animate(_speed, true, _rp_pitch, _rp_alive, delta)
+		if name_label != null:
+			name_label.visible = _rp_alive
 		return
 	var remote := player._is_remote_on_client()
 	if remote != _remote_mode:

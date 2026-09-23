@@ -33,6 +33,14 @@ var _swap_dip: float = 0.0
 var _last_slot: int = -1
 var _sniper_fired_at: int = -1
 var _bob_t: float = 0.0
+var ghost_slot: int = -1   # the final-kill cam: show this slot at the hip, no scope-in, no bob
+
+
+## The recoil kick and, for the sniper, the bolt dip: the local shot, or the kill cam's replayed one.
+func kick() -> void:
+	_kick = 1.0
+	if (player.weapons.slot if ghost_slot < 0 else ghost_slot) == 0:
+		_bolt = 1.0
 
 
 func setup(p: Player) -> void:
@@ -49,6 +57,8 @@ func setup(p: Player) -> void:
 	# The sniper is cream with tan fittings (Sean: "cream instead of the purple"); the AR keeps
 	# the player's colour. The sleeve on both is the player's outfit.
 	var cream_mat := CelMaterial.for_colour(Palette.hud_colour("paper"), shadow, 0.0, true)
+	# The hands: the identity colour, with the Figure's pale cuff tint at the wrist.
+	var cuff_mat := CelMaterial.for_colour(Color.from_hsv(colour.h, colour.s * 0.62, minf(1.0, colour.v * 1.12)), shadow, 0.0, true)
 	var tan_mat := CelMaterial.for_colour(Color.from_hsv(0.09, 0.5, 0.6), shadow, 0.0, true)
 	# The scope is black (Sean): the tube, bell, eyepiece and mounts near-black, the rings a
 	# charcoal step lighter so the shapes still separate under the cel bands.
@@ -93,7 +103,7 @@ func setup(p: Player) -> void:
 	# the hip they sat in the frame's bottom-right corner, a tan slab and a dark lump against the
 	# ammo bar (Sean, 2026-09-22, with a picture: "the very right part... no idea what it is").
 	# The bolt cycle is still the whole rifle's dip after a shot (bolt_off in _process).
-	_arm(sniper, Vector3(0.0, -0.12, 0.05), accent_mat, dark_mat)
+	_hands(sniper, Vector3(0.0, -0.10, 0.07), Vector3(0.0, -0.047, -0.30), accent_mat, cuff_mat)
 	add_child(sniper)
 	var t_sniper := Time.get_ticks_usec()
 	# AR (Sean: the body was a solid block; give it the shape of a real assault rifle). Same
@@ -154,7 +164,7 @@ func setup(p: Player) -> void:
 	_cyl(ar, 0.02, 0.14, Vector3(0, 0.01, 0.20), dark_mat)                          # buffer tube
 	_box(ar, Vector3(0.06, 0.09, 0.12), Vector3(0, -0.02, 0.29), body_mat)          # stock
 	_box(ar, Vector3(0.065, 0.1, 0.02), Vector3(0, -0.02, 0.36), dark_mat)          # butt pad
-	_arm(ar, Vector3(0.0, -0.11, 0.14), accent_mat, dark_mat)
+	_hands(ar, Vector3(0.0, -0.09, 0.14), Vector3(0.0, -0.028, -0.30), accent_mat, cuff_mat)
 	add_child(ar)
 	var t_ar := Time.get_ticks_usec()
 	models = [sniper, ar]
@@ -288,30 +298,49 @@ func _box(parent: Node3D, size: Vector3, pos: Vector3, mat: Material) -> void:
 	parent.add_child(mi)
 
 
-## Glove on the grip and a sleeve running to the bottom-right corner of the frame.
-func _arm(parent: Node3D, grip: Vector3, sleeve_mat: Material, glove_mat: Material) -> void:
-	_box(parent, Vector3(0.09, 0.09, 0.09), grip + Vector3(0.0, -0.02, 0.0), glove_mat)
-	var dir := Vector3(0.20, -0.34, 0.34).normalized()
-	var sleeve := MeshInstance3D.new()
-	var bm := BoxMesh.new()
-	bm.size = Vector3(0.10, 0.10, 0.50)
-	sleeve.mesh = bm
-	sleeve.material_override = sleeve_mat
-	sleeve.layers = 2
-	sleeve.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	sleeve.position = grip + dir * 0.27
-	sleeve.basis = Basis.looking_at(dir, Vector3.UP)
-	parent.add_child(sleeve)
-	var cuff := MeshInstance3D.new()
-	var cm := BoxMesh.new()
-	cm.size = Vector3(0.12, 0.12, 0.06)
-	cuff.mesh = cm
-	cuff.material_override = glove_mat
-	cuff.layers = 2
-	cuff.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	cuff.position = grip + dir * 0.06
-	cuff.basis = Basis.looking_at(dir, Vector3.UP)
-	parent.add_child(cuff)
+## Both hands on the weapon, in the character's own colour (Sean, 2026-09-22: "hands holding the
+## gun... the same color as their character"), built like the Figure's arms: a flared gauntlet
+## with a pale cuff, a palm, four fingers and a thumb. The trigger hand wraps the grip with its
+## forearm running to the bottom-right corner of the frame; the support hand cups the fore-end
+## from below with its forearm running to the bottom-left. Sizes in model metres before the
+## viewmodel's 1.22 scale.
+func _hands(parent: Node3D, grip: Vector3, support: Vector3, skin_mat: Material, cuff_mat: Material) -> void:
+	# Trigger hand: the palm on the grip's right and rear, fingers curled round its front, the
+	# thumb over its left, the index finger a touch higher (on the trigger).
+	var palm := grip + Vector3(0.035, 0.02, 0.015)
+	_box(parent, Vector3(0.05, 0.095, 0.065), palm, skin_mat)                                    # palm
+	for k in 4:
+		var y := grip.y + 0.045 - 0.026 * k
+		var z := grip.z - 0.047 + (0.008 if k == 0 else 0.0)
+		_box(parent, Vector3(0.07, 0.021, 0.026), Vector3(grip.x + 0.01, y, z), skin_mat)          # fingers round the front
+	_box(parent, Vector3(0.026, 0.026, 0.065), grip + Vector3(-0.03, 0.045, -0.005), skin_mat)  # thumb over the left
+	_forearm(parent, palm + Vector3(0.0, -0.04, 0.02), Vector3(0.20, -0.34, 0.34), skin_mat, cuff_mat)
+	# Support hand: the palm under the fore-end, fingers up its right side, the thumb up its left.
+	var spalm := support + Vector3(-0.005, -0.045, 0.0)
+	_box(parent, Vector3(0.065, 0.045, 0.085), spalm, skin_mat)                                  # palm
+	for k in 4:
+		var z := support.z - 0.04 + 0.027 * k
+		_box(parent, Vector3(0.026, 0.06, 0.022), Vector3(support.x + 0.046, support.y - 0.01, z), skin_mat)   # fingers up the right side
+	_box(parent, Vector3(0.026, 0.06, 0.026), Vector3(support.x - 0.046, support.y - 0.005, support.z - 0.01), skin_mat)   # thumb up the left
+	_forearm(parent, spalm + Vector3(-0.01, -0.02, 0.02), Vector3(-0.32, -0.42, 0.38), skin_mat, cuff_mat)
+
+
+## A forearm from the wrist at `wrist` along `dir` (toward the elbow, off the frame): the pale
+## cuff, the gauntlet's narrow end, then its flare, as on the Figure.
+func _forearm(parent: Node3D, wrist: Vector3, dir: Vector3, skin_mat: Material, cuff_mat: Material) -> void:
+	var d := dir.normalized()
+	var basis := Basis.looking_at(d, Vector3.UP)
+	for part in [[0.035, Vector3(0.125, 0.125, 0.035), cuff_mat], [0.15, Vector3(0.10, 0.10, 0.17), skin_mat], [0.33, Vector3(0.125, 0.125, 0.21), skin_mat]]:
+		var mi := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = part[1]
+		mi.mesh = bm
+		mi.material_override = part[2]
+		mi.layers = 2
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.position = wrist + d * float(part[0])
+		mi.basis = basis
+		parent.add_child(mi)
 
 
 ## World position of the active weapon's muzzle, for tracers and the muzzle burst.
@@ -330,11 +359,12 @@ func _process(delta: float) -> void:
 	if player == null or not is_instance_valid(player):
 		return
 	var tick := NetworkTime.tick
-	var slot := player.weapons.slot
+	var ghost := ghost_slot >= 0
+	var slot := ghost_slot if ghost else player.weapons.slot
 	if slot != _last_slot:
 		_last_slot = slot
-		_swap_dip = 1.0
-	var progress := Game.ads_progress_override(player.weapons.ads_progress(tick))
+		_swap_dip = 0.0 if ghost else 1.0
+	var progress := 0.0 if ghost else Game.ads_progress_override(player.weapons.ads_progress(tick))
 	for i in models.size():
 		# The sniper leaves the frame once its eyepiece fills the view and the iris takes over.
 		models[i].visible = (i == slot) and not (i == 0 and progress >= 0.64)
@@ -343,7 +373,7 @@ func _process(delta: float) -> void:
 	var target_pos := hip_positions[hi].lerp(ads_pos[mini(slot, ads_pos.size() - 1)], eased)
 	var target_rot := hip_rotations[hi].lerp(Vector3.ZERO, eased)
 	# Weapon bob from horizontal speed, only from the hip.
-	var speed := Vector2(player.velocity.x, player.velocity.z).length()
+	var speed := 0.0 if ghost else Vector2(player.velocity.x, player.velocity.z).length()
 	_bob_t += delta * speed * 1.6
 	var bob := Vector3(sin(_bob_t) * 0.006, absf(cos(_bob_t)) * 0.005, 0.0) * (1.0 - eased) * clampf(speed / 5.0, 0.0, 1.0)
 	_kick = maxf(0.0, _kick - delta * 9.0)

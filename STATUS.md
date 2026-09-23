@@ -718,3 +718,16 @@ millimetre (35.8 mm every frame while walking), GPU 2.9 ms of a 6 ms frame at 5K
    of slow frames that fullscreen never did).
 4. For the friends' machines: the client loop is 5–6 ms p95 on a 9800X3D; on a mid-range CPU that is
    half a 60 Hz frame before rendering. Same profiling as 2.
+
+## 2026-09-22 — session 10 (evening): the die, hands, the round's end, the briefing
+
+- **The die lands on the ground** (Sean's note 1): the moon's slab beside the tile, not tile
+  height in the air; off the slab it stays at tile height. `board_dice_landed.png`.
+- **Hands on the weapons** (note 4): two hands and forearms per weapon in the character's colour,
+  built like the Figure's arms (gauntlet, pale cuff, palm, fingers, thumb). `arena_hip_ar.png`,
+  `arena_hip_sniper.png`, `ar_ads.png` retaken.
+- **The round's end** (note 3): everyone freezes at the end tick, ROUND OVER and the winner for
+  2 s, the final kill replayed from the killer's eyes for 3.3 s (`KillCam`, from a 5 s replay
+  ring every body keeps), then the switch; 5.7 s in all, 2.4 s with no kill in reach. Headless
+  hosts hold nothing. `round_over.png`, `killcam.png`. Verified: check_all, a host and a client
+  through two 12 s rounds.

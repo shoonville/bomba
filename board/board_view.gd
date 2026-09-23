@@ -1507,7 +1507,20 @@ func _play_next() -> void:
 				# Beside the pawn, to the camera's right, the number reading upright from the camera.
 				var right := Vector3(cos(_cam_yaw), 0.0, -sin(_cam_yaw))
 				var forward := -Vector3(sin(_cam_yaw), 0.0, cos(_cam_yaw))
-				var to := base + right * 1.5 - forward * 0.6 + Vector3.UP * BoardDice.INRADIUS
+				var spot := base + right * 1.5 - forward * 0.6
+				var to := spot + Vector3.UP * BoardDice.INRADIUS
+				# On the moon's ground beside the tile, not floating at tile height (Sean, 2026-09-22),
+				# when the spot is on the slab and clear of a crater; else (an annex, the rim) at the
+				# tile's height as before.
+				var gx := (spot.x - _moon_c.x) / maxf(_moon_rx, 0.01)
+				var gz := (spot.z - _moon_c.z) / maxf(_moon_rz, 0.01)
+				var on_ground := gx * gx + gz * gz < 0.96 * 0.96
+				for cr in _craters:
+					if Vector2(spot.x - cr.x, spot.z - cr.y).length() < cr.z + 0.6:
+						on_ground = false
+				Log.debug("board", "dice ground: r2 %.2f on_ground %s" % [gx * gx + gz * gz, on_ground])
+				if on_ground:
+					to.y = _moon_c.y + MOON_TOP + BoardDice.INRADIUS
 				dice.roll(base + Vector3(0.3, 2.8, 0.2), to, raw, rng, forward)
 				dice.landed.connect(func(_val: int):
 					Audio.play("land", -9.0)

@@ -51,6 +51,12 @@ func waypoint_edges() -> Array:
 	return []
 
 
+## True on ticks when nobody moves or fires: the round over (the hold before the switch, the
+## final-kill cam), the briefing before a round starts. Tick-based so every peer agrees.
+func is_frozen(_tick: int) -> bool:
+	return false
+
+
 ## Where the bots go when nobody is in sight (an objective, when the minigame has one); INF for none.
 func objective_position() -> Vector3:
 	return Vector3.INF

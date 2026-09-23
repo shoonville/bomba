@@ -86,6 +86,13 @@ func _draw() -> void:
 	var progress := Game.ads_progress_override(_player.weapons.ads_progress(tick))
 	var def := _player.weapons.current_def()
 	var spectating := _arena != null and _arena.has_method("spectating_name") and str(_arena.spectating_name()) != ""
+	# The round's end: ROUND OVER over the frozen play, then the final kill cam with only its
+	# banner and the feed on screen.
+	var overlay: Dictionary = _arena.overlay_state() if (_arena != null and _arena.has_method("overlay_state")) else {}
+	if str(overlay.get("phase", "")) == "killcam":
+		_draw_feed()
+		_draw_banner(size, overlay)
+		return
 	if spectating:
 		# Eliminated and watching someone else: only the round state stays on screen.
 		_draw_score(size)
@@ -130,9 +137,11 @@ func _draw() -> void:
 				var digit := "%d" % left
 				var dw := _font.get_string_size(digit, HORIZONTAL_ALIGNMENT_CENTER, -1, 120).x
 				_draw_outlined(Vector2((size.x - dw) * 0.5, size.y * 0.3 + 165.0), digit, 120, _score_col, 10.0, -0.22)
+	if str(overlay.get("phase", "")) == "over":
+		_draw_banner(size, overlay)
 	if (Input.is_action_pressed("scoreboard") or Game.args.has("show_scoreboard")) and _arena != null and _arena.has_method("all_player_nodes"):
 		_draw_scoreboard(size)
-	if _player.health <= 0:
+	if _player.health <= 0 and overlay.is_empty():
 		var txt := "DOWN"
 		if _arena != null and _arena.has_method("centre_text") and str(_arena.centre_text()) != "":
 			txt = str(_arena.centre_text())
@@ -359,6 +368,16 @@ func _draw_status(size: Vector2) -> void:
 		var w := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, fs).x
 		_draw_outlined(Vector2((size.x - w) * 0.5, y + fs), text, fs, line.get("colour", _paper), 5.0 if fs > 24 else 4.0)
 		y += fs * 1.25 + 4.0
+
+
+## ROUND OVER and the winner, or FINAL KILL and who got whom: the title in the score colour
+## where GET READY sits, the line under it in paper.
+func _draw_banner(size: Vector2, overlay: Dictionary) -> void:
+	_draw_centre_text(size, str(overlay.get("title", "")), 64, _score_col)
+	var sub := str(overlay.get("subtitle", ""))
+	if sub != "":
+		var sw := _font.get_string_size(sub, HORIZONTAL_ALIGNMENT_CENTER, -1, 28).x
+		_draw_outlined(Vector2((size.x - sw) * 0.5, size.y * 0.3 + 44.0), sub, 28, _paper)
 
 
 func _draw_centre_text(size: Vector2, text: String, font_size: int, col: Color) -> void:
