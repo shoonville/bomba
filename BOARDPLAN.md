@@ -85,7 +85,9 @@ right click puts any of them away; the portal picks a player.
 - HUD in the menu language: a turn strip of player cards (coins, Bombas, items), the dice as a
   slammed numeral, the ROLL prompt, fork arrows (A/D or click), item buttons (1/2), round
   counter. Board music is the menu loop for now.
-- Transitions: wipe into the minigame, slam back to the board.
+- Transitions: wipe into the minigame, slam back to the board. The view's first build of a match is chunked over
+  frames under the held wipe (`BoardView.build_visuals`, 2026-09-23), like a minigame's look; it sleeps through
+  the minigames and wakes after them.
 
 ## 6. What v0 does not do
 

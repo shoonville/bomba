@@ -704,7 +704,8 @@ millimetre (35.8 mm every frame while walking), GPU 2.9 ms of a 6 ms frame at 5K
 1. DONE (2026-09-22, later the same day): the switch into a minigame stalled 150–200 ms and the
    return 119–148 ms; now 27 ms in and 17 ms back (the look built over frames under a held cover,
    the board view asleep through the minigame instead of rebuilt, shared viewmodel materials,
-   one unit box mesh, netfox patch #9). Left: the first board build of a match, 140 ms once.
+   one unit box mesh, netfox patch #9). The first board build of a match followed on 2026-09-23
+   (session 11): 176 ms → 38 ms worst frame, built over 18 frames under the held cover.
 2. MEASURED (2026-09-22): six seats, host loop 5.8 ms mean 9 p95, the players' own simulation 0.9 ms of it;
    85 % is netfox's per-property bookkeeping. A vendored-library change, deferred. The old text follows:
    the host's tick loop measured 7.0 ms mean (2026-09-19), which at
@@ -736,3 +737,45 @@ millimetre (35.8 mm every frame while walking), GPU 2.9 ms of a 6 ms frame at 5K
   their READY state, READY (Space) and the host's FORCE START; everyone frozen until then.
   `briefing.png`. Harness: skipped unless `--briefing`; `--auto_ready=N` for unattended runs.
   Verified with a host and a headless client through the READY flow.
+
+## 2026-09-23 — session 11: the wipe that never drew, the first board build over frames
+
+Run on Sean's desktop, which now drives a 2560×1440 display at 240 Hz (the 5K 165 Hz panel is
+gone; the friends' 1080p stays the yardstick). `tools/check_all.sh`: 79 tests, 99 scripts,
+determinism identical, the headless four-seat board match over two rounds PASS.
+
+- **The wipe draws** (found by accident, fixed): `Wipe._ready` set anchors only, which leaves a
+  control under a CanvasLayer at 0 × 0, so every transition since session 2 was a cut and the
+  held cover of the minigame switch hid nothing (a frame 50 ms into an arena start: the tan clear
+  colour, the HUD, the look still building). With a size, a second fault showed: a `hold()` inside
+  `Game.transition`'s callback was overwritten to "reveal" and the later `slam()` refused it, which
+  would have left a full cover for the whole match. Both fixed. `wipe_reveal.png` (the band
+  mid-sweep into the arena), `board_wipe.png` (into the board). His verdict on the band pending.
+- **The first board build of a match over frames** (the smoothness plan's leftover): 176 ms on
+  the start RPC's frame at 1080p (2795 nodes) is now 18 frames under the held cover, the longest
+  35–38 ms (the annexes, the props); the start RPC's own frame stays 57–71 ms (the director 16,
+  the HUD 2, the rest the transition frame's own work). `BoardView.build_visuals()` through
+  `BoardDirector.build_view()`, the dressing a coroutine in five parts, a pawn per frame; state
+  and events wait for `built`. The seeded layouts are unchanged.
+
+  | first board build, 1080p windowed | before | after |
+  |---|---|---|
+  | longest frame | 176 ms | 38 ms (the RPC frame 55–71 ms) |
+  | frames the build spans | 1 | 18 |
+  | chunk ms | — | env 0, tiles 3, markers 4, moon 1, craters 6, props 29, crew 0, asteroids 0, horizon 0, dressing 9/17/5/4/1, pawns 6/1/1/1 |
+
+- **A 60 Hz cadence on his display, not in the game** (some thirty runs to prove it, in
+  DECISIONS): after the reveal the board runs ~70 frames at 16 ms until the first roll, with the
+  old build in the real flow just as with the new one; the display sits at 60 Hz on a nearly static
+  picture and rises with motion. The hitch line now carries the frame's phases (process →
+  pre-draw, the draw, post-draw → next process), draw calls and primitives, and the boot line the
+  screen size and refresh rate, so the next such question takes one run. A fixed 240 Hz in Windows'
+  display settings is the remedy if he wants it.
+
+### Next
+1. Sean plays: the wipe (the accent band on every transition, seen for the first time), the board's
+   arrival under it, and whether the 60 Hz second after START MATCH is visible to him (if so, the
+   display's refresh setting).
+2. The start RPC's frame (57–71 ms under the cover): the director's 16 ms and the transition
+   frame's own work, if it ever shows.
+3. Unchanged from session 10: his notes on the die, the hands, the round's end and the briefing.

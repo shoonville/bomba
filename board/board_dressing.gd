@@ -58,8 +58,14 @@ var _active_machine: String = ""
 var counts: Dictionary = {}      # what was placed, for the log
 
 
+## Built in five parts on five frames (the view awaits this under the held wipe; whole, it was
+## 41 ms of the first board build's 176 ms frame at 1080p, 2026-09-23): the path, the annexes,
+## the props and the ground, the structures and the signs, the living things. Returns the
+## milliseconds each part took. A part checks the node is still in the tree first (a peer can
+## leave mid-build), and the order and the seeded stream are the single build's, so the base is
+## the same on every peer.
 func build(view: Node3D, g: BoardGraph, centre: Vector3, rx: float, rz: float, top: float,
-		craters: Array, landmarks: Array, shadow: Color) -> void:
+		craters: Array, landmarks: Array, shadow: Color) -> PackedInt32Array:
 	_view = view
 	_graph = g
 	_centre = centre
@@ -74,14 +80,47 @@ func build(view: Node3D, g: BoardGraph, centre: Vector3, rx: float, rz: float, t
 		_occupied.append(Vector3(cr.x, cr.y, cr.z + 0.6))
 	for sp in landmarks:
 		_occupied.append(Vector3(sp.x, sp.y, 4.6))
+	var times := PackedInt32Array()
+	var t := Time.get_ticks_usec()
 	_path_details()
+	times.append((Time.get_ticks_usec() - t) / 1000)
+	await _next_frame()
+	if not is_inside_tree():
+		return times
+	t = Time.get_ticks_usec()
 	_build_annexes()
+	times.append((Time.get_ticks_usec() - t) / 1000)
+	await _next_frame()
+	if not is_inside_tree():
+		return times
+	t = Time.get_ticks_usec()
 	_path_props()
 	_plan_road()
 	_ground_details()
+	times.append((Time.get_ticks_usec() - t) / 1000)
+	await _next_frame()
+	if not is_inside_tree():
+		return times
+	t = Time.get_ticks_usec()
 	_structures(craters, landmarks)
 	_signs_and_pennants(landmarks)
+	times.append((Time.get_ticks_usec() - t) / 1000)
+	await _next_frame()
+	if not is_inside_tree():
+		return times
+	t = Time.get_ticks_usec()
 	_life()
+	times.append((Time.get_ticks_usec() - t) / 1000)
+	return times
+
+
+## The next rendered frame, never this one (the rule from FpsMatch._next_frame); waits on the
+## main loop, not the tree, so a node pulled from the tree mid-build still wakes to stop.
+func _next_frame() -> void:
+	var f := Engine.get_process_frames()
+	await (Engine.get_main_loop() as SceneTree).process_frame
+	if Engine.get_process_frames() == f:
+		await (Engine.get_main_loop() as SceneTree).process_frame
 
 
 ## The buggy's road: the longest clear stretch of a ring near the rim, chosen after the annexes
@@ -1192,7 +1231,7 @@ func _process(delta: float) -> void:
 		_freighter.rotate_object_local(Vector3.UP, -PI * 0.5)
 	# The shooting star: a streak across the far sky every so often.
 	_star_next -= delta
-	if _star_next <= 0.0 and _star_t >= 99.0:
+	if _star != null and _star_next <= 0.0 and _star_t >= 99.0:
 		var a := _rng.randf_range(0.0, TAU)
 		_star_from = _centre + Vector3(cos(a) * 110.0, _rng.randf_range(38.0, 60.0), sin(a) * 110.0)
 		_star_to = _centre + Vector3(cos(a + 1.1) * 110.0, _rng.randf_range(18.0, 34.0), sin(a + 1.1) * 110.0)

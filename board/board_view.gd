@@ -59,6 +59,10 @@ var _swirl_vp: SubViewport         # the menu's swirl, rendered small for the po
 var _blood_root: Node3D
 var _blood_drawn: Dictionary = {}   # blood serial → true
 var _blood_mat: Material
+var built: bool = false            # the look is complete: build_visuals() ran to its end
+var _state_shown: bool = false     # the first state has been applied (goal, focus, blood, shields)
+var _shadow: Color
+var _moon_rng := RandomNumberGenerator.new()   # one seeded stream across the moon's three chunks
 
 
 ## Dormant through a minigame (2026-09-22): hidden, not processing (its tweens pause with it),
@@ -91,18 +95,13 @@ func is_asleep() -> bool:
 func setup(p_director: BoardDirector) -> void:
 	director = p_director
 	_hop = float(director.cfg.get("hop_seconds", 0.32))
-	var t0 := Time.get_ticks_usec()
-	_build_environment()
-	var t1 := Time.get_ticks_usec()
-	_build_tiles()
-	var t2 := Time.get_ticks_usec()
-	Log.info("perf", "Board view built: environment %d ms, tiles+markers %d ms" % [(t1 - t0) / 1000, (t2 - t1) / 1000])
+	_shadow = Palette.map_colour("board", "shadow_tint")
 	director.state_changed.connect(_on_state)
 	director.events_received.connect(_on_events)
 	_blood_root = Node3D.new()
 	_blood_root.name = "Blood"
 	add_child(_blood_root)
-	_blood_mat = CelMaterial.for_colour(Color.from_hsv(355.0 / 360.0, 0.85, 0.42), Palette.map_colour("board", "shadow_tint"))
+	_blood_mat = CelMaterial.for_colour(Color.from_hsv(355.0 / 360.0, 0.85, 0.42), _shadow)
 	_build_beam()
 	camera = Camera3D.new()
 	camera.name = "BoardCamera"
@@ -117,8 +116,82 @@ func setup(p_director: BoardDirector) -> void:
 	_cam_target = Vector3.ZERO
 	camera.global_position = Vector3(0, 6.2, 6.8)
 	camera.look_at(Vector3(0, 1.0, 0), Vector3.UP)
+	# The look (sky, tiles, moon, space, dressing, pawns) comes from build_visuals(), one chunk
+	# per frame under the held wipe; a state or events that land before it is done wait for it.
+
+
+## The look, one chunk per rendered frame under the wipe's held cover (Game awaits this, then
+## reveals): the sky and sun, the tiles and planks, the markers and the goal, the moon in three
+## parts (slab and posts, craters and boulders, the five props), the asteroids, the horizon and
+## the UFO, the dressing in four parts, then a pawn per frame. The first build of a match used to
+## run whole on the start RPC's frame: 176 ms at 1080p on Sean's desktop (2026-09-23), 2795
+## nodes. Every chunk checks the view is still in the tree (a peer can leave mid-build). The
+## state, and any events that landed meanwhile, are applied at the end.
+func build_visuals() -> void:
+	var steps: Array = [
+		["environment", _build_environment],
+		["tiles", _build_tiles],
+		["markers", _build_markers],
+		["moon", _build_moon_chunk],
+		["craters", _build_moon_craters],
+		["props", _build_moon_props.bind(0, 4)],
+		["crew", _build_moon_props.bind(4, 5)],   # the first Figure of the match: a frame of its own
+		["asteroids", _build_asteroids],
+		["horizon", _build_horizon],
+	]
+	var f0 := Engine.get_process_frames()
+	var times := PackedStringArray()
+	for step in steps:
+		await _next_frame()
+		if not is_inside_tree():
+			return
+		var t := Time.get_ticks_usec()
+		(step[1] as Callable).call()
+		times.append("%s %d@%d" % [step[0], (Time.get_ticks_usec() - t) / 1000, Engine.get_process_frames()])
+	# The detail pass: everything a moon base has around a walkway (board/board_dressing.gd),
+	# four parts on four frames.
+	await _next_frame()
+	if not is_inside_tree():
+		return
+	_dressing = BoardDressing.new()
+	_dressing.name = "Dressing"
+	add_child(_dressing)
+	var dressing_ms: PackedInt32Array = await _dressing.build(self, director.graph, _moon_c, _moon_rx, _moon_rz, MOON_TOP, _craters, _prop_spots, _shadow)
+	if not is_inside_tree():
+		return
+	var placed := []
+	for k in _dressing.counts:
+		placed.append("%s ×%d" % [k, int(_dressing.counts[k])])
+	Log.info("board", "Dressing built: %s" % ", ".join(placed))
+	times.append("dressing %s@%d" % ["/".join(Array(dressing_ms).map(func(v): return str(v))), Engine.get_process_frames()])
+	# A pawn per frame (a Figure each), before the state is shown.
+	var pawn_ms := PackedStringArray()
+	if director.state != null:
+		for p in director.state.players:
+			await _next_frame()
+			if not is_inside_tree():
+				return
+			var t := Time.get_ticks_usec()
+			_ensure_pawn(p)
+			pawn_ms.append(str((Time.get_ticks_usec() - t) / 1000))
+	built = true
+	Log.info("perf", "Board look built over %d frames (ms@frame): %s | pawns %s ms, last on %d" % [
+		Engine.get_process_frames() - f0, " | ".join(times), "/".join(pawn_ms), Engine.get_process_frames()])
 	if director.state != null:
 		_on_state(director.state)
+	if not _playing and not _queue.is_empty():
+		_play_next()
+
+
+## The next rendered frame, never this one: the start RPC can land before this frame's
+## process_frame signal, and one await would then resume in the frame it was issued from.
+## Waits on the main loop, not the tree, so a view pulled from the tree mid-build still wakes to
+## find that out and stop.
+func _next_frame() -> void:
+	var f := Engine.get_process_frames()
+	await (Engine.get_main_loop() as SceneTree).process_frame
+	if Engine.get_process_frames() == f:
+		await (Engine.get_main_loop() as SceneTree).process_frame
 
 
 func _build_environment() -> void:
@@ -758,8 +831,10 @@ const MOON_TOP := -1.75
 ## The moon: the board stands on posts over a floating chunk of grey rock with craters and
 ## boulders, a landing pad with a rocket, a satellite dish, a buggy, a half-buried probe and a
 ## crew member looking at the sky. The pink sky stays (Sean: outer space, keep the pink).
-func _build_moon(g: BoardGraph, shadow: Color) -> void:
-	var rng := RandomNumberGenerator.new()
+func _build_moon_chunk() -> void:
+	var g := director.graph
+	var shadow := _shadow
+	var rng := _moon_rng
 	rng.seed = hash(g.id) + 23
 	var lo := Vector3(1e9, 0, 1e9)
 	var hi := Vector3(-1e9, 0, -1e9)
@@ -770,17 +845,12 @@ func _build_moon(g: BoardGraph, shadow: Color) -> void:
 	var c := (lo + hi) * 0.5
 	var rx := (hi.x - lo.x) * 0.5 + 7.0
 	var rz := (hi.z - lo.z) * 0.5 + 7.0
+	_moon_c = c
+	_moon_rx = rx
+	_moon_rz = rz
 	var moon_mat := CelMaterial.with_print(CelMaterial.for_colour(Palette.map_colour("board", "moon"), shadow), "moon", Palette.map_colour("board", "line"))
 	var moon_dark_mat := CelMaterial.for_colour(Palette.map_colour("board", "moon_dark"), shadow)
-	var crater_mat := CelMaterial.for_colour(Palette.map_colour("board", "crater"), shadow)
-	var rock_mat := CelMaterial.for_colour(Palette.map_colour("board", "rock"), shadow)
 	var post_mat := CelMaterial.for_colour(Palette.map_colour("board", "counter_dark"), shadow)
-	var metal_mat := CelMaterial.for_colour(Palette.map_colour("board", "metal"), shadow)
-	var paper_mat := CelMaterial.for_colour(Palette.hud_colour("paper"), shadow)
-	var accent_mat := CelMaterial.for_colour(Palette.map_colour("board", "accent"), shadow, 0.3)
-	var ink_mat := CelMaterial.for_colour(Color.from_hsv(Palette.map_colour("board", "line").h, 0.45, 0.24), shadow)
-	var glow_mat := CelMaterial.for_colour(Palette.hud_colour("danger"), shadow, 1.5)
-	var alien_mat := CelMaterial.for_colour(Palette.map_colour("board", "alien"), shadow, 1.2)
 	# The chunk: a 13-sided slab, a rocky root tapering nine metres down.
 	var slab := MeshInstance3D.new()
 	var sm := CylinderMesh.new()
@@ -812,6 +882,20 @@ func _build_moon(g: BoardGraph, shadow: Color) -> void:
 		if h > 0.2:
 			_prop_cyl(self, 0.3, h, Vector3(sp.x, MOON_TOP + h * 0.5 - 0.1, sp.z), post_mat)
 		_prop_cyl(self, 0.75, 0.14, Vector3(sp.x, MOON_TOP + 0.05, sp.z), moon_dark_mat)
+
+
+## The moon's second chunk: craters and boulders. The seeded stream carries on from the first
+## chunk, so the layout is the one the single build produced.
+func _build_moon_craters() -> void:
+	var g := director.graph
+	var shadow := _shadow
+	var rng := _moon_rng
+	var c := _moon_c
+	var rx := _moon_rx
+	var rz := _moon_rz
+	var moon_dark_mat := CelMaterial.for_colour(Palette.map_colour("board", "moon_dark"), shadow)
+	var crater_mat := CelMaterial.for_colour(Palette.map_colour("board", "crater"), shadow)
+	var rock_mat := CelMaterial.for_colour(Palette.map_colour("board", "rock"), shadow)
 	# Craters: a darker floor and a raised rim, never under a tile.
 	var craters: Array = []
 	var tries := 0
@@ -865,10 +949,31 @@ func _build_moon(g: BoardGraph, shadow: Color) -> void:
 		b.rotation.y = rng.randf_range(0.0, TAU)
 		b.material_override = rock_mat if k % 3 != 0 else moon_dark_mat
 		add_child(b)
+	_craters = craters
+
+
+## The moon's third chunk: the five landmark props (a landing pad with a rocket, a dish on a
+## tripod, a buggy, a half-buried probe, a crew member by a flag), each in a spot clear of the
+## tiles, the craters and each other. Props `from` up to `to` are built; the spots are searched
+## with the first call, and the seeded stream runs on across the calls in the single build's order.
+func _build_moon_props(from: int, to: int) -> void:
+	var g := director.graph
+	var shadow := _shadow
+	var rng := _moon_rng
+	var c := _moon_c
+	var rx := _moon_rx
+	var rz := _moon_rz
+	var craters := _craters
+	var metal_mat := CelMaterial.for_colour(Palette.map_colour("board", "metal"), shadow)
+	var paper_mat := CelMaterial.for_colour(Palette.hud_colour("paper"), shadow)
+	var accent_mat := CelMaterial.for_colour(Palette.map_colour("board", "accent"), shadow, 0.3)
+	var ink_mat := CelMaterial.for_colour(Color.from_hsv(Palette.map_colour("board", "line").h, 0.45, 0.24), shadow)
+	var glow_mat := CelMaterial.for_colour(Palette.hud_colour("danger"), shadow, 1.5)
+	var alien_mat := CelMaterial.for_colour(Palette.map_colour("board", "alien"), shadow, 1.2)
 	# Props, each in a spot clear of the tiles and of each other.
-	var spots: Array = []
-	tries = 0
-	while spots.size() < 5 and tries < 600:
+	var spots: Array = _prop_spots
+	var tries := 0
+	while from == 0 and spots.size() < 5 and tries < 600:
 		tries += 1
 		var a := rng.randf_range(0.0, TAU)
 		var f := rng.randf_range(0.3, 0.88)
@@ -887,12 +992,8 @@ func _build_moon(g: BoardGraph, shadow: Color) -> void:
 				break
 		if ok:
 			spots.append(Vector2(x, z))
-	_craters = craters
 	_prop_spots = spots
-	_moon_c = c
-	_moon_rx = rx
-	_moon_rz = rz
-	for n in spots.size():
+	for n in range(from, mini(to, spots.size())):
 		var at := Vector3(spots[n].x, MOON_TOP, spots[n].y)
 		var prop := Node3D.new()
 		prop.position = at
@@ -1042,7 +1143,9 @@ func _prop_sphere(parent: Node3D, radius: float, pos: Vector3, mat: Material) ->
 
 ## Outer space around the moon: drifting asteroids (some with a satellite, a beacon, a wreck),
 ## a ringed planet and a small moon on the horizon, and a UFO doing slow laps of the board.
-func _build_space(g: BoardGraph, shadow: Color) -> void:
+func _build_asteroids() -> void:
+	var g := director.graph
+	var shadow := _shadow
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(g.id) + 17
 	var rock_mat := CelMaterial.for_colour(Palette.map_colour("board", "rock"), shadow)
@@ -1122,6 +1225,13 @@ func _build_space(g: BoardGraph, shadow: Color) -> void:
 					_prop_box(prop, Vector3(0.6, 0.3, 0.6), Vector3(0, 2.3, 0), ink_mat)
 					_prop_box(prop, Vector3(0.44, 0.08, 0.44), Vector3(0, 2.12, 0), glow_mat)
 		_islands.append({"node": ast, "base_y": pos.y, "phase": rng.randf_range(0.0, TAU), "spin": rng.randf_range(-0.12, 0.12)})
+
+
+## Outer space's second chunk: the ringed planet and the small moon on the horizon, and the UFO.
+func _build_horizon() -> void:
+	var shadow := _shadow
+	var metal_mat := CelMaterial.for_colour(Palette.map_colour("board", "metal"), shadow)
+	var ink_mat := CelMaterial.for_colour(Color.from_hsv(Palette.map_colour("board", "line").h, 0.45, 0.24), shadow)
 	# A ringed planet and a small moon on the horizon (no shadows: they are far).
 	var planet := Node3D.new()
 	planet.position = _bounds_centre + Vector3(-75.0, 36.0, -105.0)
@@ -1295,6 +1405,23 @@ func _build_tiles() -> void:
 			plank.global_position = mid
 			if (b - a).length() > 0.01:
 				plank.look_at(b, Vector3.UP)
+	# Board bounds, for the Tab map view, the asteroids and the UFO.
+	var lo := Vector3(1e9, 0, 1e9)
+	var hi := Vector3(-1e9, 0, -1e9)
+	for sid in g.ids():
+		var sp := g.get_space(sid).position
+		lo.x = minf(lo.x, sp.x)
+		lo.z = minf(lo.z, sp.z)
+		hi.x = maxf(hi.x, sp.x)
+		hi.z = maxf(hi.z, sp.z)
+	_bounds_centre = (lo + hi) * 0.5
+	_bounds_radius = maxf(hi.x - lo.x, hi.z - lo.z) * 0.5
+
+
+## The markers over the special spaces, the goal ring, the toy beacon and the active pulse.
+func _build_markers() -> void:
+	var g := director.graph
+	var shadow := _shadow
 	for sid in g.ids():
 		_build_marker(g.get_space(sid), shadow)
 	goal_ring = MeshInstance3D.new()
@@ -1366,29 +1493,6 @@ func _build_tiles() -> void:
 	active_pulse.material_override = CelMaterial.for_colour(Palette.map_colour("board", "accent"), shadow, 1.0)
 	active_pulse.visible = false
 	add_child(active_pulse)
-	# Board bounds, for the Tab map view and the islands.
-	var lo := Vector3(1e9, 0, 1e9)
-	var hi := Vector3(-1e9, 0, -1e9)
-	for sid in g.ids():
-		var sp := g.get_space(sid).position
-		lo.x = minf(lo.x, sp.x)
-		lo.z = minf(lo.z, sp.z)
-		hi.x = maxf(hi.x, sp.x)
-		hi.z = maxf(hi.z, sp.z)
-	_bounds_centre = (lo + hi) * 0.5
-	_bounds_radius = maxf(hi.x - lo.x, hi.z - lo.z) * 0.5
-	_build_moon(g, shadow)
-	_build_space(g, shadow)
-	# The detail pass: everything a moon base has around a walkway (board/board_dressing.gd).
-	var t0 := Time.get_ticks_msec()
-	_dressing = BoardDressing.new()
-	_dressing.name = "Dressing"
-	add_child(_dressing)
-	_dressing.build(self, g, _moon_c, _moon_rx, _moon_rz, MOON_TOP, _craters, _prop_spots, shadow)
-	var placed := []
-	for k in _dressing.counts:
-		placed.append("%s ×%d" % [k, int(_dressing.counts[k])])
-	Log.info("board", "Dressing built in %d ms: %s" % [Time.get_ticks_msec() - t0, ", ".join(placed)])
 
 
 func _ensure_pawn(p: BoardState.PlayerState) -> BoardPawn:
@@ -1427,7 +1531,10 @@ func _slot_position(space_id: String, peer_id: int) -> Vector3:
 
 
 func _on_state(state: BoardState) -> void:
-	var first := pawns.is_empty()
+	if not built:
+		return   # applied by build_visuals() once the look is there; the director keeps the state
+	var first := not _state_shown
+	_state_shown = true
 	for p in state.players:
 		_ensure_pawn(p)
 	# Existing pawns are moved by the events that follow this state. Snapping them here showed
@@ -1463,13 +1570,13 @@ func _snap_all() -> void:
 ## True while the view is still playing events (hops, dice, cards); the HUD holds its buttons
 ## until the pawn has actually arrived where the state says it is.
 func is_animating() -> bool:
-	return _playing or not _queue.is_empty()
+	return not built or _playing or not _queue.is_empty()
 
 
 func _on_events(events: Array) -> void:
 	_queue.append_array(events)
-	if not _playing:
-		_play_next()
+	if not _playing and built:
+		_play_next()   # events that land mid-build wait; build_visuals() starts them
 
 
 func _play_next() -> void:

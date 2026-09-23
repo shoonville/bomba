@@ -101,6 +101,13 @@ func _show_board() -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 
+## The view's look, one chunk per frame under the wipe Game holds: the first build of a match
+## (a view woken after a minigame has nothing to build). Game awaits this, then reveals.
+func build_view() -> void:
+	if view != null and is_instance_valid(view) and not view.built:
+		await view.build_visuals()
+
+
 ## The view sleeps through the minigame (hidden, not processing, its environment withdrawn) and
 ## wakes on the way back; freeing and rebuilding it cost 120–150 ms every round (2026-09-22).
 func _hide_board() -> void:

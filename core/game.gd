@@ -97,6 +97,8 @@ func _ready() -> void:
 	if not headless:
 		# Per-frame render times for --perf and the hitch log (two GPU timestamps a frame).
 		RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
+		RenderingServer.frame_pre_draw.connect(func(): _t_pre_draw = Time.get_ticks_usec())
+		RenderingServer.frame_post_draw.connect(func(): _t_post_draw = Time.get_ticks_usec())
 	if args.has("soak"):
 		soak_seconds = float(args["soak"])
 	rounds_left = int(args.get("rounds", 1))
@@ -332,7 +334,7 @@ func apply_window_settings(from_panel: bool = false) -> void:
 		DisplayServer.window_set_mode(want)
 	var vs := int(args.get("vsync", 1 if Settings.vsync else 0)) != 0
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if vs else DisplayServer.VSYNC_DISABLED)
-	Log.info("perf", "Window %s, vsync %s" % [mode, "on" if vs else "off"])
+	Log.info("perf", "Window %s, vsync %s, screen %s at %.0f Hz" % [mode, "on" if vs else "off", str(DisplayServer.screen_get_size()), DisplayServer.screen_get_refresh_rate()])
 
 
 ## --ads_progress=0..1 pins the scope-in animation for screenshots (presentation only).
@@ -398,17 +400,27 @@ func _on_board_start(board_id: String, seed_value: int, players_data: Array, _co
 		_menu.queue_free()
 		_menu = null
 	_end_board()
+	if wipe != null:
+		wipe.hold()   # a full cover at once; the board's look builds under it over the next frames
+	var t0 := Time.get_ticks_usec()
 	board = BoardDirector.new()
 	board.name = "BoardDirector"
 	add_child(board)
 	board.match_finished.connect(_on_board_finished)
 	board.events_received.connect(_arm_screenshot_on)
 	board.start(players_data, seed_value, board_id)
+	var t1 := Time.get_ticks_usec()
 	if not headless and ResourceLoader.exists("res://ui/board/board_hud.tscn"):
 		_hud = load("res://ui/board/board_hud.tscn").instantiate()
 		ui_layer.add_child(_hud)
 		if _hud.has_method("attach"):
 			_hud.attach(board)
+	Log.info("perf", "Board start: director %d ms, hud %d ms (frame %d)" % [(t1 - t0) / 1000, (Time.get_ticks_usec() - t1) / 1000, Engine.get_process_frames()])
+	# The look, one chunk per frame under the held cover; then the reveal.
+	var started := board
+	await started.build_view()
+	if board != started or not is_instance_valid(started):
+		return   # the match was replaced or ended mid-build; that path reveals
 	if wipe != null:
 		wipe.slam()
 
@@ -585,9 +597,21 @@ func _clear_hud() -> void:
 	_briefing = null
 
 
+var _t_process: int = 0      # when this frame's _process began (the hitch line's frame phases)
+var _t_pre_draw: int = 0     # frame phases for the hitch line: process → pre-draw → post-draw → next process
+var _t_post_draw: int = 0
+var _t_prev_process: int = 0
+var _t_prev_pre: int = 0
+var _t_prev_post: int = 0
+
+
 func _process(delta: float) -> void:
 	# Wall clock between frames: Godot caps the delta it hands _process at a few physics steps
 	# (max_physics_steps_per_frame), so a 2 s freeze arrives here as ~0.13 s and would hide.
+	_t_prev_process = _t_process
+	_t_prev_pre = _t_pre_draw
+	_t_prev_post = _t_post_draw
+	_t_process = Time.get_ticks_usec()
 	var now := Time.get_ticks_msec()
 	var gap := now - _last_frame_ms
 	_last_frame_ms = now
@@ -609,9 +633,11 @@ func _process(delta: float) -> void:
 		var resources := int(Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT))
 		var pipes := _pipeline_counts()
 		var rid_h := get_viewport().get_viewport_rid()
-		Log.info("perf", "Frame hitch %d ms frame %d (%s) vram %d MB (%+d MB) objects %d | render cpu %.1f ms gpu %.1f ms | process %.0f ms physics %.0f ms | netfox loop %.1f ms rollback %.1f ms (%d ticks) | nodes %d (%+d) resources %d (%+d) | pipelines canvas %+d mesh %+d surface %+d draw %+d spec %+d" % [
+		Log.info("perf", "Frame hitch %d ms frame %d (%s) vram %d MB (%+d MB) objects %d | draws %d prims %d | phases proc→pre %d draw %d post→next %d us | render cpu %.1f ms gpu %.1f ms | process %.0f ms physics %.0f ms | netfox loop %.1f ms rollback %.1f ms (%d ticks) | nodes %d (%+d) resources %d (%+d) | pipelines canvas %+d mesh %+d surface %+d draw %+d spec %+d" % [
 			gap, Engine.get_process_frames(), where, vmem / 1048576, (vmem - _last_vmem) / 1048576,
 			int(Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)),
+			int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)), int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)),
+			_t_prev_pre - _t_prev_process, _t_prev_post - _t_prev_pre, _t_process - _t_prev_post,
 			RenderingServer.viewport_get_measured_render_time_cpu(rid_h), RenderingServer.viewport_get_measured_render_time_gpu(rid_h),
 			Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0,
 			Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0,

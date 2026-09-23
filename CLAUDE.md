@@ -56,8 +56,11 @@ that travels with the repo.
   GPU pipeline on the shot's frame and was the arena "skipping frames". Never build per-shot resources.
 - Scene switches: a minigame's `setup()` builds the simulation on the RPC's frame (never spread it:
   a player spawned a tick late broke determinism) and `build_visuals()` builds the look one chunk
-  per frame under `Wipe.hold()`; the board view sleeps through minigames (`BoardView.sleep/wake`),
-  never freed and rebuilt. A StandardMaterial3D's shader dies with its last user: keep shared
+  per frame under `Wipe.hold()`; the board's first build of a match does the same (`BoardView.build_visuals()`
+  through `BoardDirector.build_view()`, 2026-09-23); the board view sleeps through minigames
+  (`BoardView.sleep/wake`), never freed and rebuilt. A held cover survives `Game.transition`'s
+  callback and `slam()` reveals it (the wipe never drew before 2026-09-23: anchors alone size a
+  control under a CanvasLayer to 0 × 0; set anchors AND offsets). A StandardMaterial3D's shader dies with its last user: keep shared
   instances (the viewmodel's, the warm-up's `_keep`), never a fresh one per match.
 
 ## Verify before claiming
@@ -83,13 +86,16 @@ that travels with the repo.
   it did; 150 by default), `--motion_log[=path]` (a MOTION line: how even the camera's step from frame to
   frame is; the CSV at path), `--vsync=0|1`, `--window=fullscreen|windowed|exclusive`, and
   Godot's own `--resolution 1920x1080` (the friends' resolution: judge looks and cost there, not at
-  Sean's 5120×2160; his monitor "doesn't matter"). `tools/report.gd -- frame_stats IMAGE...` prints the
+  Sean's own display (5120×2160 at 165 Hz through 2026-09-22, 2560×1440 at 240 Hz since; his monitor "doesn't matter"). `tools/report.gd -- frame_stats IMAGE...` prints the
   STYLE.md appendix numbers (saturated, grey, dark, v95) for a frame; judge a visual pass by them.
 - WINDOW defaults to fullscreen (2026-09-22): a frame at a set size needs `--window=windowed` with
   `--resolution`, or the run takes the whole screen.
 - Windowed runs: wrap them in `timeout 90` so a broken build cannot sit at a window forever; grep
   the output for `Frame hitch` (any frame over 150 ms, with what it did), `Minigame build` and
-  `PERF` (with `--perf`). An `override.cfg` in the project root overrides project settings for an
+  `PERF` (with `--perf`). A hitch line's phases (process → pre-draw, the draw, post-draw → next
+  process) tell the game's work from the display's: a long process → pre-draw with a short draw is the
+  render thread waiting on the present, and Sean's display idles at 60 Hz on a static picture
+  (2026-09-23; the harness's immediate start sits in it until the first roll, real play too). An `override.cfg` in the project root overrides project settings for an
   experiment (shadow size, MSAA); delete it afterwards, it is not tracked.
 - Harness runs must not use port 27015 while his own game is open; pass `--port=27077`.
 - Never run two soaks, or a soak and a windowed run, at once (contention ruins the numbers).
