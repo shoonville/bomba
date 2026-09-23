@@ -161,7 +161,6 @@ func hop_to(target: Vector3, seconds: float, turn: bool = true) -> void:
 	flat.y = 0.0
 	if turn and flat.length() > 0.01:
 		_body.look_at(global_position + flat, Vector3.UP)
-		_body.rotate_y(PI)
 	_lean_target = 1.0
 	_hop_tween = create_tween()
 	_hop_tween.set_parallel(true)

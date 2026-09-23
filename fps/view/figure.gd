@@ -86,28 +86,26 @@ func build(colour: Color, map_id: String, head_y: float = 1.62, with_gun: bool =
 	_cyl(self, 0.05, 0.14, Vector3(0, head_y - 0.14, 0), dark_mat)                           # neck
 	_cyl(self, 0.075, 0.03, Vector3(0, head_y - 0.06, 0), metal_mat)                         # neck ring
 
-	# Head: an iMac G3 in profile (Sean's picture, the shape only, no handle): a flat bezel with
-	# the visor band and its lit slit at the front, a big rounded dome behind it that rises a
-	# touch above the bezel, the ear piece on the right, an antenna and vent slots on the left.
+	# Head: one piece (Sean: the bezel on the dome read as "a mask on a normal circle head; it
+	# should be all 1 piece"), a single mesh in the identity colour shaped like an iMac G3 in
+	# profile: a flat face with rounded corners at the front flowing into a dome behind, no
+	# seam (head_mesh). On the face the dark visor band with its lit slit; the ear piece on the
+	# right, the antenna and vent slots on the left. The bezel, its brow and cheek lines and the
+	# chin plate are gone with the seam.
 	head = Node3D.new()
 	head.name = "Head"
 	head.position = Vector3(0, head_y, 0)
 	add_child(head)
-	var dome := _sphere(head, 0.5, Vector3(0, 0.07, 0.06), body_mat)                          # the dome, an ellipsoid
-	dome.scale = Vector3(0.42, 0.34, 0.42)
-	_box(head, Vector3(0.40, 0.30, 0.1), Vector3(0, 0.07, -0.13), body_light_mat)             # bezel
+	_node(head, head_mesh(), Vector3(0, 0.07, 0.0), body_mat)                                 # the one-piece head
 	_box(head, Vector3(0.36, 0.11, 0.03), Vector3(0, 0.06, -0.185), screen_mat)              # visor band
 	_box(head, Vector3(0.3, 0.025, 0.01), Vector3(0, 0.065, -0.202), glow_mat)                # the lit slit
-	_box(head, Vector3(0.4, 0.02, 0.02), Vector3(0, 0.145, -0.18), body_dark_mat)             # brow line
-	_box(head, Vector3(0.4, 0.02, 0.02), Vector3(0, -0.02, -0.18), body_dark_mat)             # cheek line
-	_box(head, Vector3(0.3, 0.04, 0.16), Vector3(0, -0.1, -0.08), body_dark_mat)              # chin plate
 	_box(head, Vector3(0.07, 0.11, 0.12), Vector3(0.22, 0.05, -0.04), badge_mat)              # ear piece
 	_cyl(head, 0.02, 0.02, Vector3(0.26, 0.05, -0.04), dark_mat).rotation.z = PI * 0.5        # its stud
 	var ant := _cyl(head, 0.015, 0.14, Vector3(-0.2, 0.15, -0.02), dark_mat)                  # antenna
 	ant.rotation.z = 0.35
 	_sphere(head, 0.025, Vector3(-0.225, 0.22, -0.02), red_mat)                               # its tip
 	for k in 3:
-		_box(head, Vector3(0.012, 0.06, 0.05), Vector3(-0.2, 0.02, 0.03 + 0.05 * k), body_dark_mat)   # vent slots
+		_box(head, Vector3(0.012, 0.06, 0.05), Vector3(-0.19, 0.02, 0.0 + 0.05 * k), body_dark_mat)   # vent slots
 
 	# Arms and legs on their pivots (the animation rotates the pivots).
 	_l_arm = _arm(Vector3(-0.29, SHOULDER_Y, 0), body_mat, body_light_mat, dark_mat, metal_mat)
@@ -283,6 +281,69 @@ func animate(speed: float, on_floor: bool, pitch: float, alive: bool, delta: flo
 	head.rotation.x = -0.1 + pitch * (0.35 if _has_gun else 1.0) + _flinch * 0.35
 	_torso.rotation.x = _flinch * 0.22
 	_torso.position.y = (SHOULDER_Y + HIP_Y) * 0.5 + sin(_phase * 0.45) * 0.008
+
+
+static var _head_mesh_cache: ArrayMesh
+
+
+## The head as one mesh: an iMac G3 in profile. A superellipsoid whose exponent runs from boxy
+## at the front (a flat face with rounded corners, 42 cm wide, 32 tall, 18.5 ahead of the centre)
+## to round at the back (a dome 24.5 cm deep), so the face flows into the dome with no seam.
+## Front is -Z. Built once and shared by every figure.
+static func head_mesh() -> ArrayMesh:
+	if _head_mesh_cache != null:
+		return _head_mesh_cache
+	const ROWS := 20   # latitude steps, pole to pole
+	const COLS := 40   # longitude steps around
+	var verts := PackedVector3Array()
+	var normals := PackedVector3Array()
+	var indices := PackedInt32Array()
+	for i in ROWS + 1:
+		var u := -PI * 0.5 + PI * float(i) / float(ROWS)
+		for j in COLS + 1:
+			var v := TAU * float(j) / float(COLS)
+			verts.append(_head_point(u, v))
+			normals.append(_head_normal(u, v))
+	for i in ROWS:
+		for j in COLS:
+			var a := i * (COLS + 1) + j
+			var b := a + COLS + 1
+			# Clockwise seen from outside, Godot's front-face winding.
+			indices.append_array(PackedInt32Array([a, a + 1, b + 1, a, b + 1, b]))
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_INDEX] = indices
+	_head_mesh_cache = ArrayMesh.new()
+	_head_mesh_cache.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return _head_mesh_cache
+
+
+static func _se(w: float, e: float) -> float:
+	return signf(w) * pow(absf(w), e)
+
+
+## A point of the head surface: u is the latitude (-PI/2 the bottom, PI/2 the top), v the
+## longitude (sin v < 0 is the front). The exponent and the depth blend from the face to the dome.
+static func _head_point(u: float, v: float) -> Vector3:
+	var t := smoothstep(-0.55, 0.55, sin(v))   # 0 at the face's centre, 1 at the back of the dome
+	var e := lerpf(0.36, 1.0, t)               # boxy at the front, round at the back
+	var depth := lerpf(0.185, 0.245, t)
+	var cu := _se(cos(u), e)
+	return Vector3(0.21 * cu * _se(cos(v), e), 0.16 * _se(sin(u), e), depth * cu * _se(sin(v), e))
+
+
+static func _head_normal(u: float, v: float) -> Vector3:
+	const D := 0.002
+	if absf(cos(u)) < 0.005:
+		return Vector3(0.0, signf(sin(u)), 0.0)
+	var du := _head_point(u + D, v) - _head_point(u - D, v)
+	var dv := _head_point(u, v + D) - _head_point(u, v - D)
+	var n := du.cross(dv)
+	if n.length_squared() < 1e-14:
+		return _head_point(u, v).normalized()
+	return n.normalized()
 
 
 func _node(parent: Node3D, mesh: Mesh, pos: Vector3, mat: Material) -> MeshInstance3D:
