@@ -190,7 +190,7 @@ func _draw_hitmarker(size: Vector2) -> void:
 	if _hit_flash <= 0.0:
 		return
 	var c := size * 0.5
-	var col := _danger_col if _hit_kind == HitscanResolver.HEAD else _paper
+	var col := _score_col if _hit_kind == HitscanResolver.HEAD else _paper   # no red on a shot (Sean)
 	col.a = _hit_flash
 	var ink := _ink
 	ink.a = _hit_flash
@@ -242,7 +242,7 @@ func _draw_health(size: Vector2) -> void:
 func _draw_score(size: Vector2) -> void:
 	var kills := "%d" % (_arena.kills_for(_player.peer_id) if _arena != null and _arena.has_method("kills_for") else _player.kills)
 	if _arena != null and _arena.has_method("hud_score"):
-		kills = str(_arena.hud_score(_player))   # a minigame's own score (hill time)
+		kills = str(_arena.hud_score(_player))   # a minigame's own score
 	var pos := Vector2(size.x - 40.0 - _font.get_string_size(kills, HORIZONTAL_ALIGNMENT_RIGHT, -1, 84).x, 96.0)
 	_draw_outlined(pos, kills, 84, _score_col, 8.0, -0.24)
 	var remaining := 0.0
@@ -322,7 +322,7 @@ func _draw_scoreboard(size: Vector2) -> void:
 	var title := "SCOREBOARD"
 	if "manifest" in _arena and _arena.manifest != null:
 		title = "%s  ·  SCOREBOARD" % _arena.manifest.display_name
-	# Wide enough for a long name (KING OF THE HILL) to clear the score columns.
+	# Wide enough for a long minigame name to clear the score columns.
 	var w := maxf(520.0, _font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 24).x + 34.0 + 236.0)
 	var row_h := 38.0
 	var h := 74.0 + row_h * rows.size()
@@ -345,8 +345,8 @@ func _draw_scoreboard(size: Vector2) -> void:
 		_draw_outlined(Vector2(x + w - 90, ry + 26), "%d" % int(r["d"]), 20, col, 4.0)
 
 
-## What the minigame wants said at the top centre (hud_status: KING OF THE HILL's holder and
-## times), under nothing else; hidden during the warmup, when GET READY has the middle.
+## What the minigame wants said at the top centre (hud_status), under nothing else; hidden
+## during the warmup, when GET READY has the middle.
 func _draw_status(size: Vector2) -> void:
 	if _arena == null or not _arena.has_method("hud_status"):
 		return

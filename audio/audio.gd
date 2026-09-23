@@ -91,10 +91,6 @@ func _connect_events() -> void:
 	Events.local_footstep.connect(func(): play("footstep", -14.0, _jitter(0.12)))
 	Events.local_jump.connect(func(): play("jump", -14.0))
 	Events.local_land.connect(func(): play("land", -10.0))
-	Events.round_started.connect(func(_end_tick: int): play("round_start", -6.0))
-	Events.round_ended.connect(func(): play("round_end", -4.0))
-	Events.hill_moved.connect(func(_index: int): play("hill_move", -6.0))
-	Events.hill_tick.connect(func(): play("hill_tick", -14.0))
 	Events.remote_shot.connect(func(weapon: String, origin: Vector3):
 		play_at("sniper_fire" if weapon == "sniper" else "ar_fire", origin, -4.0, _jitter(0.05))
 	)

@@ -51,7 +51,7 @@ func waypoint_edges() -> Array:
 	return []
 
 
-## Where the bots go when nobody is in sight (an objective such as the hill); INF for none.
+## Where the bots go when nobody is in sight (an objective, when the minigame has one); INF for none.
 func objective_position() -> Vector3:
 	return Vector3.INF
 

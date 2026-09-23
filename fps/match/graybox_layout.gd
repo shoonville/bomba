@@ -176,21 +176,7 @@ static func build() -> Dictionary:
 	_rail(decor, Vector3(-2.5, 9.0, -2.5), Vector3(-2.5, 9.0, 2.5))
 	_rail(decor, Vector3(2.5, 9.0, -0.3), Vector3(2.5, 9.0, 2.5))
 	_rail(decor, Vector3(2.5, 9.0, -2.5), Vector3(2.5, 9.0, -1.2))
-	# KING OF THE HILL spots (MINIGAMES.md §3): the tower top, both roofs, the catwalk, the south
-	# and north lanes, the west and east lanes; a radius per spot so the hill fits its deck. The
-	# roofs have no waypoints (the bots cannot climb the crates on purpose), so they are marked
-	# bots=false and the bots roam while the hill is up there.
-	var hills := [
-		{"pos": Vector3(0, 9.0, 0), "radius": 2.3, "bots": true},
-		{"pos": Vector3(-16, 4.0, 12), "radius": 3.0, "bots": false},
-		{"pos": Vector3(16, 4.0, -12), "radius": 3.0, "bots": false},
-		{"pos": Vector3(0, 0, 10.2), "radius": 2.6, "bots": true},
-		{"pos": Vector3(0, 0, -10.2), "radius": 2.6, "bots": true},
-		{"pos": Vector3(21.5, 3.6, 0), "radius": 2.2, "bots": true},
-		{"pos": Vector3(-14, 0, 0), "radius": 2.8, "bots": true},
-		{"pos": Vector3(14, 0, 0), "radius": 2.8, "bots": true},
-	]
-	return {"boxes": boxes, "spawns": spawns, "waypoints": wp, "edges": edges, "size": Vector2(W, D), "decor": decor, "hills": hills}
+	return {"boxes": boxes, "spawns": spawns, "waypoints": wp, "edges": edges, "size": Vector2(W, D), "decor": decor}
 
 
 ## A flight of four 0.75 m steps: `start` is the centre of the lowest step (y ignored), `dir` the

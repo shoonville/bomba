@@ -170,8 +170,8 @@ static func to_wav(buf: PackedFloat32Array, loop: bool = false, normalize_to: fl
 static func names() -> PackedStringArray:
 	return PackedStringArray(["sniper_fire", "ar_fire", "hitmarker", "headshot", "kill", "death", "hurt",
 		"bolt", "reload_start", "reload_end", "dry", "swap", "jump", "land", "footstep", "respawn",
-		"ui_hover", "ui_click", "ui_back", "round_start", "round_end", "dice", "coin", "shell_in",
-		"ping", "emote", "laser", "splat", "hill_move", "hill_tick", "bomb_throw", "bomb_blast", "portal", "claw"])
+		"ui_hover", "ui_click", "ui_back", "dice", "coin", "shell_in",
+		"ping", "emote", "laser", "splat", "bomb_throw", "bomb_blast", "portal", "claw"])
 
 
 ## Build a named sound as float samples. Unknown names return a short click so a typo is audible.
@@ -207,20 +207,6 @@ static func build(name: String) -> PackedFloat32Array:
 			out = mix(out, ticks, 0.9)
 			out = mix(out, mul(tone(samples(0.06), 900.0, 300.0, "square"), env_exp(samples(0.06), 0.015)), 0.5, samples(0.25))
 			return softclip(out, 1.4)
-		"hill_move":
-			# KING OF THE HILL: the hill moves. Two rising soft notes with a felt tap under the first.
-			var n := samples(0.42)
-			var a := mul(tone(n, 523.0, 523.0, "sine"), env_adsr(n, 0.01, 0.12, 0.35, 0.2))
-			var b := mul(tone(n, 784.0, 784.0, "sine"), env_adsr(n, 0.01, 0.12, 0.35, 0.2))
-			var out := mix(silence(n), a, 0.7)
-			out = mix(out, b, 0.7, samples(0.14))
-			var tap := mul(lowpass(noise(samples(0.05), 31), 900.0), env_exp(samples(0.05), 0.02))
-			out = mix(out, tap, 0.5)
-			return softclip(out, 1.2)
-		"hill_tick":
-			# A second held on the hill: one soft blip.
-			var n := samples(0.06)
-			return mul(tone(n, 880.0, 840.0, "sine"), env_exp(n, 0.02))
 		"sniper_fire":
 			# The original (Sean: the Halo-shaped take "sounds like a bazooka"; this one stays).
 			var n := samples(0.95)
@@ -340,17 +326,6 @@ static func build(name: String) -> PackedFloat32Array:
 			var n := samples(0.1)
 			var out := mul(lowpass(noise(n, 152), 1100.0), env_exp(n, 0.007))
 			return mix(out, mul(tone(n, 190.0, 140.0, "sine"), env_exp(n, 0.035)), 0.8)
-		"round_start":
-			var out := silence(samples(0.6))
-			out = mix(out, mul(lowpass(tone(samples(0.2), 523.25, 523.25, "square"), 2500.0), env_adsr(samples(0.2), 0.005, 0.05, 0.6, 0.08)), 0.7)
-			return mix(out, mul(lowpass(tone(samples(0.35), 783.99, 783.99, "square"), 2500.0), env_adsr(samples(0.35), 0.005, 0.08, 0.6, 0.15)), 0.7, samples(0.18))
-		"round_end":
-			var out := silence(samples(1.0))
-			var notes := [783.99, 659.25, 523.25]
-			for i in notes.size():
-				var m := samples(0.34)
-				out = mix(out, mul(lowpass(tone(m, notes[i], notes[i] * 0.99, "saw"), 2000.0), env_adsr(m, 0.01, 0.1, 0.5, 0.15)), 0.6, samples(0.22 * i))
-			return out
 		"dice":
 			var out := silence(samples(0.3))
 			for i in 4:

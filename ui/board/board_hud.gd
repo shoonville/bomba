@@ -111,7 +111,6 @@ func _on_events(events: Array) -> void:
 					_intro_t = 1.3
 				var lp := director.local_player()
 				if lp != null and int(e["peer"]) == lp.peer_id:
-					Audio.play("round_start", -8.0)
 					_flash = 1.0
 			"minigame":
 				_intro = "NEXT UP:  %s" % str(e.get("display_name", "MINIGAME"))
@@ -119,7 +118,6 @@ func _on_events(events: Array) -> void:
 				_intro_t = 2.6
 				_dice_t = 0.0
 				_turn_shown_for = 0   # the next turn shown is the round's first, after the reward
-				Audio.play("round_end", -6.0)
 			"laser":
 				for h in e.get("hits", []):
 					_row_flash[int(h["peer"])] = 1.0
