@@ -24,7 +24,8 @@ var hip_rotations: Array[Vector3] = [
 # ADS: the sniper's scope tube sits 0.115 above the model origin, so the model goes to
 # y = -0.115 and the eyepiece (z = +0.105) ends 5 cm in front of the eye: the view goes
 # through the glass, not into the receiver (Sean's note 4).
-var ads_pos: Array[Vector3] = [Vector3(0.0, -0.115, -0.155), Vector3(0.0, -0.14 * 1.22, -0.34)]
+# The AR's sight screen is at model y 0.125, so the ADS y is -0.125 × the 1.22 scale.
+var ads_pos: Array[Vector3] = [Vector3(0.0, -0.115, -0.155), Vector3(0.0, -0.125 * 1.22, -0.34)]
 var muzzles: Array[Vector3] = [Vector3(0.0, 0.02, -1.03), Vector3(0.0, 0.015, -0.52)]
 var _kick: float = 0.0
 var _bolt: float = 0.0
@@ -95,26 +96,17 @@ func setup(p: Player) -> void:
 	_box(sniper, Vector3(0.03, 0.05, 0.03), Vector3(0, 0.075, -0.02), scope_mat)
 	_cyl(sniper, 0.024, 0.34, Vector3(0, 0.115, -0.12), scope_mat)
 	_cyl(sniper, 0.038, 0.08, Vector3(0, 0.115, -0.32), scope_mat)
-	_cyl(sniper, 0.032, 0.07, Vector3(0, 0.115, 0.07), scope_mat)
 	_cyl(sniper, 0.032, 0.028, Vector3(0, 0.115, -0.22), scope_ring_mat)
 	_cyl(sniper, 0.032, 0.028, Vector3(0, 0.115, -0.02), scope_ring_mat)
+	# The eyepiece and its reflective glass stay exactly as they are (Sean: "the best feature").
+	_cyl(sniper, 0.032, 0.07, Vector3(0, 0.115, 0.07), scope_mat)
 	_cyl(sniper, 0.034, 0.02, Vector3(0, 0.115, 0.095), scope_ring_mat)  # eyepiece ring
 	_cyl(sniper, 0.033, 0.016, Vector3(0, 0.115, -0.364), scope_mat)     # far end: black, like the scope
 	_cyl(sniper, 0.026, 0.014, Vector3(0, 0.115, 0.108), lens_mat)       # eyepiece glass: the one we look through
-	var bolt := MeshInstance3D.new()
-	var bolt_mesh := CylinderMesh.new()
-	bolt_mesh.top_radius = 0.011
-	bolt_mesh.bottom_radius = 0.011
-	bolt_mesh.height = 0.075
-	bolt_mesh.radial_segments = 10
-	bolt.mesh = bolt_mesh
-	bolt.position = Vector3(0.065, 0.028, 0.03)
-	bolt.rotation.z = PI * 0.5
-	bolt.material_override = tan_mat
-	bolt.layers = 2
-	bolt.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	sniper.add_child(bolt)
-	_sphere(sniper, 0.02, Vector3(0.105, 0.028, 0.03), dark_mat)
+	# No bolt handle: the tan bolt and its dark knob stood off the receiver's right side, and at
+	# the hip they sat in the frame's bottom-right corner, a tan slab and a dark lump against the
+	# ammo bar (Sean, 2026-09-22, with a picture: "the very right part... no idea what it is").
+	# The bolt cycle is still the whole rifle's dip after a shot (bolt_off in _process).
 	_arm(sniper, Vector3(0.0, -0.12, 0.05), accent_mat, dark_mat)
 	add_child(sniper)
 	# AR (Sean: the body was a solid block; give it the shape of a real assault rifle). Same
@@ -145,10 +137,10 @@ func setup(p: Player) -> void:
 	# The sight as it was, but its screen is a translucent pane with the red dot drawn in the
 	# middle of it (Sean: "on the screen of the AR, in the middle"). At ADS the screen's centre
 	# sits on the camera axis, so you aim through the tinted glass with the dot at the point.
-	_box(ar, Vector3(0.06, 0.05, 0.16), Vector3(0, 0.085, -0.02), dark_mat)
-	_box(ar, Vector3(0.058, 0.008, 0.02), Vector3(0, 0.114, 0.03), dark_mat)   # screen base
+	_box(ar, Vector3(0.06, 0.035, 0.16), Vector3(0, 0.0775, -0.02), dark_mat)   # the sight base, 30 % lower (Sean: bulky)
+	_box(ar, Vector3(0.058, 0.008, 0.02), Vector3(0, 0.099, 0.03), dark_mat)   # screen base
 	for sx: float in [-0.028, 0.028]:
-		_box(ar, Vector3(0.006, 0.05, 0.02), Vector3(sx, 0.14, 0.03), dark_mat)   # screen posts
+		_box(ar, Vector3(0.006, 0.05, 0.02), Vector3(sx, 0.125, 0.03), dark_mat)   # screen posts
 	var screen_mat := StandardMaterial3D.new()
 	screen_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	screen_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -161,7 +153,7 @@ func setup(p: Player) -> void:
 	var sm := BoxMesh.new()
 	sm.size = Vector3(0.05, 0.044, 0.003)
 	screen.mesh = sm
-	screen.position = Vector3(0, 0.14, 0.03)
+	screen.position = Vector3(0, 0.125, 0.03)
 	screen.material_override = screen_mat
 	screen.layers = 2
 	screen.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -174,12 +166,12 @@ func setup(p: Player) -> void:
 	dot_mat.render_priority = 3
 	var dot := MeshInstance3D.new()
 	var dm := SphereMesh.new()
-	dm.radius = 0.00245   # 30 % smaller than the 0.0035 it was (Sean)
-	dm.height = 0.0049
+	dm.radius = 0.001715   # 30 % smaller again (Sean, twice): 0.0035 → 0.00245 → 0.001715
+	dm.height = 0.00343
 	dm.radial_segments = 10
 	dm.rings = 5
 	dot.mesh = dm
-	dot.position = Vector3(0, 0.14, 0.03)
+	dot.position = Vector3(0, 0.125, 0.03)
 	dot.material_override = dot_mat
 	dot.layers = 2
 	dot.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
