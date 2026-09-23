@@ -764,18 +764,20 @@ determinism identical, the headless four-seat board match over two rounds PASS.
   | frames the build spans | 1 | 18 |
   | chunk ms | — | env 0, tiles 3, markers 4, moon 1, craters 6, props 29, crew 0, asteroids 0, horizon 0, dressing 9/17/5/4/1, pawns 6/1/1/1 |
 
-- **A 60 Hz cadence on his display, not in the game** (some thirty runs to prove it, in
-  DECISIONS): after the reveal the board runs ~70 frames at 16 ms until the first roll, with the
-  old build in the real flow just as with the new one; the display sits at 60 Hz on a nearly static
-  picture and rises with motion. The hitch line now carries the frame's phases (process →
-  pre-draw, the draw, post-draw → next process), draw calls and primitives, and the boot line the
-  screen size and refresh rate, so the next such question takes one run. A fixed 240 Hz in Windows'
-  display settings is the remedy if he wants it.
+- **The board at 60 fps on the new display, not in the game** (some forty runs, in DECISIONS):
+  the old build in the real flow does it just as the new one; the present blocks one frame per four
+  refreshes of the 240 Hz display; with the game window in the foreground, as in play, a whole 6 s
+  run stayed at 60 fps. Not motion, not the present mode (his NVIDIA panel forces vertical sync on,
+  so `--vsync=0` is not off on his desktop), not the build. His checks: Windows' refresh-rate setting
+  (a dynamic 60/240 → the fixed 240) and the NVIDIA vertical sync for BOMBA, then a match with the
+  driver's FPS overlay. The hitch line now carries the frame's phases (process → pre-draw, the
+  draw, post-draw → next process), draw calls and primitives, and the boot line the screen size and
+  refresh rate, so the next such question takes one run.
 
 ### Next
-1. Sean plays: the wipe (the accent band on every transition, seen for the first time), the board's
-   arrival under it, and whether the 60 Hz second after START MATCH is visible to him (if so, the
-   display's refresh setting).
+1. Sean: the Windows refresh-rate setting and the NVIDIA vertical sync for BOMBA (above), then a
+   match with the driver's FPS overlay: is the board at 240 fps or 60. And the wipe (the accent band
+   on every transition, seen for the first time) and the board's arrival under it.
 2. The start RPC's frame (57–71 ms under the cover): the director's 16 ms and the transition
    frame's own work, if it ever shows.
 3. Unchanged from session 10: his notes on the die, the hands, the round's end and the briefing.

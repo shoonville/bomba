@@ -332,9 +332,15 @@ func apply_window_settings(from_panel: bool = false) -> void:
 	var have := DisplayServer.window_get_mode()
 	if have != want and (from_panel or mode != "windowed" or args.has("window")):
 		DisplayServer.window_set_mode(want)
-	var vs := int(args.get("vsync", 1 if Settings.vsync else 0)) != 0
-	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if vs else DisplayServer.VSYNC_DISABLED)
-	Log.info("perf", "Window %s, vsync %s, screen %s at %.0f Hz" % [mode, "on" if vs else "off", str(DisplayServer.screen_get_size()), DisplayServer.screen_get_refresh_rate()])
+	# --vsync=0|1|mailbox|adaptive (the harness; SETTINGS has on/off).
+	var vs_arg := str(args.get("vsync", "1" if Settings.vsync else "0"))
+	var vs_mode := DisplayServer.VSYNC_ENABLED
+	match vs_arg:
+		"0": vs_mode = DisplayServer.VSYNC_DISABLED
+		"mailbox": vs_mode = DisplayServer.VSYNC_MAILBOX
+		"adaptive": vs_mode = DisplayServer.VSYNC_ADAPTIVE
+	DisplayServer.window_set_vsync_mode(vs_mode)
+	Log.info("perf", "Window %s, vsync %s (mode now %d), screen %s at %.0f Hz" % [mode, vs_arg, DisplayServer.window_get_vsync_mode(), str(DisplayServer.screen_get_size()), DisplayServer.screen_get_refresh_rate()])
 
 
 ## --ads_progress=0..1 pins the scope-in animation for screenshots (presentation only).

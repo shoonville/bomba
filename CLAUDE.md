@@ -94,8 +94,9 @@ that travels with the repo.
   the output for `Frame hitch` (any frame over 150 ms, with what it did), `Minigame build` and
   `PERF` (with `--perf`). A hitch line's phases (process → pre-draw, the draw, post-draw → next
   process) tell the game's work from the display's: a long process → pre-draw with a short draw is the
-  render thread waiting on the present, and Sean's display idles at 60 Hz on a static picture
-  (2026-09-23; the harness's immediate start sits in it until the first roll, real play too). An `override.cfg` in the project root overrides project settings for an
+  render thread waiting on the present: the display and driver, not the game (2026-09-23: his NVIDIA
+  panel forces vertical sync on, so `--vsync=0` is not off there, and the new 240 Hz monitor ran the
+  board at 60 fps with the window in the foreground; his refresh-rate and vsync settings come first). An `override.cfg` in the project root overrides project settings for an
   experiment (shadow size, MSAA); delete it afterwards, it is not tracked.
 - Harness runs must not use port 27015 while his own game is open; pass `--port=27077`.
 - Never run two soaks, or a soak and a windowed run, at once (contention ruins the numbers).

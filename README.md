@@ -90,7 +90,7 @@ steps the scale down and back up on its own to keep the GPU under a 60 Hz budget
 no local player), `--rounds=N` (host rematches N times), `--scripted` (seeded per-tick inputs for
 every seat this peer owns; the determinism harness uses it), `--no_warmup` (skip the boot
 preload and pipeline warm-up, for A/B runs of the start-of-scene hitch), `--perf` (with `--soak`:
-GPU, render-CPU and frame milliseconds, mean and p95, printed at the end), `--vsync=0|1` and
+GPU, render-CPU and frame milliseconds, mean and p95, printed at the end), `--vsync=0|1|mailbox|adaptive` (the present mode; a driver that forces vertical sync, Sean's NVIDIA panel does, overrides it) and
 `--window=fullscreen|windowed` (override the settings for a run; Godot's own `--resolution WxH`
 sets the window size). Frames over 150 ms are logged as `Frame hitch` with what the frame did;
 `--hitch_ms=N` lowers that threshold for a stutter diagnosis (each line carries the frame's phases, process → pre-draw, the draw, post-draw → next process, and its draw calls and primitives); `--motion_log[=path]` records the camera every frame and adds a `MOTION` line (how even the step from frame to frame is, stalls, double steps; the CSV at `path`); `--window=exclusive` is Windows exclusive fullscreen; and `--perf` also prints a `PACING`
