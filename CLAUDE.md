@@ -69,7 +69,8 @@ that travels with the repo.
   `--machine_at=ID`, `--minigame=ID`, `--render_scale=N`, `--port=N`, `--no_warmup`,
   `--perf` (GPU/CPU ms summary at soak end plus a PACING line: median frame, frames over 1.5× and 2×
   the median, pipelines compiled while playing), `--hitch_ms=N` (log every frame over N ms with what
-  it did; 150 by default), `--vsync=0|1`, `--window=fullscreen|windowed`, and
+  it did; 150 by default), `--motion_log[=path]` (a MOTION line: how even the camera's step from frame to
+  frame is; the CSV at path), `--vsync=0|1`, `--window=fullscreen|windowed|exclusive`, and
   Godot's own `--resolution 1920x1080` (the friends' resolution: judge looks and cost there, not at
   Sean's 5120×2160; his monitor "doesn't matter"). `tools/report.gd -- frame_stats IMAGE...` prints the
   STYLE.md appendix numbers (saturated, grey, dark, v95) for a frame; judge a visual pass by them.

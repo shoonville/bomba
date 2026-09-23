@@ -39,6 +39,10 @@ var quality: AutoQuality
 var _perf_gpu: PackedFloat32Array = []
 var _perf_cpu: PackedFloat32Array = []
 var _perf_frame: PackedFloat32Array = []
+var _perf_process: PackedFloat32Array = []   # --perf: the main thread's process phase per frame, ms
+var _perf_physics: PackedFloat32Array = []   # --perf: the frame's longest physics step, ms
+const STRIDE := 6                             # --motion_log columns per frame
+var _motion: PackedFloat64Array = []         # --motion_log: per frame t_us, camera x, camera z, tick, fraction, gap_ms
 
 
 static func _mean(v: PackedFloat32Array) -> float:
@@ -317,9 +321,13 @@ func apply_window_settings(from_panel: bool = false) -> void:
 	if headless:
 		return
 	var mode := str(args.get("window", Settings.window_mode))
-	var want := DisplayServer.WINDOW_MODE_FULLSCREEN if mode == "fullscreen" else DisplayServer.WINDOW_MODE_WINDOWED
+	var want := DisplayServer.WINDOW_MODE_WINDOWED
+	if mode == "fullscreen":
+		want = DisplayServer.WINDOW_MODE_FULLSCREEN
+	elif mode == "exclusive":   # harness: exclusive fullscreen (Windows), no compositor between the game and the screen
+		want = DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN
 	var have := DisplayServer.window_get_mode()
-	if have != want and (from_panel or mode == "fullscreen" or args.has("window")):
+	if have != want and (from_panel or mode != "windowed" or args.has("window")):
 		DisplayServer.window_set_mode(want)
 	var vs := int(args.get("vsync", 1 if Settings.vsync else 0)) != 0
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if vs else DisplayServer.VSYNC_DISABLED)
@@ -611,6 +619,12 @@ func _process(delta: float) -> void:
 			_perf_gpu.append(RenderingServer.viewport_get_measured_render_time_gpu(rid))
 			_perf_cpu.append(RenderingServer.viewport_get_measured_render_time_cpu(rid))
 			_perf_frame.append(float(gap))
+			_perf_process.append(Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
+			_perf_physics.append(Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0)
+			if args.has("motion_log"):
+				var cam := get_viewport().get_camera_3d()
+				if cam != null:
+					_motion.append_array(PackedFloat64Array([float(Time.get_ticks_usec()), cam.global_position.x, cam.global_position.z, float(NetworkTime.tick), Engine.get_physics_interpolation_fraction(), float(gap)]))
 		if _soak_elapsed >= soak_seconds:
 			Log.info("game", "Soak time reached (%.1fs)" % _soak_elapsed)
 			_finish_soak()
@@ -677,6 +691,11 @@ func _finish_soak() -> void:
 			Log.info("perf", "PACING frames %d | median %.2f ms | over 1.5x median %d (%.1f %%) | over 2x %d | longest %.0f ms | pipelines compiled while playing: mesh %d surface %d draw %d spec %d" % [
 				_perf_frame.size(), med, over15, 100.0 * over15 / maxf(1.0, _perf_frame.size()), over2, _max(_perf_frame),
 				pipes[1] - _perf_pipes_start[1], pipes[2] - _perf_pipes_start[2], pipes[3] - _perf_pipes_start[3], pipes[4] - _perf_pipes_start[4]])
+			Log.info("perf", "WORST PER SECOND (engine maxima) frame ms mean %.2f p95 %.2f max %.2f | physics step ms mean %.2f p95 %.2f max %.2f" % [
+				_mean(_perf_process), _p95(_perf_process), _max(_perf_process),
+				_mean(_perf_physics), _p95(_perf_physics), _max(_perf_physics)])
+			if args.has("motion_log"):
+				Log.info("perf", _motion_summary())
 	soak_seconds = 0.0
 	var recorder := get_node_or_null("/root/SoakRecorder")
 	if recorder != null and recorder.has_method("write_report"):
@@ -749,3 +768,50 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		Net.leave()
 		Log.flush()
+
+
+## --motion_log (with --perf and --soak): how evenly the camera advances from frame to frame while
+## it moves. With vsync every frame is shown one refresh apart, so a 60 Hz tick shown at a higher
+## refresh should turn every frame into a step of the same size; a frame with no step while its
+## neighbours step, or a double step, is judder the eye sees even when no frame is dropped. The
+## step is compared raw, never divided by the wall clock between samples: that clock wobbles by
+## ±1.6 ms with where the physics tick lands in the frame while the steps stay identical
+## (measured 2026-09-22: 35.8 mm every frame at 165 Hz). Only steady straight motion is counted.
+func _motion_summary() -> String:
+	var n := _motion.size() / STRIDE
+	if str(args.get("motion_log", "")) not in ["", "true"]:
+		var f := FileAccess.open(str(args["motion_log"]), FileAccess.WRITE)
+		if f != null:
+			f.store_line("t_us,x,z,tick,fraction,gap_ms")
+			for i in n:
+				f.store_line("%.0f,%.5f,%.5f,%.0f,%.4f,%.0f" % [_motion[i * STRIDE], _motion[i * STRIDE + 1], _motion[i * STRIDE + 2], _motion[i * STRIDE + 3], _motion[i * STRIDE + 4], _motion[i * STRIDE + 5]])
+			f.close()
+	if n < 3:
+		return "MOTION no samples"
+	var steps := PackedFloat32Array()   # metres moved between consecutive frames
+	var dirs: Array[Vector2] = []
+	for i in range(1, n):
+		var d := Vector2(_motion[i * STRIDE + 1] - _motion[(i - 1) * STRIDE + 1], _motion[i * STRIDE + 2] - _motion[(i - 1) * STRIDE + 2])
+		steps.append(d.length())
+		dirs.append(d.normalized() if d.length() > 1e-6 else Vector2.ZERO)
+	var changes := PackedFloat32Array()
+	var steady := 0
+	var stalls := 0
+	var doubles := 0
+	for i in range(1, steps.size() - 1):
+		var a := steps[i - 1]
+		var b := steps[i]
+		var c := steps[i + 1]
+		if a < 0.003 or c < 0.003 or dirs[i - 1].dot(dirs[i + 1]) < 0.98:
+			continue
+		steady += 1
+		var ref := (a + c) * 0.5
+		changes.append(absf(b - ref) / ref * 100.0)
+		if b < ref * 0.25:
+			stalls += 1
+		elif b > ref * 1.75:
+			doubles += 1
+	if steady == 0:
+		return "MOTION frames %d, none moving steadily" % n
+	return "MOTION frames %d steady %d | frame step vs its neighbours: mean %.1f %% p95 %.1f %% | stalled frames %d (%.2f %%) double steps %d (%.2f %%)" % [
+		n, steady, _mean(changes), _p95(changes), stalls, 100.0 * stalls / steady, doubles, 100.0 * doubles / steady]

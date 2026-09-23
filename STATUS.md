@@ -696,3 +696,20 @@ determinism identical, a headless four-seat board match over two rounds with ran
    heads, the pawns' facing, the silent match start and end.
 2. If a windowed run still stutters for him (windowed showed runs of consecutive slow frames that
    fullscreen never did), the WINDOW setting → FULLSCREEN is the first thing to try.
+
+### Smoothness plan (2026-09-22, measured; his call on the order)
+Measured on his desktop after the shot-effects fix: pacing 0.1–0.5 % late frames, motion even to the
+millimetre (35.8 mm every frame while walking), GPU 2.9 ms of a 6 ms frame at 5K, worst physics step
+3.3 ms (4 seats, host). What is left, by what a player would feel:
+1. The switch into a minigame stalls 93–200 ms under the wipe (the wipe visibly freezes): build the
+   match over several frames or during the board's NEXT UP card.
+2. Six seats with real clients: the host's tick loop measured 7.0 ms mean (2026-09-19), which at
+   165 Hz misses a refresh on every tick-carrying frame; fine at 60 Hz. Profile the loop with three
+   clients and cut it (netfox's per-property apply, bot AI every other tick) before calling the host
+   smooth at 165 Hz with friends.
+3. Latency levers, unmeasurable here but standard: `rendering/rendering_device/vsync/frame_queue_size`
+   2 → 1 and `swapchain_image_count` 3 → 2 (one queued frame fewer; check pacing holds), audio
+   `output_latency` 15 → 10 ms, and fullscreen rather than windowed by default (windowed showed runs
+   of slow frames that fullscreen never did).
+4. For the friends' machines: the client loop is 5–6 ms p95 on a 9800X3D; on a mid-range CPU that is
+   half a 60 Hz frame before rendering. Same profiling as 2.

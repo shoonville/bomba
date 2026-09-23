@@ -86,7 +86,7 @@ preload and pipeline warm-up, for A/B runs of the start-of-scene hitch), `--perf
 GPU, render-CPU and frame milliseconds, mean and p95, printed at the end), `--vsync=0|1` and
 `--window=fullscreen|windowed` (override the settings for a run; Godot's own `--resolution WxH`
 sets the window size). Frames over 150 ms are logged as `Frame hitch` with what the frame did;
-`--hitch_ms=N` lowers that threshold for a stutter diagnosis, and `--perf` also prints a `PACING`
+`--hitch_ms=N` lowers that threshold for a stutter diagnosis; `--motion_log[=path]` records the camera every frame and adds a `MOTION` line (how even the step from frame to frame is, stalls, double steps; the CSV at `path`); `--window=exclusive` is Windows exclusive fullscreen; and `--perf` also prints a `PACING`
 line (the median frame, frames over 1.5× and 2× the median, the longest, and the GPU pipelines
 compiled while playing, which should be 0).
 In the game, F11 toggles fullscreen; SETTINGS has WINDOW, VSYNC and RENDER SCALE.
