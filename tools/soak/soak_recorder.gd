@@ -13,6 +13,8 @@ var soak_ticks: int = 0
 var _arena: Node
 var _rollback_depths: PackedInt32Array = []
 var _loop_ms: PackedFloat32Array = []
+var _sim_ms: PackedFloat32Array = []       # the players' own tick work per loop, ms
+var _node_ticks: PackedFloat32Array = []   # player ticks run per loop (fresh + resimulated)
 var _rtt_samples: PackedFloat32Array = []
 var _last_sample_tick: int = -1
 var _started_tick: int = -1
@@ -75,6 +77,12 @@ func _after_loop() -> void:
 	var ms := float(Performance.get_custom_monitor("netfox/Network loop duration (ms)")) if Performance.has_custom_monitor("netfox/Network loop duration (ms)") else 0.0
 	_rollback_depths.append(depth)
 	_loop_ms.append(ms)
+	# The game's own share of the loop (every player's _rollback_tick, resimulations included)
+	# against netfox's whole loop, so a slow loop can be blamed on the right side.
+	_sim_ms.append(float(Player.sim_us_this_loop) / 1000.0)
+	_node_ticks.append(float(Player.sim_node_ticks_this_loop))
+	Player.sim_us_this_loop = 0
+	Player.sim_node_ticks_this_loop = 0
 	if Performance.has_custom_monitor("netfox/Full state properties count"):
 		_prop_full.append(float(Performance.get_custom_monitor("netfox/Full state properties count")))
 		_prop_sent.append(float(Performance.get_custom_monitor("netfox/Sent state properties count")))
@@ -130,6 +138,9 @@ func write_report() -> void:
 		"rollback_ticks_max": _max_i(_rollback_depths),
 		"tick_loop_ms_mean": _mean_f(_loop_ms),
 		"tick_loop_ms_p95": _p95_f(_loop_ms),
+		"sim_ms_mean": _mean_f(_sim_ms),
+		"sim_ms_p95": _p95_f(_sim_ms),
+		"node_ticks_per_loop_mean": _mean_f(_node_ticks),
 		"rtt_ms_mean": _mean_f(_rtt_samples),
 		"rtt_ms_max": _max_f(_rtt_samples),
 		"net": Net.get_stats(),

@@ -99,9 +99,10 @@ func _soak_report(a: Array) -> int:
 	var host_traj := _load_rows(out.path_join("%s_host_traj.csv" % label))
 	var hnet: Dictionary = host.get("net", {})
 	print("== %s ==" % label)
-	print("host: ticks %d..%d, rollback mean %.2f max %d, loop ms mean %.2f p95 %.2f, up %.1f KB down %.1f KB" % [
+	print("host: ticks %d..%d, rollback mean %.2f max %d, loop ms mean %.2f p95 %.2f (players' own sim %.2f p95 %.2f over %.1f player-ticks a loop), up %.1f KB down %.1f KB" % [
 		int(host["start_tick"]), int(host["end_tick"]), float(host["rollback_ticks_mean"]),
 		int(host["rollback_ticks_max"]), float(host["tick_loop_ms_mean"]), float(host["tick_loop_ms_p95"]),
+		float(host.get("sim_ms_mean", 0.0)), float(host.get("sim_ms_p95", 0.0)), float(host.get("node_ticks_per_loop_mean", 0.0)),
 		float(hnet.get("bytes_sent", 0)) / 1024.0, float(hnet.get("bytes_received", 0)) / 1024.0])
 	var hplayers: Dictionary = host["players"]
 	for pid in hplayers:
@@ -156,9 +157,10 @@ func _soak_report(a: Array) -> int:
 		var rate := (float(conf) / float(pred)) if pred > 0 else NAN
 		var cnet: Dictionary = c.get("net", {})
 		var cond: Dictionary = cnet.get("conditioner", {})
-		print("client #%d (%s): rtt mean %.1f max %.1f ms | rollback mean %.2f max %d | loop p95 %.2f ms" % [
+		print("client #%d (%s): rtt mean %.1f max %.1f ms | rollback mean %.2f max %d | loop p95 %.2f ms (own sim p95 %.2f over %.1f player-ticks a loop)" % [
 			peer, me.get("name", "?"), float(c["rtt_ms_mean"]), float(c["rtt_ms_max"]),
-			float(c["rollback_ticks_mean"]), int(c["rollback_ticks_max"]), float(c["tick_loop_ms_p95"])])
+			float(c["rollback_ticks_mean"]), int(c["rollback_ticks_max"]), float(c["tick_loop_ms_p95"]),
+			float(c.get("sim_ms_p95", 0.0)), float(c.get("node_ticks_per_loop_mean", 0.0))])
 		print("  mispredict mean %.4f m p95 %.4f m over %d ticks (excluding ±12 ticks around %d deaths; mean incl. deaths %.3f m) | snaps %d" % [
 			_mean(errs), _p95(errs), errs.size(), death_ticks.size(), _mean(errs_all), int(me.get("correction_snaps", 0))])
 		print("  shots %d hit_predicted %d hit_confirmed(host) %d confirm_rate %.2f" % [

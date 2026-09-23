@@ -79,6 +79,8 @@ that travels with the repo.
   Godot's own `--resolution 1920x1080` (the friends' resolution: judge looks and cost there, not at
   Sean's 5120×2160; his monitor "doesn't matter"). `tools/report.gd -- frame_stats IMAGE...` prints the
   STYLE.md appendix numbers (saturated, grey, dark, v95) for a frame; judge a visual pass by them.
+- WINDOW defaults to fullscreen (2026-09-22): a frame at a set size needs `--window=windowed` with
+  `--resolution`, or the run takes the whole screen.
 - Windowed runs: wrap them in `timeout 90` so a broken build cannot sit at a window forever; grep
   the output for `Frame hitch` (any frame over 150 ms, with what it did), `Minigame build` and
   `PERF` (with `--perf`). An `override.cfg` in the project root overrides project settings for an

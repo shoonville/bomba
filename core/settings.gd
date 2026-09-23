@@ -17,7 +17,7 @@ var volume_ui: float = 0.9
 var noray_host: String = "tomfol.io:8890"
 var conditioner_profile: String = "lan"
 var render_scale: float = 1.5   # 3D render scale; above 1 supersamples (cleaner ink lines), 1 for weak GPUs
-var window_mode: String = "windowed"   # "windowed" or "fullscreen" (borderless, the desktop resolution); F11 toggles
+var window_mode: String = "fullscreen"   # "windowed" or "fullscreen" (borderless, the desktop resolution; the default since 2026-09-22: windowed paced worse); F11 toggles
 var vsync: bool = true                 # on: no tearing on a 60 Hz monitor; off only for measuring
 
 

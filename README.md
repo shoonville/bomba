@@ -89,7 +89,8 @@ sets the window size). Frames over 150 ms are logged as `Frame hitch` with what 
 `--hitch_ms=N` lowers that threshold for a stutter diagnosis; `--motion_log[=path]` records the camera every frame and adds a `MOTION` line (how even the step from frame to frame is, stalls, double steps; the CSV at `path`); `--window=exclusive` is Windows exclusive fullscreen; and `--perf` also prints a `PACING`
 line (the median frame, frames over 1.5× and 2× the median, the longest, and the GPU pipelines
 compiled while playing, which should be 0).
-In the game, F11 toggles fullscreen; SETTINGS has WINDOW, VSYNC and RENDER SCALE.
+In the game, F11 toggles fullscreen; SETTINGS has WINDOW (fullscreen by default since 2026-09-22), VSYNC and
+RENDER SCALE. A harness frame at a set size needs `--window=windowed` beside `--resolution`, or the run goes fullscreen.
 
 ## Verifying
 

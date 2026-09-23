@@ -705,11 +705,14 @@ millimetre (35.8 mm every frame while walking), GPU 2.9 ms of a 6 ms frame at 5K
    return 119–148 ms; now 27 ms in and 17 ms back (the look built over frames under a held cover,
    the board view asleep through the minigame instead of rebuilt, shared viewmodel materials,
    one unit box mesh, netfox patch #9). Left: the first board build of a match, 140 ms once.
-2. Six seats with real clients: the host's tick loop measured 7.0 ms mean (2026-09-19), which at
+2. MEASURED (2026-09-22): six seats, host loop 5.8 ms mean 9 p95, the players' own simulation 0.9 ms of it;
+   85 % is netfox's per-property bookkeeping. A vendored-library change, deferred. The old text follows:
+   the host's tick loop measured 7.0 ms mean (2026-09-19), which at
    165 Hz misses a refresh on every tick-carrying frame; fine at 60 Hz. Profile the loop with three
    clients and cut it (netfox's per-property apply, bot AI every other tick) before calling the host
    smooth at 165 Hz with friends.
-3. Latency levers, unmeasurable here but standard: `rendering/rendering_device/vsync/frame_queue_size`
+3. DONE (2026-09-22): frame_queue_size 1 and swapchain 2 (pacing unchanged), fullscreen the default;
+   audio latency left at 15 ms (unverifiable). The old text follows: `rendering/rendering_device/vsync/frame_queue_size`
    2 → 1 and `swapchain_image_count` 3 → 2 (one queued frame fewer; check pacing holds), audio
    `output_latency` 15 → 10 ms, and fullscreen rather than windowed by default (windowed showed runs
    of slow frames that fullscreen never did).

@@ -144,7 +144,20 @@ func aim_direction(yaw: float, pitch: float) -> Vector3:
 
 # --- the simulation --------------------------------------------------------------------------
 
-func _rollback_tick(delta: float, tick: int, _is_fresh: bool) -> void:
+## The game's own share of a tick loop (every player's _rollback_tick, resimulated ticks
+## included), for the soak report against netfox's loop time. Reset by the recorder each loop.
+static var sim_us_this_loop: int = 0
+static var sim_node_ticks_this_loop: int = 0
+
+
+func _rollback_tick(delta: float, tick: int, is_fresh: bool) -> void:
+	var t0 := Time.get_ticks_usec()
+	_rollback_tick_body(delta, tick, is_fresh)
+	sim_us_this_loop += Time.get_ticks_usec() - t0
+	sim_node_ticks_this_loop += 1
+
+
+func _rollback_tick_body(delta: float, tick: int, _is_fresh: bool) -> void:
 	if _is_remote_on_client():
 		# Only reached when mutated (took predicted damage). Never move a remote player, and never
 		# write its hitbox history from here: that history comes from received state only.
