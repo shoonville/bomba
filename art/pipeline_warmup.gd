@@ -132,9 +132,14 @@ func _build() -> void:
 	label.position = Vector3(0.0, 2.2, 0.0)
 	add_child(label)
 
-	# Shot feedback: a tracer, an impact burst (depth-tested) and the muzzle flash (not).
-	Tracer.spawn(self, Vector3(-2.0, 1.0, 1.5), Vector3(2.0, 1.2, -1.0), Color(1.0, 0.9, 0.5), HitscanResolver.BODY, 2.0)
-	Burst.spawn_muzzle(self, Vector3(0.6, 1.0, 2.0))
+	# Shot feedback: the shared tracer and burst meshes and materials (built once, kept for the
+	# whole run), drawn once each so their pipelines exist before the first shot of a match.
+	Burst.warm_up()
+	Tracer.warm_up()
+	Tracer.spawn(self, Vector3(-2.0, 1.0, 1.5), Vector3(2.0, 1.2, -1.0), Palette.player_colour(0), HitscanResolver.NONE, 2.0)
+	Burst.spawn_impact(self, Vector3(0.0, 1.0, 1.0), HitscanResolver.HEAD)
+	Burst.spawn_impact(self, Vector3(0.4, 1.0, 1.0), HitscanResolver.BODY)
+	Burst.spawn_impact(self, Vector3(0.8, 1.0, 1.0), HitscanResolver.WORLD)
 
 
 func _mesh(mesh: Mesh, at: Vector3, mat: Material) -> void:

@@ -28,6 +28,8 @@ var _shot_done: bool = false
 var _shot_armed: bool = false
 var _shot_event_seen: int = 0
 var _last_frame_ms: int = 0
+var _hitch_ms: int = 150   # a frame over this is logged with what it did (--hitch_ms=N lowers it for a diagnosis)
+var _perf_pipes_start: PackedInt64Array = PackedInt64Array()   # pipeline counts when --perf sampling began
 var _last_vmem: int = 0
 var _last_nodes: int = 0
 var _last_resources: int = 0
@@ -63,12 +65,20 @@ static func _max(v: PackedFloat32Array) -> float:
 	return m
 
 
+static func _median(v: PackedFloat32Array) -> float:
+	if v.is_empty():
+		return 0.0
+	var s := v.duplicate()
+	s.sort()
+	return s[s.size() / 2]
+
+
 func _ready() -> void:
 	args = Cli.parse(OS.get_cmdline_user_args())
+	_hitch_ms = int(args.get("hitch_ms", 150))
 	if args.has("screenshot_event"):
 		Events.kill.connect(_arm_screenshot_on_kill)
 		Events.round_ended.connect(_arm_screenshot_on_round_end)
-		Events.hill_moved.connect(_arm_screenshot_on_hill)
 	headless = DisplayServer.get_name() == "headless"
 	if args.has("log"):
 		Log.level = int(args["log"])
@@ -552,7 +562,7 @@ func _process(delta: float) -> void:
 	var gap := now - _last_frame_ms
 	_last_frame_ms = now
 	var vmem := 0 if headless else int(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_VIDEO_MEM_USED))
-	if gap > 150 and not headless and _last_frame_ms > 0:
+	if gap > _hitch_ms and not headless and _last_frame_ms > 0:
 		# A frame this long is a freeze the player felt. Name where we were and what that frame
 		# did: GPU memory change (a jump is an allocation), script and physics time, nodes and
 		# resources created, pipelines compiled by source ("draw" ones are compile stalls). On
@@ -568,11 +578,13 @@ func _process(delta: float) -> void:
 		var nodes := int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
 		var resources := int(Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT))
 		var pipes := _pipeline_counts()
-		Log.info("perf", "Frame hitch %d ms (%s) vram %d MB (%+d MB) objects %d | process %.0f ms physics %.0f ms | nodes %d (%+d) resources %d (%+d) | pipelines canvas %+d mesh %+d surface %+d draw %+d spec %+d" % [
+		Log.info("perf", "Frame hitch %d ms (%s) vram %d MB (%+d MB) objects %d | process %.0f ms physics %.0f ms | netfox loop %.1f ms rollback %.1f ms (%d ticks) | nodes %d (%+d) resources %d (%+d) | pipelines canvas %+d mesh %+d surface %+d draw %+d spec %+d" % [
 			gap, where, vmem / 1048576, (vmem - _last_vmem) / 1048576,
 			int(Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)),
 			Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0,
 			Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0,
+			NetworkPerformance.get_network_loop_duration_ms(), NetworkPerformance.get_rollback_loop_duration_ms(),
+			NetworkPerformance.get_rollback_ticks(),
 			nodes, nodes - _last_nodes, resources, resources - _last_resources,
 			pipes[0] - _last_pipes[0], pipes[1] - _last_pipes[1], pipes[2] - _last_pipes[2],
 			pipes[3] - _last_pipes[3], pipes[4] - _last_pipes[4]])
@@ -594,6 +606,8 @@ func _process(delta: float) -> void:
 			# --perf: sample the renderer's own CPU and GPU time per frame (the previous frame's)
 			# and the wall-clock frame time, after a 2 s settle; summarised at soak end.
 			var rid := get_viewport().get_viewport_rid()
+			if _perf_gpu.is_empty():
+				_perf_pipes_start = _pipeline_counts()
 			_perf_gpu.append(RenderingServer.viewport_get_measured_render_time_gpu(rid))
 			_perf_cpu.append(RenderingServer.viewport_get_measured_render_time_cpu(rid))
 			_perf_frame.append(float(gap))
@@ -649,6 +663,20 @@ func _finish_soak() -> void:
 				int(vp.msaa_3d), int(ProjectSettings.get_setting("rendering/lights_and_shadows/directional_shadow/size", 0)),
 				_perf_gpu.size(), _mean(_perf_gpu), _p95(_perf_gpu), _max(_perf_gpu),
 				_mean(_perf_cpu), _p95(_perf_cpu), _mean(_perf_frame), _p95(_perf_frame)])
+			# Frame pacing: a frame over 1.5× the median is a skipped refresh the player feels;
+			# count them, and the pipelines compiled while playing (a draw-time compile is a stall).
+			var med := _median(_perf_frame)
+			var over15 := 0
+			var over2 := 0
+			for f in _perf_frame:
+				if f > med * 2.0:
+					over2 += 1
+				if f > med * 1.5:
+					over15 += 1
+			var pipes := _pipeline_counts()
+			Log.info("perf", "PACING frames %d | median %.2f ms | over 1.5x median %d (%.1f %%) | over 2x %d | longest %.0f ms | pipelines compiled while playing: mesh %d surface %d draw %d spec %d" % [
+				_perf_frame.size(), med, over15, 100.0 * over15 / maxf(1.0, _perf_frame.size()), over2, _max(_perf_frame),
+				pipes[1] - _perf_pipes_start[1], pipes[2] - _perf_pipes_start[2], pipes[3] - _perf_pipes_start[3], pipes[4] - _perf_pipes_start[4]])
 	soak_seconds = 0.0
 	var recorder := get_node_or_null("/root/SoakRecorder")
 	if recorder != null and recorder.has_method("write_report"):
@@ -667,17 +695,6 @@ func _arm_screenshot_on_kill(_killer: int, victim: int, _weapon: String, _headsh
 	if victim == multiplayer.get_unique_id():
 		_shot_armed = true
 		_shot_timer = 0.0
-
-
-## "hill" arms when the hill is placed or moves (--screenshot_event_index=N: 1 the first hill, 2 the first move).
-func _arm_screenshot_on_hill(_index: int) -> void:
-	if _shot_armed or str(args.get("screenshot_event", "")) != "hill":
-		return
-	_shot_event_seen += 1
-	if _shot_event_seen < int(args.get("screenshot_event_index", 1)):
-		return
-	_shot_armed = true
-	_shot_timer = 0.0
 
 
 func _arm_screenshot_on_round_end() -> void:
