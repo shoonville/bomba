@@ -2,14 +2,16 @@ extends SceneTree
 ## Flags the vending machine spots on a board file (the spaces flagged "goal"): the two walkway
 ## spaces nearest the board's two annexes. The annexes stand off the rim where the walkway sits
 ## farthest from it, at least 110° apart (`AnnexPlan.angles`, the search that placed
-## them before they carried the machines); each gets the blank, non-fork, non-start space nearest
-## its rim point whose corridor out to the annex is clear of every other space, so the bridge
-## crosses nothing. Sean: the machine lives on "those original two spots", never more. Rewrites
-## the file in place.
+## them before they carried the machines); each gets the blank, non-fork, non-merge, non-start
+## space nearest its rim point whose corridor out to the annex is clear of every other space, so
+## the bridge crosses nothing. Sean: the machine lives on "those original two spots", never more.
+## The slab is the board file's own (`MoonSlab`, written by tools/gen_board.gd) so the tool sees
+## the rim the view builds; a file without one gets the old ellipse round the tiles. Rewrites the
+## file in place.
 ##   GODOT --headless --path . --script tools/mark_spots.gd -- board/boards/main.json
 
 const CORRIDOR_HALF := 2.6   # the annex bridge is 3.2 m wide
-const MIN_HOPS_FROM_START := 8   # no annex on the start's doorstep, either way round the loop
+const MIN_HOPS_FROM_START := 8   # no annex on the start's doorstep, either way round
 
 
 func _initialize() -> void:
@@ -26,22 +28,18 @@ func _initialize() -> void:
 	var pos := {}
 	var fork := {}
 	var tiles: Array = []
-	var lo := Vector2(1e9, 1e9)
-	var hi := Vector2(-1e9, -1e9)
 	for sd in spaces:
 		var p: Array = sd["position"]
 		var v := Vector2(float(p[0]), float(p[2]))
 		pos[str(sd["id"])] = v
 		fork[str(sd["id"])] = (sd.get("next", []) as Array).size() > 1
 		tiles.append(Vector3(v.x, 0.0, v.y))
-		lo = Vector2(minf(lo.x, v.x), minf(lo.y, v.y))
-		hi = Vector2(maxf(hi.x, v.x), maxf(hi.y, v.y))
-	var centre := (lo + hi) * 0.5
-	var rx := (hi.x - lo.x) * 0.5 + 7.0   # the moon slab's radii, as board_view builds them
-	var rz := (hi.y - lo.y) * 0.5 + 7.0
+	var slab: MoonSlab = MoonSlab.from_dict(d.get("slab", {}))
+	if slab == null:
+		slab = MoonSlab.around(tiles, 7.0, 7.0)
 	var start := str(d.get("start", ""))
 	# Hops from the start forwards and backwards along the paths, so the annexes stay off the
-	# start's doorstep (the 116-space board's east dip in the loop sits one step before it).
+	# start's doorstep; and how many ways lead into each space (a merge is no place for a bridge).
 	var fwd := {}
 	var back := {}
 	for sd in spaces:
@@ -55,23 +53,27 @@ func _initialize() -> void:
 	var hops_in := _hops(start, back)
 	var chosen := {}
 	var report := []
-	for a_v in AnnexPlan.angles(tiles, Vector3(centre.x, 0.0, centre.y), rx, rz):
+	var preset: Array = []
+	for a in d.get("annexes", []):
+		preset.append(float(a))
+	for a_v in AnnexPlan.angles(tiles, slab, preset):
 		var a: float = a_v
-		var rim := Vector2(centre.x + cos(a) * rx, centre.y + sin(a) * rz)
+		var rim := slab.rim(a)
 		var best := ""
 		var best_d := 1e9
 		for sd in spaces:
 			var sid := str(sd["id"])
 			if sid == start or bool(fork[sid]) or str(sd.get("type", "blank")) != "blank" or chosen.has(sid):
 				continue
+			if (back.get(sid, []) as Array).size() > 1:
+				continue
 			if mini(int(hops_out.get(sid, 999)), int(hops_in.get(sid, 999))) < MIN_HOPS_FROM_START:
 				continue
 			var v: Vector2 = pos[sid]
-			# The annex stands straight out from the space (the ellipse's own ray through it) and
+			# The annex stands straight out from the space (the slab's own ray through it) and
 			# the bridge runs along that ray; its corridor to the rim must be clear of every other
 			# space.
-			var t := atan2((v.y - centre.y) / rz, (v.x - centre.x) / rx)
-			var out_pt := Vector2(centre.x + cos(t) * rx, centre.y + sin(t) * rz)
+			var out_pt := slab.rim(slab.angle_of(v.x, v.y))
 			var dir := (out_pt - v).normalized()
 			var span := v.distance_to(out_pt) + 1.0
 			var clear := true

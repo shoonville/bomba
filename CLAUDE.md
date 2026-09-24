@@ -40,12 +40,17 @@ that travels with the repo.
   corner of the hip view; that was the part he wanted gone). AR: the old boxy sight on a 3.5 cm base
   (30 % lower than it was), red dot ON its screen (a translucent pane at ADS; the dot is 30 % smaller
   twice over, radius 0.001715), crisp snap sound, the purple body untouched.
-- Board: one board (BOMBA BAY, `tools/gen_board.gd`, GDScript: 116 spaces, a loop of 86 with four short
-  branches so every lap is 86–92 steps, about 20 turns of the d8, Sean's 2026-09-23 note), pink sky kept, moon-base theme under it, floating
+- Board: one board (BOMBA BAY, `tools/gen_board.gd`, GDScript). Since 2026-09-24 it is a DISTRICT on Sean's
+  reference (an overhead of a street-grid party board): one-way walkways as streets round blocks, 186 spaces,
+  a ring road of 87 (a lap of it keeps his 20 turns of the d8, 2026-09-23), main street, two avenues, the pad
+  apron and the crater boardwalk, 7 forks, every space reaching every other. The blocks are "zones" in the
+  board file and the dressing builds a set-piece in each (`BoardDressing._blocks`); the slab is the file's
+  rounded plot (`MoonSlab`, shared by the view, the dressing, `AnnexPlan` and `tools/mark_spots.gd`).
+  Regenerate with gen_board, then mark_spots. His verdict on the district is pending. Pink sky kept, moon-base theme under it, floating
   spinning markers (flat stamps were "ugly"), close Pummel-Party camera on ONE fixed heading (south of the pawn looking north, whichever way it
   travels; 2026-09-23), eight-sided die, no water.
   The vending machine lives on the two annexes only (his "original two spots", the bridges to the
-  egg domes); never add machine pads or more spots.
+  egg domes; the district names their rim angles, the two ends of main street); never add machine pads or more spots.
 - Hitmarker: a dice tick, "similar to the sound the dice makes" (two takes before it were too
   high-pitched), drawn RED, bigger for a headshot (2026-09-23, his note; it had been yellow/paper).
   Muzzle flash: NONE (the red-orange puff was "distracting"; before it the cyan star was "tacky");
@@ -109,7 +114,7 @@ that travels with the repo.
 - Never run two soaks, or a soak and a windowed run, at once (contention ruins the numbers).
 
 ## Where things are
-`core/` boot, game flow, settings · `board/` graph, rules, director, view, dice, pawns · `fps/` player,
+`core/` boot, game flow, settings · `board/` graph, rules, director, view, dice, pawns, the moon slab, the dressing · `fps/` player,
 weapons, view (viewmodel, figure, spectator), `fps/match/` the shared FPS match · `minigames/` SDK plus
 `arena/`, `snipers/`, `last_stand/` · `bots/` · `audio/` synthesised sounds · `art/` shaders, cel material,
 post stack, palette · `ui/` menu, HUD, board HUD, results, settings · `tuning/` every number · `tools/`

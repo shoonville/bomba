@@ -18,9 +18,9 @@ var _astronaut: Figure
 var _dressing: BoardDressing
 var _craters: Array = []       # Vector3(x, z, r), for the dressing to keep clear of
 var _prop_spots: Array = []    # Vector2 of the five landmark props
-var _moon_c: Vector3 = Vector3.ZERO
-var _moon_rx: float = 20.0
-var _moon_rz: float = 20.0
+var _slab: MoonSlab            # the moon chunk the board stands on (the board file's, or an ellipse round the tiles)
+var _district_f: float = 0.0   # how far out the walkways reach, as a fraction of the way to the rim
+var _prop_yaws: Array = []     # a heading per landmark prop
 var _moon_density: float = 1.0   # slab area over the 65-space board's: feature counts keep their density
 var _bounds_centre: Vector3 = Vector3.ZERO
 var _bounds_radius: float = 20.0
@@ -157,7 +157,12 @@ func build_visuals() -> void:
 	_dressing = BoardDressing.new()
 	_dressing.name = "Dressing"
 	add_child(_dressing)
-	var dressing_ms: PackedInt32Array = await _dressing.build(self, director.graph, _moon_c, _moon_rx, _moon_rz, MOON_TOP, _craters, _prop_spots, _shadow)
+	# The landmark props as (x, z, radius) for the dressing to keep clear of.
+	var landmarks: Array = []
+	var prop_r: Array = [4.6, 2.6, 2.2, 2.0, 1.6]
+	for i in _prop_spots.size():
+		landmarks.append(Vector3(_prop_spots[i].x, _prop_spots[i].y, float(prop_r[mini(i, prop_r.size() - 1)])))
+	var dressing_ms: PackedInt32Array = await _dressing.build(self, director.graph, _slab, MOON_TOP, _craters, landmarks, _shadow)
 	if not is_inside_tree():
 		return
 	var placed := []
@@ -829,42 +834,79 @@ func _clear_of_tiles(g: BoardGraph, x: float, z: float, min_d: float) -> bool:
 const MOON_TOP := -1.75
 
 
-## The moon: the board stands on posts over a floating chunk of grey rock with craters and
-## boulders, a landing pad with a rocket, a satellite dish, a buggy, a half-buried probe and a
-## crew member looking at the sky. The pink sky stays (Sean: outer space, keep the pink).
+## The block of the board a prop or a structure belongs to, by kind (`BoardGraph.zones`, written
+## by tools/gen_board.gd): {} when the board has none.
+func _zone(kind: String) -> Dictionary:
+	for z in director.graph.zones:
+		if str(z.get("kind", "")) == kind:
+			return z
+	return {}
+
+
+## A point in a zone: its centre plus an offset turned by its yaw.
+func _zone_at(zone: Dictionary, dx: float, dz: float) -> Vector2:
+	var c: Array = zone.get("centre", [0.0, 0.0])
+	var yaw := float(zone.get("yaw", 0.0))
+	var off := Vector2(dx, dz).rotated(-yaw)
+	return Vector2(float(c[0]), float(c[1])) + off
+
+
+## True when (x, z) is at least `pad` outside every block's disc.
+func _zone_clear(x: float, z: float, pad: float) -> bool:
+	for zone in director.graph.zones:
+		var c: Array = zone.get("centre", [0.0, 0.0])
+		if Vector2(x - float(c[0]), z - float(c[1])).length() < float(zone.get("r", 0.0)) + pad:
+			return false
+	return true
+
+
+## The moon: the board stands on posts over a floating chunk of grey rock. Since 2026-09-24 the
+## chunk is the board file's own rounded plot (`BoardGraph.slab`, a superellipse; a file without
+## one gets the old ellipse round its tiles): the district's streets run inside it with a margin
+## of open moon round them, and its blocks hold the base's set-pieces (the "zones", built by the
+## dressing; the five landmark props here take their spots from them). The pink sky stays (Sean:
+## outer space, keep the pink).
 func _build_moon_chunk() -> void:
 	var g := director.graph
 	var shadow := _shadow
 	var rng := _moon_rng
 	rng.seed = hash(g.id) + 23
-	var lo := Vector3(1e9, 0, 1e9)
-	var hi := Vector3(-1e9, 0, -1e9)
+	var tiles: Array = []
 	for sid in g.ids():
-		var sp := g.get_space(sid).position
-		lo.x = minf(lo.x, sp.x); lo.z = minf(lo.z, sp.z)
-		hi.x = maxf(hi.x, sp.x); hi.z = maxf(hi.z, sp.z)
-	var c := (lo + hi) * 0.5
-	var rx := (hi.x - lo.x) * 0.5 + 7.0
-	var rz := (hi.z - lo.z) * 0.5 + 7.0
-	_moon_c = c
-	_moon_rx = rx
-	_moon_rz = rz
+		tiles.append(g.get_space(sid).position)
+	_slab = g.slab if g.slab != null else MoonSlab.around(tiles, 7.0, 7.0)
+	# How far out the walkways reach: the ring road sits at this fraction of the way to the rim;
+	# the open moon (the small craters, the buggy's road, the annex bridges) lies past it.
+	_district_f = 0.0
+	for p in tiles:
+		_district_f = maxf(_district_f, _slab.f_of(p.x, p.z))
 	# Feature counts were set on the 31 × 25 m slab of the 65-space board; a bigger board keeps
-	# the same density (craters and boulders per square metre) so it does not read as empty.
-	_moon_density = (rx * rz) / (31.0 * 25.0)
+	# the same density (boulders, pebbles per square metre) so it does not read as empty.
+	_moon_density = _slab.area() / (PI * 31.0 * 25.0)
+	# The five landmark props' spots: the rocket's pad and the parked buggy in the pad block, the
+	# dish at the power plant, the probe on the park's lawn, the crew by the flag on the plaza off
+	# the start. A board without blocks gets the old search for clear spots.
+	var pad := _zone("pad")
+	var power := _zone("power")
+	var park := _zone("park")
+	var plaza := _zone("plaza")
+	_prop_spots = []
+	_prop_yaws = []
+	if not (pad.is_empty() or power.is_empty() or park.is_empty() or plaza.is_empty()):
+		_prop_spots = [_zone_at(pad, 0.0, 0.0), _zone_at(power, -4.6, 4.4), _zone_at(pad, 7.6, 0.6),
+			_zone_at(park, -4.2, -2.4), _zone_at(plaza, 0.0, 0.0)]
+		_prop_yaws = [rng.randf_range(0.0, TAU), rng.randf_range(0.0, TAU), float(pad.get("yaw", 0.0)) + PI * 0.5,
+			rng.randf_range(0.0, TAU), float(plaza.get("yaw", 0.0)) + 0.4]
+	var c := _slab.centre
 	var moon_mat := CelMaterial.with_print(CelMaterial.for_colour(Palette.map_colour("board", "moon"), shadow), "moon", Palette.map_colour("board", "line"))
 	var moon_dark_mat := CelMaterial.for_colour(Palette.map_colour("board", "moon_dark"), shadow)
 	var post_mat := CelMaterial.for_colour(Palette.map_colour("board", "counter_dark"), shadow)
-	# The chunk: a 13-sided slab, a rocky root tapering nine metres down.
+	# The chunk: a prism on the slab's outline (40 sides, each pushed in or out a little so the
+	# edge reads as rock, not a cut), 2.6 m thick with its foot drawn in; a rocky root tapering
+	# nine metres down.
 	var slab := MeshInstance3D.new()
-	var sm := CylinderMesh.new()
-	sm.top_radius = 1.0
-	sm.bottom_radius = 0.94
-	sm.height = 2.6
-	sm.radial_segments = 13
-	slab.mesh = sm
-	slab.scale = Vector3(rx, 1.0, rz)
-	slab.position = c + Vector3(0, MOON_TOP - 1.3, 0)
+	slab.mesh = _prism(_slab.outline(40, 0.015, rng), 2.6, 0.94)
+	slab.position = c + Vector3(0, MOON_TOP - 2.6, 0)
 	slab.material_override = moon_mat
 	add_child(slab)
 	var root := MeshInstance3D.new()
@@ -874,7 +916,7 @@ func _build_moon_chunk() -> void:
 	rm.height = 1.0
 	rm.radial_segments = 11
 	root.mesh = rm
-	root.scale = Vector3(rx, 9.0, rz)
+	root.scale = Vector3(_slab.rx, 9.0, _slab.rz)
 	root.position = c + Vector3(0, MOON_TOP - 2.6 - 4.5, 0)
 	root.material_override = moon_dark_mat
 	add_child(root)
@@ -888,59 +930,140 @@ func _build_moon_chunk() -> void:
 		_prop_cyl(self, 0.75, 0.14, Vector3(sp.x, MOON_TOP + 0.05, sp.z), moon_dark_mat)
 
 
-## The moon's second chunk: craters and boulders. The seeded stream carries on from the first
-## chunk, so the layout is the one the single build produced.
+## A flat-shaded prism: `outline` at the top (y = height), the same outline scaled by `foot` at
+## the base (y = 0), sides between. Fanned from the origin, so the outline must be star-shaped
+## about it (a superellipse is). Front faces wind clockwise, as Godot wants, and every face
+## carries its own normal (SurfaceTool's generated normals smooth the rim between the top and
+## the sides, which shaded the top as a lit blob fading to the shadow band at the edge).
+func _prism(outline: PackedVector2Array, height: float, foot: float) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st.set_smooth_group(-1)
+	var n := outline.size()
+	for i in n:
+		var a := outline[i]
+		var b := outline[(i + 1) % n]
+		var ta := Vector3(a.x, height, a.y)
+		var tb := Vector3(b.x, height, b.y)
+		var ba := Vector3(a.x * foot, 0.0, a.y * foot)
+		var bb := Vector3(b.x * foot, 0.0, b.y * foot)
+		# Top: centre, a, b (clockwise seen from above, x east and z south).
+		st.set_normal(Vector3.UP)
+		st.add_vertex(Vector3(0, height, 0))
+		st.add_vertex(ta)
+		st.add_vertex(tb)
+		# Base, seen from below.
+		st.set_normal(Vector3.DOWN)
+		st.add_vertex(Vector3.ZERO)
+		st.add_vertex(bb)
+		st.add_vertex(ba)
+		# The side, its normal outward and a little up (the foot is drawn in).
+		st.set_normal((tb - ta).cross(ba - ta).normalized())
+		st.add_vertex(ta)
+		st.add_vertex(ba)
+		st.add_vertex(tb)
+		st.add_vertex(tb)
+		st.add_vertex(ba)
+		st.add_vertex(bb)
+	return st.commit()
+
+
+## The moon's second chunk: craters and boulders. The big crater is the park's (the "crater"
+## zone, the rig stands over it); the small ones lie in the open moon past the ring road and on
+## the park's lawn, never under a tile; boulders anywhere clear of the tiles, the blocks and the
+## props. The seeded stream carries on from the first chunk.
 func _build_moon_craters() -> void:
 	var g := director.graph
 	var shadow := _shadow
 	var rng := _moon_rng
-	var c := _moon_c
-	var rx := _moon_rx
-	var rz := _moon_rz
 	var moon_dark_mat := CelMaterial.for_colour(Palette.map_colour("board", "moon_dark"), shadow)
 	var crater_mat := CelMaterial.for_colour(Palette.map_colour("board", "crater"), shadow)
 	var rock_mat := CelMaterial.for_colour(Palette.map_colour("board", "rock"), shadow)
-	# Craters: a darker floor and a raised rim, never under a tile.
 	var craters: Array = []
+	var big := _zone("crater")
+	if not big.is_empty():
+		var bc := _zone_at(big, 0.0, 0.0)
+		craters.append(Vector3(bc.x, bc.y, float(big.get("r", 4.0))))
+	# Small craters in the margin past the ring road (a band a few metres wide, so they are
+	# small), and two on the park's lawn.
+	var park := _zone("park")
+	var wanted := craters.size() + roundi(12 * sqrt(_moon_density)) + (2 if not park.is_empty() else 0)
 	var tries := 0
-	var crater_n := roundi(16 * _moon_density)
-	while craters.size() < crater_n and tries < roundi(400 * _moon_density):
+	while craters.size() < wanted and tries < 900:
 		tries += 1
-		var a := rng.randf_range(0.0, TAU)
-		var f := sqrt(rng.randf_range(0.04, 0.9))
-		var x := c.x + cos(a) * rx * f
-		var z := c.z + sin(a) * rz * f
-		var r := rng.randf_range(1.1, 3.4)
+		var on_lawn := not park.is_empty() and tries % 4 == 0 and craters.size() >= wanted - 2
+		var x: float
+		var z: float
+		var r: float
+		if on_lawn:
+			var lc := _zone_at(park, 0.0, 0.0)
+			var lr := float(park.get("r", 7.0))
+			var la := rng.randf_range(0.0, TAU)
+			var lf := rng.randf_range(0.3, 0.8) * lr
+			x = lc.x + cos(la) * lf
+			z = lc.y + sin(la) * lf
+			r = rng.randf_range(1.2, 1.8)
+		elif _district_f > 0.0 and _district_f < 0.95:
+			var pt := _slab.point(rng.randf_range(0.0, TAU), rng.randf_range(_district_f + 0.04, 0.95))
+			x = pt.x
+			z = pt.y
+			r = rng.randf_range(1.0, 1.7)
+		else:
+			var pt := _slab.point(rng.randf_range(0.0, TAU), sqrt(rng.randf_range(0.04, 0.9)))
+			x = pt.x
+			z = pt.y
+			r = rng.randf_range(1.1, 3.4)
 		if not _clear_of_tiles(g, x, z, r + 1.6):
 			continue
-		var ok := true
+		if not on_lawn and not _zone_clear(x, z, r + 0.5):
+			continue
+		var ok := _slab.inside(x, z, 0.96)
 		for cr in craters:
 			if Vector2(x - cr.x, z - cr.y).length() < r + cr.z + 1.0:
+				ok = false
+				break
+		for sp in _prop_spots:
+			if Vector2(x - sp.x, z - sp.y).length() < r + 3.0:
 				ok = false
 				break
 		if not ok:
 			continue
 		craters.append(Vector3(x, z, r))
+	for cr in craters:
+		var x: float = cr.x
+		var z: float = cr.y
+		var r: float = cr.z
 		_prop_cyl(self, r * 0.86, 0.08, Vector3(x, MOON_TOP + 0.03, z), crater_mat)
 		var rim := MeshInstance3D.new()
 		var tm := TorusMesh.new()
 		tm.inner_radius = r * 0.86
 		tm.outer_radius = r * 1.14
-		tm.rings = 24
+		tm.rings = 24 if r < 3.0 else 40
 		tm.ring_segments = 6
 		rim.mesh = tm
 		rim.position = Vector3(x, MOON_TOP + 0.06, z)
 		rim.scale = Vector3(1.0, 0.5, 1.0)
 		rim.material_override = moon_dark_mat
 		add_child(rim)
-	# Boulders, a few on the rim so the edge reads as rock.
+	# Boulders: in the open moon and the blocks' leftover corners, a few on the rim so the edge
+	# reads as rock.
 	var inner_boulders := roundi(20 * _moon_density)
 	for k in roundi(28 * _moon_density):
 		var a := rng.randf_range(0.0, TAU)
 		var f := sqrt(rng.randf_range(0.1, 1.0)) if k < inner_boulders else rng.randf_range(0.97, 1.02)
-		var x := c.x + cos(a) * rx * f
-		var z := c.z + sin(a) * rz * f
-		if not _clear_of_tiles(g, x, z, 2.4):
+		var pt := _slab.point(a, f)
+		var x := pt.x
+		var z := pt.y
+		if not _clear_of_tiles(g, x, z, 2.4) or not _zone_clear(x, z, 1.0):
+			continue
+		var ok := true
+		for cr in craters:
+			if Vector2(x - cr.x, z - cr.y).length() < cr.z + 1.4:
+				ok = false
+		for sp in _prop_spots:
+			if Vector2(x - sp.x, z - sp.y).length() < 3.6:
+				ok = false
+		if not ok:
 			continue
 		var r := rng.randf_range(0.35, 1.3)
 		var b := MeshInstance3D.new()
@@ -959,16 +1082,14 @@ func _build_moon_craters() -> void:
 
 
 ## The moon's third chunk: the five landmark props (a landing pad with a rocket, a dish on a
-## tripod, a buggy, a half-buried probe, a crew member by a flag), each in a spot clear of the
-## tiles, the craters and each other. Props `from` up to `to` are built; the spots are searched
-## with the first call, and the seeded stream runs on across the calls in the single build's order.
+## tripod, a buggy, a half-buried probe, a crew member by a flag), each on its block's spot
+## (`_build_moon_chunk`) or, on a board without blocks, in a spot searched here clear of the
+## tiles, the craters and each other. Props `from` up to `to` are built; the seeded stream runs
+## on across the calls in the single build's order.
 func _build_moon_props(from: int, to: int) -> void:
 	var g := director.graph
 	var shadow := _shadow
 	var rng := _moon_rng
-	var c := _moon_c
-	var rx := _moon_rx
-	var rz := _moon_rz
 	var craters := _craters
 	var metal_mat := CelMaterial.for_colour(Palette.map_colour("board", "metal"), shadow)
 	var paper_mat := CelMaterial.for_colour(Palette.hud_colour("paper"), shadow)
@@ -976,15 +1097,13 @@ func _build_moon_props(from: int, to: int) -> void:
 	var ink_mat := CelMaterial.for_colour(Color.from_hsv(Palette.map_colour("board", "line").h, 0.45, 0.24), shadow)
 	var glow_mat := CelMaterial.for_colour(Palette.hud_colour("danger"), shadow, 1.5)
 	var alien_mat := CelMaterial.for_colour(Palette.map_colour("board", "alien"), shadow, 1.2)
-	# Props, each in a spot clear of the tiles and of each other.
 	var spots: Array = _prop_spots
 	var tries := 0
 	while from == 0 and spots.size() < 5 and tries < 600:
 		tries += 1
-		var a := rng.randf_range(0.0, TAU)
-		var f := rng.randf_range(0.3, 0.88)
-		var x := c.x + cos(a) * rx * f
-		var z := c.z + sin(a) * rz * f
+		var pt := _slab.point(rng.randf_range(0.0, TAU), rng.randf_range(0.3, 0.88))
+		var x := pt.x
+		var z := pt.y
 		if not _clear_of_tiles(g, x, z, 4.6):
 			continue
 		var ok := true
@@ -998,12 +1117,13 @@ func _build_moon_props(from: int, to: int) -> void:
 				break
 		if ok:
 			spots.append(Vector2(x, z))
+			_prop_yaws.append(rng.randf_range(0.0, TAU))
 	_prop_spots = spots
 	for n in range(from, mini(to, spots.size())):
 		var at := Vector3(spots[n].x, MOON_TOP, spots[n].y)
 		var prop := Node3D.new()
 		prop.position = at
-		prop.rotation.y = rng.randf_range(0.0, TAU)
+		prop.rotation.y = float(_prop_yaws[n]) if n < _prop_yaws.size() else rng.randf_range(0.0, TAU)
 		add_child(prop)
 		match n:
 			0:   # landing pad with a rocket on its fins
@@ -1641,15 +1761,13 @@ func _play_next() -> void:
 				# On the moon's ground beside the tile, not floating at tile height (Sean, 2026-09-22),
 				# when the spot is on the slab and clear of a crater; else (an annex, the rim) at the
 				# tile's height as before.
-				var gx := (spot.x - _moon_c.x) / maxf(_moon_rx, 0.01)
-				var gz := (spot.z - _moon_c.z) / maxf(_moon_rz, 0.01)
-				var on_ground := gx * gx + gz * gz < 0.96 * 0.96
+				var on_ground := _slab != null and _slab.inside(spot.x, spot.z, 0.96)
 				for cr in _craters:
 					if Vector2(spot.x - cr.x, spot.z - cr.y).length() < cr.z + 0.6:
 						on_ground = false
-				Log.debug("board", "dice ground: r2 %.2f on_ground %s" % [gx * gx + gz * gz, on_ground])
+				Log.debug("board", "dice ground: f %.2f on_ground %s" % [_slab.f_of(spot.x, spot.z) if _slab != null else 9.9, on_ground])
 				if on_ground:
-					to.y = _moon_c.y + MOON_TOP + BoardDice.INRADIUS
+					to.y = _slab.centre.y + MOON_TOP + BoardDice.INRADIUS
 				dice.roll(base + Vector3(0.3, 2.8, 0.2), to, raw, rng, forward)
 				dice.landed.connect(func(_val: int):
 					Audio.play("land", -9.0)

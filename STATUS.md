@@ -836,3 +836,40 @@ determinism identical, the headless board match.
    then a match: the eight notes, and whether strafing while scoped is smooth now.
 2. The 10–17 ms ticks: name the source (bot pathing, a resimulation burst, the replay ring) with
    the hitch line's netfox and physics fields, then spread or cut it.
+
+## 2026-09-24 — session 13: BOMBA BAY as a district
+
+Sean's note, with an overhead shot of a street-grid party board: the layout should be like that
+("right now it's just a big circle"), decoration in the open spaces, the whole map cohesive.
+`tools/check_all.sh` green: 79 tests, 102 scripts, determinism identical, the headless four-seat
+board match on the new board.
+
+- **The board is a district** (`tools/gen_board.gd`, rewritten): a ring road (a rounded plot of
+  87 spaces, so a lap of it keeps the 20-turn lap of 2026-09-23), main street across the middle,
+  two avenues, a rectangular apron off the north edge round the landing pad and a curved
+  boardwalk off the south edge round the big crater. Every street one-way, 7 forks, every space
+  reaches every other (checked by the generator). 186 spaces.
+- **The look is built per block**: nine zones in the board file, a set-piece each (HAB 2, the
+  landing pad, the depot, the farm, the tank farm, the crater park and its crater, the power
+  plant, the plaza), the random fillers outside them; the slab is the file's own rounded plot
+  (`MoonSlab`, `board/moon_slab.gd`), shared by the view, the dressing, the annex plan and the
+  spot marker. Paved bands under the walkways, chevrons on the planks, lamps on the right of
+  travel. The annexes keep their pieces, at the two ends of main street.
+
+  | BOMBA BAY | loop (2026-09-23) | district |
+  |---|---|---|
+  | spaces / forks | 116 / 4 | 186 / 7 |
+  | ring road | 86 (laps 86–92 steps, 19.1–20.4 turns) | 87 (routes 36–116 steps, mean 87.7 = 19.5 turns) |
+  | machine spots | L49, L74 | R30 (west), R74 (east), 10.7 m bridges |
+  | nodes / draw calls, 1080p | 2795 / — | 6997 / 6405 |
+  | GPU ms mean / p95, 1080p on the 5090 | 0.62 / 0.63 | 0.72 / 0.74 |
+  | render CPU ms | 0.70 | 1.26 |
+  | first build under the wipe | 18 frames, longest 38 ms | 19 frames, longest 42 ms |
+
+  Frames: `board_overview.png`, `board_map.png`, `board_turn.png` (retaken),
+  `board_district_north.png`, `board_district_east.png` (new). His verdict pending.
+
+### Next
+1. Sean: the district (the layout, the paved bands, the chevrons), and whether the short
+   south-east loop (36 steps, 8 turns) wants closing or is the fun part.
+2. Unchanged: the display and driver settings (session 11), the 10–17 ms ticks (session 12).

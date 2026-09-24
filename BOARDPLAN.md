@@ -51,8 +51,16 @@ Every rule returns a list of **events** (`roll`, `move`, `coins`, `goal`, `item`
 `board/boards/<id>.json`: `spaces` (id, position `[x, y, z]`, type, `next: [ids]`) and `start`.
 Types: `start`, `blank`, `coin` (+3), `lose` (−3), `item` (draw one), `event` (v0: teleport to
 a random space), `goal` (the moving goal's spawn candidates carry `"goal": true`). A fork is any
-space with two or more `next` entries. BOMBA BAY (`tools/gen_board.gd`) is a loop of 86 spaces on a wobbly 59 × 44 m ellipse with four short branches, 116 spaces in all, so a lap is 86–92 steps (about 20 turns of the d8); the v0 board was a hand-made loop of ~28 spaces with two
-forks and a shortcut, positions in metres on a 24×18 m field, some spaces raised.
+space with two or more `next` entries. BOMBA BAY (`tools/gen_board.gd`, 2026-09-24) is a district: one-way walkways laid out
+like streets round blocks. A ring road of 87 spaces (a rounded plot, so a lap of it is about 20
+turns of the d8), main street across the middle, two avenues, a rectangular apron round the
+landing pad and a curved boardwalk round the big crater: 186 spaces, 7 forks, every space
+reaching every other. The file also carries the look's data: `slab` (the moon chunk as a
+superellipse, `MoonSlab`), `annexes` (the rim angles the two annexes stand at, the ends of main
+street) and `zones` (the blocks, a disc each with a kind and a yaw; the dressing builds a
+set-piece in each). Regenerate with `tools/gen_board.gd`, then `tools/mark_spots.gd` flags the
+machine spots. Before it (2026-09-23) the board was a loop of 86 with four short branches; the
+v0 board a hand-made loop of ~28 spaces with two forks and a shortcut.
 
 ## 4. Items
 

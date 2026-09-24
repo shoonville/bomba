@@ -19,9 +19,8 @@ extends Node3D
 
 var _view: Node3D
 var _graph: BoardGraph
+var _slab: MoonSlab            # the moon chunk's outline: the board file's rounded plot
 var _centre: Vector3
-var _rx: float
-var _rz: float
 var _top: float
 var _shadow: Color
 var _density: float = 1.0        # slab area over the 65-space board's, for the prop counts
@@ -65,25 +64,24 @@ var counts: Dictionary = {}      # what was placed, for the log
 ## milliseconds each part took. A part checks the node is still in the tree first (a peer can
 ## leave mid-build), and the order and the seeded stream are the single build's, so the base is
 ## the same on every peer.
-func build(view: Node3D, g: BoardGraph, centre: Vector3, rx: float, rz: float, top: float,
-		craters: Array, landmarks: Array, shadow: Color) -> PackedInt32Array:
+func build(view: Node3D, g: BoardGraph, slab: MoonSlab, top: float, craters: Array, landmarks: Array,
+		shadow: Color) -> PackedInt32Array:
 	_view = view
 	_graph = g
-	_centre = centre
-	_rx = rx
-	_rz = rz
+	_slab = slab
+	_centre = slab.centre
 	_top = top
 	_shadow = shadow
 	# The counts below were set on the 31 × 25 m slab of the 65-space board; a bigger board keeps
 	# the same density of hatches, rocks, dust and cracks (per area) and of structures (per rim).
-	_density = (rx * rz) / (31.0 * 25.0)
+	_density = slab.area() / (PI * 31.0 * 25.0)
 	_rng.seed = hash(g.id) + 101
 	for sid in g.ids():
 		_tile_positions.append(g.get_space(sid).position)
 	for cr in craters:
 		_occupied.append(Vector3(cr.x, cr.y, cr.z + 0.6))
-	for sp in landmarks:
-		_occupied.append(Vector3(sp.x, sp.y, 4.6))
+	for sp in landmarks:   # (x, z, radius)
+		_occupied.append(Vector3(sp.x, sp.y, sp.z))
 	var times := PackedInt32Array()
 	var t := Time.get_ticks_usec()
 	_path_details()
@@ -98,6 +96,12 @@ func build(view: Node3D, g: BoardGraph, centre: Vector3, rx: float, rz: float, t
 	if not is_inside_tree():
 		return times
 	t = Time.get_ticks_usec()
+	_blocks(craters, landmarks)
+	times.append((Time.get_ticks_usec() - t) / 1000)
+	await _next_frame()
+	if not is_inside_tree():
+		return times
+	t = Time.get_ticks_usec()
 	_path_props()
 	_plan_road()
 	_ground_details()
@@ -106,7 +110,7 @@ func build(view: Node3D, g: BoardGraph, centre: Vector3, rx: float, rz: float, t
 	if not is_inside_tree():
 		return times
 	t = Time.get_ticks_usec()
-	_structures(craters, landmarks)
+	_antennas()
 	_signs_and_pennants(landmarks)
 	times.append((Time.get_ticks_usec() - t) / 1000)
 	await _next_frame()
@@ -136,7 +140,8 @@ func _plan_road() -> void:
 	var n := 96
 	for i in n:
 		var a := i * TAU / n
-		var p := Vector3(_centre.x + cos(a) * _rx * 0.92, _top, _centre.z + sin(a) * _rz * 0.92)
+		var q := _slab.point(a, 0.93)
+		var p := Vector3(q.x, _top, q.y)
 		samples.append(p)
 		clear.append(_tile_clear(p.x, p.z, 2.3) and _prop_clear(p.x, p.z, 1.0))
 	var best_start := -1
@@ -175,6 +180,7 @@ func _mat(key: String) -> Material:
 		"accent_lit": m = CelMaterial.for_colour(Palette.map_colour("board", "accent"), _shadow, 0.3)
 		"moon": m = CelMaterial.with_print(CelMaterial.for_colour(Palette.map_colour("board", "moon"), _shadow), "moon", Palette.map_colour("board", "line"))
 		"moon_light": m = CelMaterial.for_colour(Palette.map_colour("board", "moon").lightened(0.12), _shadow)
+		"pavement": m = CelMaterial.for_colour(Palette.map_colour("board", "moon").darkened(0.1), _shadow)
 		_:
 			if key.begins_with("player"):
 				m = CelMaterial.for_colour(Palette.player_colour(int(key.substr(6))), _shadow, 0.15)
@@ -301,9 +307,7 @@ func _prop_clear(x: float, z: float, own: float) -> bool:
 
 
 func _inside(x: float, z: float, f_max: float) -> bool:
-	var dx := (x - _centre.x) / _rx
-	var dz := (z - _centre.z) / _rz
-	return dx * dx + dz * dz <= f_max * f_max
+	return _slab.inside(x, z, f_max)
 
 
 ## A random spot at least `tile_d` from every tile and clear of everything placed, within the
@@ -312,8 +316,9 @@ func _spot(tile_d: float, own: float, f_min: float = 0.15, f_max: float = 0.9, t
 	for i in tries:
 		var a := _rng.randf_range(0.0, TAU)
 		var f := sqrt(_rng.randf_range(f_min * f_min, f_max * f_max))
-		var x := _centre.x + cos(a) * _rx * f
-		var z := _centre.z + sin(a) * _rz * f
+		var q := _slab.point(a, f)
+		var x := q.x
+		var z := q.y
 		if _tile_clear(x, z, tile_d) and _prop_clear(x, z, own):
 			_occupied.append(Vector3(x, z, own))
 			return Vector2(x, z)
@@ -363,10 +368,29 @@ func _path_details() -> void:
 			# A stripe down the middle of the plank ahead.
 			var mid := (p + q) * 0.5 - Vector3(0, 0.045, 0)
 			var length := maxf(0.2, (q - p).length() - 2.0)
+			# The street under the walkway: a paved band on the moon from post to post, so the
+			# walkways read as streets and the blocks between them as blocks (2026-09-24).
+			var band := _box(self, Vector3(3.0, 0.02, (q - p).length() + 1.6), Vector3.ZERO, "pavement")
+			band.global_position = Vector3(mid.x, _top + 0.012, mid.z)
+			if (q - p).length() > 0.01:
+				band.look_at(Vector3(q.x, _top + 0.012, q.z), Vector3.UP)
+			band.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			var stripe := _box(self, Vector3(0.12, 0.02, length * 0.9), Vector3.ZERO, "paper")
 			stripe.global_position = mid
 			if (q - p).length() > 0.01:
 				stripe.look_at(q, Vector3.UP)
+			# A chevron at the stripe's far end: every street is one-way (2026-09-24), and the
+			# reference board draws an arrow on every link.
+			var head := MeshInstance3D.new()
+			var hm := PrismMesh.new()
+			hm.size = Vector3(0.46, 0.4, 0.02)
+			head.mesh = hm
+			head.material_override = _mat("paper")
+			add_child(head)
+			head.global_position = mid + (q - p).normalized() * (length * 0.45 + 0.24)
+			if (q - p).length() > 0.01:
+				head.look_at(q, Vector3.UP)
+				head.rotate_object_local(Vector3.RIGHT, -PI * 0.5)
 			# Two cables slung under the plank between the posts, sagging in the middle.
 			var a := Vector3(p.x, post_top - 0.25, p.z)
 			var b := Vector3(q.x, q.y - 1.22 - 0.25, q.z)
@@ -381,10 +405,7 @@ func _path_details() -> void:
 		if i % 5 == 2 and not s.next.is_empty():
 			var q := g.get_space(s.next[0]).position
 			var dir := Vector2(q.x - p.x, q.z - p.z).normalized()
-			var side := Vector2(-dir.y, dir.x)
-			var out := Vector2(p.x - _centre.x, p.z - _centre.z).normalized()
-			if side.dot(out) < 0.0:
-				side = -side
+			var side := Vector2(-dir.y, dir.x)   # the right-hand side of travel, like a street's lamps
 			var lp := Vector2(p.x, p.z) + side * 2.3
 			if _tile_clear(lp.x, lp.y, 1.9) and _prop_clear(lp.x, lp.y, 0.6) and _inside(lp.x, lp.y, 0.97):
 				_occupied.append(Vector3(lp.x, lp.y, 0.6))
@@ -412,9 +433,6 @@ func _path_props() -> void:
 		var q := g.get_space(s.next[0]).position
 		var dir := Vector2(q.x - p.x, q.z - p.z).normalized()
 		var side := Vector2(-dir.y, dir.x)
-		var out := Vector2(p.x - _centre.x, p.z - _centre.z).normalized()
-		if side.dot(out) < 0.0:
-			side = -side
 		if (i / 4) % 2 == 1:
 			side = -side
 		var pp := Vector2(p.x, p.z) + side * 2.4
@@ -455,8 +473,9 @@ func _path_props() -> void:
 # --- on the ground ------------------------------------------------------------------------------------
 
 func _ground_details() -> void:
-	# Hatches: a plate with a rim and a light, flush with the ground near the walkway.
-	for k in roundi(12 * _density):
+	# Hatches: a plate with a rim and a light, flush with the ground (a dozen or so: at the
+	# loop board's density they were 56 white squares across the district's map).
+	for k in roundi(5 * sqrt(_density)):
 		var sp := _spot(2.1, 1.0, 0.1, 0.92, 200)
 		if sp == Vector2.INF:
 			break
@@ -478,25 +497,14 @@ func _ground_details() -> void:
 		var sp := _spot(2.3, 1.7, 0.1, 0.95, 200)
 		if sp == Vector2.INF:
 			break
-		var c := _node(Vector3(sp.x, _top, sp.y), _rng.randf_range(0.0, TAU))
-		var n := 2 + _rng.randi() % 3
-		for j in n:
-			var r := _rng.randf_range(0.28, 0.75)
-			var off := Vector3(_rng.randf_range(-1.0, 1.0), 0, _rng.randf_range(-1.0, 1.0))
-			var rock := _sphere(c, r, off + Vector3(0, r * 0.4, 0), "rock" if j % 2 == 0 else "moon_dark",
-				Vector3(_rng.randf_range(0.8, 1.3), _rng.randf_range(0.5, 0.85), _rng.randf_range(0.8, 1.3)), false, 7)
-			rock.rotation.y = _rng.randf_range(0.0, TAU)
-		for j in 4 + _rng.randi() % 4:
-			var r := _rng.randf_range(0.08, 0.16)
-			var off := Vector3(_rng.randf_range(-1.6, 1.6), r * 0.5, _rng.randf_range(-1.6, 1.6))
-			_sphere(c, r, off, "crater", Vector3(1.2, 0.7, 1.0), false, 6)
-		_count("rock cluster")
+		_rock_cluster(Vector3(sp.x, _top, sp.y))
 	# Loose pebbles anywhere the ground is bare.
 	for k in roundi(60 * _density):
 		var a := _rng.randf_range(0.0, TAU)
 		var f := sqrt(_rng.randf_range(0.02, 0.9))
-		var x := _centre.x + cos(a) * _rx * f
-		var z := _centre.z + sin(a) * _rz * f
+		var q := _slab.point(a, f)
+		var x := q.x
+		var z := q.y
 		if not _tile_clear(x, z, 1.5):
 			continue
 		var r := _rng.randf_range(0.07, 0.15)
@@ -506,8 +514,9 @@ func _ground_details() -> void:
 	for k in roundi(9 * _density):
 		var a := _rng.randf_range(0.0, TAU)
 		var f := sqrt(_rng.randf_range(0.05, 0.85))
-		var x := _centre.x + cos(a) * _rx * f
-		var z := _centre.z + sin(a) * _rz * f
+		var q := _slab.point(a, f)
+		var x := q.x
+		var z := q.y
 		if not _tile_clear(x, z, 2.0):
 			continue
 		var d := _sphere(self, _rng.randf_range(1.6, 3.2), Vector3(x, _top - 0.02, z), "moon_light" if k % 2 == 0 else "moon_dark",
@@ -517,8 +526,9 @@ func _ground_details() -> void:
 	# Rim edge: chunks of rock along the slab's edge so it reads as a cliff, not a cut.
 	for k in roundi(22 * sqrt(_density)):
 		var a := k * TAU / 22.0 + _rng.randf_range(-0.1, 0.1)
-		var x := _centre.x + cos(a) * _rx * _rng.randf_range(0.99, 1.04)
-		var z := _centre.z + sin(a) * _rz * _rng.randf_range(0.99, 1.04)
+		var q := _slab.point(a, _rng.randf_range(0.99, 1.04))
+		var x := q.x
+		var z := q.y
 		var r := _rng.randf_range(0.5, 1.4)
 		var chunk := _sphere(self, r, Vector3(x, _top - _rng.randf_range(0.2, 1.4), z), "rock" if k % 3 != 0 else "moon_dark",
 			Vector3(_rng.randf_range(0.8, 1.4), _rng.randf_range(0.6, 1.1), _rng.randf_range(0.8, 1.4)), false, 7)
@@ -647,8 +657,8 @@ func _build_annexes() -> void:
 	if spots.is_empty():
 		return
 	var plan: Array = []   # [angle, space id] per annex, the searched angles first
-	for a in AnnexPlan.angles(_tile_positions, _centre, _rx, _rz):
-		var rim := Vector2(_centre.x + cos(a) * _rx, _centre.z + sin(a) * _rz)
+	for a in AnnexPlan.angles(_tile_positions, _slab, _graph.annex_angles):
+		var rim := _slab.rim(a)
 		var best := ""
 		var best_d := 1e9
 		for sid in spots:
@@ -661,11 +671,11 @@ func _build_annexes() -> void:
 			# The annex stands straight out from its space (a level, straight bridge): the step from
 			# the searched angle to the space's own ray is a few degrees.
 			var bp: Vector3 = _graph.get_space(best).position
-			plan.append([atan2((bp.z - _centre.z) / _rz, (bp.x - _centre.x) / _rx), best])
+			plan.append([_slab.angle_of(bp.x, bp.z), best])
 			spots.erase(best)
 	for sid in spots:
 		var p: Vector3 = _graph.get_space(sid).position
-		plan.append([atan2((p.z - _centre.z) / _rz, (p.x - _centre.x) / _rx), sid])
+		plan.append([_slab.angle_of(p.x, p.z), sid])
 	var k := 0
 	for entry in plan:
 		var a: float = entry[0]
@@ -701,8 +711,8 @@ func _build_annexes() -> void:
 ## runs over the slab. Returns its centre and the bridge's outward direction; reserves the bridge
 ## and the rim mouth so the road, props and landmarks keep off.
 func _annex_platform(a: float, radius: float, from_space: Vector3) -> Dictionary:
-	var rim_pt := Vector2(_centre.x + cos(a) * _rx, _centre.z + sin(a) * _rz)
-	var out := Vector2(cos(a) * _rx, sin(a) * _rz).normalized()
+	var rim_pt := _slab.rim(a)
+	var out := (rim_pt - Vector2(_centre.x, _centre.z)).normalized()
 	var c2 := rim_pt + out * (radius + 3.0)
 	var deck_y := from_space.y - 0.2
 	var centre := Vector3(c2.x, deck_y, c2.y)
@@ -809,7 +819,7 @@ func _telescope(at: Vector3, yaw: float) -> void:
 	_count("telescope")
 
 
-func _habitat(at: Vector3, yaw: float) -> void:
+func _habitat(at: Vector3, yaw: float, label: String = "HAB 1") -> void:
 	var h := _node(at, yaw)
 	var domes := [Vector3(0, 0, 0), Vector3(4.0, 0, 1.4), Vector3(1.2, 0, -3.6)]
 	var radii := [2.3, 1.7, 1.5]
@@ -851,7 +861,7 @@ func _habitat(at: Vector3, yaw: float) -> void:
 	_box(h, Vector3(0.5, 1.8, 1.3), Vector3(2.3, 1.2, -0.3), "counter_dark")
 	_box(h, Vector3(0.2, 1.4, 0.9), Vector3(2.58, 1.1, -0.3), "metal")
 	_box(h, Vector3(0.12, 0.3, 0.3), Vector3(2.7, 1.4, -0.3), "glow_yellow")
-	_label(h, "HAB 1", Vector3(2.72, 2.55, -0.3), 48, Palette.hud_colour("paper"), PI * 0.5)
+	_label(h, label, Vector3(2.72, 2.55, -0.3), 48, Palette.hud_colour("paper"), PI * 0.5)
 	# Antenna with a blinking red light, and a dish on the small dome.
 	_cyl(h, 0.05, 0.07, 2.6, Vector3(0, 2.8 + 1.3, 0), "ink")
 	var blink := _sphere(h, 0.16, Vector3(0, 5.5, 0), "glow_red", Vector3.ONE, false, 8)
@@ -902,35 +912,290 @@ func _oxygen(on: Node3D, k: int) -> void:
 	_count("oxygen tanks")
 
 
-# --- structures on the slab -------------------------------------------------------------------------
+# --- the blocks: a set-piece in every open space between the streets ------------------------------
 
-func _structures(craters: Array, landmarks: Array) -> void:
-	# Single-row solar arrays on the slab, where they fit.
-	for k in roundi(2 * sqrt(_density)):
-		var farm := _spot(3.4, 2.4, 0.15, 0.94, 500)
-		if farm != Vector2.INF:
-			_solar_array(Vector3(farm.x, _top, farm.y), _rng.randf_range(0.0, TAU), 1)
-	# Cargo stacks on the slab.
-	for k in roundi(3 * sqrt(_density)):
-		var sp := _spot(2.7, 1.6, 0.15, 0.92, 300)
+## A point in a block: its centre plus an offset turned by its yaw.
+func _at(c: Vector3, yaw: float, dx: float, dz: float) -> Vector3:
+	return c + Vector3(dx, 0.0, dz).rotated(Vector3.UP, yaw)
+
+
+## The district's blocks (`BoardGraph.zones`, tools/gen_board.gd): each a disc the walkways keep
+## clear of, holding one part of the base, so the open spaces between the streets read as a
+## place (Sean, 2026-09-24: "decorative stuff about the map in the open spaces... make the
+## entire map cohesive"). The view's five landmark props already stand on theirs (the rocket's
+## pad, the dish, the buggy, the probe, the crew); everything else in a block is built here, and
+## the disc is then off limits to the random fillers. A board without blocks gets the old
+## scatter (`_scatter`).
+func _blocks(craters: Array, landmarks: Array) -> void:
+	if _graph.zones.is_empty():
+		_scatter(craters, landmarks)
+		return
+	for zone in _graph.zones:
+		var c2: Array = zone.get("centre", [0.0, 0.0])
+		var c := Vector3(float(c2[0]), _top, float(c2[1]))
+		var r := float(zone.get("r", 6.0))
+		var yaw := float(zone.get("yaw", 0.0))
+		match str(zone.get("kind", "")):
+			"hab": _block_hab(c, r, yaw)
+			"pad": _block_pad(c, r, yaw)
+			"depot": _block_depot(c, r, yaw)
+			"farm": _block_farm(c, r, yaw)
+			"tanks": _block_tanks(c, r, yaw)
+			"park": _block_park(c, r, yaw)
+			"crater": _block_crater(c, r, yaw)
+			"power": _block_power(c, r, yaw)
+			"plaza": _block_plaza(c, r, yaw)
+		_occupied.append(Vector3(c.x, c.z, r + 0.8))
+		_count("block")
+
+
+## HAB 2: a habitat cluster like the west annex's, the comms tower and spare oxygen.
+func _block_hab(c: Vector3, r: float, yaw: float) -> void:
+	_habitat(_at(c, yaw, 0.6, 0.8), yaw + 0.3, "HAB 2")
+	_comms_mast(_at(c, yaw, -5.8, -4.6))
+	_oxygen(_node(_at(c, yaw, 5.6, 4.2), yaw + 0.5), 1)
+
+
+## The landing pad's block, inside the apron: landing lights round the rocket's pad and the fuel
+## bowser with its hose run out to it (the buggy parks on the other side, the view's).
+func _block_pad(c: Vector3, r: float, yaw: float) -> void:
+	var lit := 0
+	for i in 12:
+		var a := i * TAU / 12.0
+		var lp := Vector2(c.x, c.z) + Vector2(cos(a), sin(a)) * 3.8
+		if _tile_clear(lp.x, lp.y, 1.6) and _inside(lp.x, lp.y, 0.97):
+			_cyl(self, 0.1, 0.12, 0.26, Vector3(lp.x, _top + 0.13, lp.y), "counter_dark")
+			_sphere(self, 0.1, Vector3(lp.x, _top + 0.3, lp.y), "glow_yellow" if i % 2 == 0 else "glow_red", Vector3.ONE, false, 8)
+			lit += 1
+	if lit > 0:
+		_count("landing lights")
+	var bw := _node(_at(c, yaw, -7.4, -0.4), yaw + 0.2)
+	_box(bw, Vector3(1.8, 0.3, 1.0), Vector3(0, 0.45, 0), "counter_dark")
+	_cyl(bw, 0.5, 0.5, 2.0, Vector3(0, 1.0, 0), "paper", Vector3(0, 0, PI * 0.5), 12)
+	_torus(bw, 0.5, 0.58, Vector3(0.6, 1.0, 0), "accent_lit", Vector3(0, 0, PI * 0.5))
+	_torus(bw, 0.5, 0.58, Vector3(-0.6, 1.0, 0), "accent_lit", Vector3(0, 0, PI * 0.5))
+	for wx: float in [-0.7, 0.7]:
+		for wz: float in [-0.55, 0.55]:
+			_cyl(bw, 0.28, 0.28, 0.24, Vector3(wx, 0.28, wz), "ink", Vector3(PI * 0.5, 0, 0), 10)
+	_box(bw, Vector3(0.3, 0.3, 0.3), Vector3(1.0, 1.65, 0), "metal")
+	_strut(bw, Vector3(1.0, 1.5, 0), Vector3(3.4, 0.15, 0.5), 0.05, "ink", 6)
+	_count("fuel bowser")
+
+
+## The depot: a maintenance hangar, cargo stacks, cable spools and a crane with a crate on its hook.
+func _block_depot(c: Vector3, r: float, yaw: float) -> void:
+	# The hangar: a quonset hut (a cylinder on its side, half sunk), end plates, a door with a
+	# lit strip, ribs along it.
+	var hg := _node(_at(c, yaw, -1.5, -3.2), yaw)
+	_cyl(hg, 2.6, 2.6, 7.0, Vector3.ZERO, "metal", Vector3(0, 0, PI * 0.5), 14)
+	for ex: float in [-3.52, 3.52]:
+		_cyl(hg, 2.66, 2.66, 0.14, Vector3(ex, 0.0, 0), "counter_dark", Vector3(0, 0, PI * 0.5), 14)
+	_box(hg, Vector3(0.14, 2.2, 2.4), Vector3(3.6, 1.1, 0), "ink")
+	_box(hg, Vector3(0.1, 0.16, 2.6), Vector3(3.62, 2.35, 0), "glow_yellow")
+	_label(hg, "MAINT", Vector3(3.68, 2.95, 0), 40, Palette.hud_colour("paper"), PI * 0.5)
+	for k in 4:
+		_torus(hg, 2.6, 2.72, Vector3(-2.4 + k * 1.6, 0, 0), "counter_dark", Vector3(0, 0, PI * 0.5))
+	_count("hangar")
+	_cargo(_at(c, yaw, 3.8, 2.6), yaw + 0.3, 6)
+	_cargo(_at(c, yaw, -4.6, 3.4), yaw - 0.4, 4)
+	for k in 2:
+		var sn := _node(_at(c, yaw, 0.6 + k * 1.6, 5.2), yaw + k * 0.7)
+		_cyl(sn, 0.5, 0.5, 0.08, Vector3(-0.3, 0.5, 0), "paper", Vector3(0, 0, PI * 0.5), 12)
+		_cyl(sn, 0.5, 0.5, 0.08, Vector3(0.3, 0.5, 0), "paper", Vector3(0, 0, PI * 0.5), 12)
+		_cyl(sn, 0.3, 0.3, 0.56, Vector3(0, 0.5, 0), "counter_dark", Vector3(0, 0, PI * 0.5), 10)
+	# The crane: a mast, a boom with a counterweight, a cable and a crate on the hook.
+	var cr := _node(_at(c, yaw, 5.6, -2.6), yaw + 0.9)
+	_cyl(cr, 0.7, 0.8, 0.5, Vector3(0, 0.25, 0), "counter_dark", Vector3.ZERO, 10)
+	_cyl(cr, 0.16, 0.2, 6.5, Vector3(0, 3.5, 0), "metal")
+	_box(cr, Vector3(5.0, 0.3, 0.3), Vector3(2.2, 6.6, 0), "accent_lit")
+	_box(cr, Vector3(1.4, 0.3, 0.3), Vector3(-1.0, 6.6, 0), "accent_lit")
+	_box(cr, Vector3(0.6, 0.8, 0.6), Vector3(-1.4, 6.3, 0), "counter_dark")
+	_strut(cr, Vector3(0, 6.5, 0), Vector3(4.4, 6.8, 0), 0.03, "ink", 5)
+	_strut(cr, Vector3(4.4, 6.45, 0), Vector3(4.4, 3.3, 0), 0.03, "ink", 5)
+	_box(cr, Vector3(1.2, 0.8, 0.8), Vector3(4.4, 2.8, 0), "field_dark")
+	_box(cr, Vector3(1.24, 0.14, 0.84), Vector3(4.4, 2.8, 0), "counter_dark")
+	var b := _sphere(cr, 0.12, Vector3(0, 7.0, 0), "glow_red", Vector3.ONE, false, 8)
+	_blinkers.append({"node": b, "period": 1.1, "phase": 0.6})
+	_count("crane")
+
+
+## The farm: greenhouses in two rows with pavers between, a water tank on legs, the pump.
+func _block_farm(c: Vector3, r: float, yaw: float) -> void:
+	for row in 2:
+		for col in 3:
+			_greenhouse(_at(c, yaw, col * 4.8 - 4.8, row * 3.8 - 1.0), yaw)
+	for k in 7:
+		_box(self, Vector3(1.0, 0.04, 0.9), _at(c, yaw, k * 1.6 - 4.8, 0.9) + Vector3(0, 0.02, 0), "metal", Vector3(0, yaw, 0))
+	var wt := _node(_at(c, yaw, 0.0, -5.4), yaw)
+	for lk in 4:
+		var la := lk * TAU / 4.0 + PI * 0.25
+		_cyl(wt, 0.08, 0.1, 2.2, Vector3(cos(la) * 1.0, 1.1, sin(la) * 1.0), "counter_dark")
+	_cyl(wt, 1.3, 1.3, 2.2, Vector3(0, 3.2, 0), "paper", Vector3.ZERO, 14)
+	_cyl(wt, 1.34, 1.34, 0.2, Vector3(0, 2.2, 0), "counter_dark", Vector3.ZERO, 14)
+	_cyl(wt, 1.34, 1.34, 0.2, Vector3(0, 4.2, 0), "counter_dark", Vector3.ZERO, 14)
+	_box(wt, Vector3(2.7, 0.3, 0.4), Vector3(0, 3.2, 1.35), "accent_lit")
+	_cyl(wt, 0.05, 0.05, 4.0, Vector3(1.1, 2.0, 0.6), "ink")
+	_cyl(wt, 0.05, 0.05, 4.0, Vector3(1.1, 2.0, 1.0), "ink")
+	for k in 6:
+		_box(wt, Vector3(0.04, 0.04, 0.4), Vector3(1.1, 0.5 + k * 0.6, 0.8), "ink")
+	_box(wt, Vector3(0.8, 0.8, 0.8), Vector3(-1.8, 0.4, 0.4), "metal")
+	_box(wt, Vector3(0.2, 0.2, 0.08), Vector3(-1.8, 0.6, 0.82), "glow_green")
+	_count("water tank")
+
+
+## The tank farm: two spheres on legs, a row of horizontal tanks, a pipe run, spare oxygen.
+func _block_tanks(c: Vector3, r: float, yaw: float) -> void:
+	for k in 2:
+		var tn := _node(_at(c, yaw, -3.6, k * 5.4 - 2.7), yaw)
+		for lk in 4:
+			var la := lk * TAU / 4.0
+			_cyl(tn, 0.12, 0.14, 2.0, Vector3(cos(la) * 1.5, 1.0, sin(la) * 1.5), "counter_dark", Vector3(sin(la) * 0.25, 0, -cos(la) * 0.25))
+		_sphere(tn, 2.1, Vector3(0, 3.2, 0), "paper", Vector3.ONE, false, 16)
+		_torus(tn, 2.05, 2.16, Vector3(0, 3.2, 0), "accent_lit" if k == 0 else "counter_dark", Vector3.ZERO, Vector3(1, 0.6, 1))
+		_cyl(tn, 0.4, 0.4, 0.4, Vector3(0, 5.4, 0), "counter_dark", Vector3.ZERO, 10)
+		_cyl(tn, 0.05, 0.05, 5.0, Vector3(1.9, 2.5, 0.5), "ink")
+		_cyl(tn, 0.05, 0.05, 5.0, Vector3(1.9, 2.5, 0.9), "ink")
+		_label(tn, "LOX" if k == 0 else "LH2", Vector3(0, 3.0, -2.14), 48, Palette.map_colour("board", "line"), PI, 0)
+	_fuel_tanks(_at(c, yaw, 3.4, 0.0), yaw + PI * 0.5)
+	var pr := _node(_at(c, yaw, 0.0, 0.0), yaw)
+	_cyl(pr, 0.12, 0.12, 6.0, Vector3(-0.2, 0.7, 0), "counter_dark", Vector3(0, 0, PI * 0.5), 8)
+	for k in 3:
+		_box(pr, Vector3(0.2, 0.6, 0.3), Vector3(k * 2.4 - 2.6, 0.3, 0), "metal")
+	_oxygen(_node(_at(c, yaw, -1.2, 5.6), yaw + 0.8), 0)
+	_count("tank farm")
+
+
+## The park's upper lawn: rock clusters and dust round the probe (the view's).
+func _block_park(c: Vector3, r: float, yaw: float) -> void:
+	for k in 5:
+		var sp := _spot_near(c.x, c.z, 2.0, r - 1.2, 2.3, 1.6, 200)
 		if sp == Vector2.INF:
 			break
-		_cargo(Vector3(sp.x, _top, sp.y), _rng.randf_range(0.0, TAU), 3 + _rng.randi() % 3)
-	# Comms mast: a lattice tower with a small dish and a blinking light.
-	var mast := _spot(2.8, 1.6, 0.2, 0.9, 300)
-	if mast != Vector2.INF:
-		var mn := _node(Vector3(mast.x, _top, mast.y))
-		for i in 3:
-			var a := i * TAU / 3.0
-			_cyl(mn, 0.05, 0.07, 7.0, Vector3(cos(a) * 0.45, 3.5, sin(a) * 0.45), "ink", Vector3(sin(a) * 0.05, 0, -cos(a) * 0.05))
-		for lvl in 5:
-			_box(mn, Vector3(1.0, 0.06, 1.0), Vector3(0, 1.2 + lvl * 1.35, 0), "counter_dark")
-		_cyl(mn, 0.06, 0.06, 1.6, Vector3(0, 7.7, 0), "ink")
-		_cyl(mn, 0.75, 0.15, 0.3, Vector3(0.7, 4.5, 0), "paper", Vector3(0, 0, -1.1), 12)
-		var b := _sphere(mn, 0.18, Vector3(0, 8.55, 0), "glow_red", Vector3.ONE, false, 8)
-		_blinkers.append({"node": b, "period": 0.9, "phase": 0.3})
-		_count("comms mast")
-	# Antenna masts: short whips with a light, two of them.
+		_rock_cluster(Vector3(sp.x, _top, sp.y))
+	for k in 2:
+		var sp := _spot_near(c.x, c.z, 1.0, r - 1.0, 2.0, 0.4, 100)
+		if sp != Vector2.INF:
+			var d := _sphere(self, _rng.randf_range(1.6, 2.6), Vector3(sp.x, _top - 0.02, sp.y), "moon_light" if k == 0 else "moon_dark",
+				Vector3(1.0, 0.012, _rng.randf_range(0.6, 1.0)), false, 9)
+			d.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_count("park lawn")
+
+
+## The big crater (the view digs it): the drill rig over it, boulders on its far rim, two
+## benches on the near one looking in.
+func _block_crater(c: Vector3, r: float, yaw: float) -> void:
+	_drill_rig(c, r, yaw)
+	for k in 4:
+		var a := PI * 0.5 + k * 0.55 - 0.8
+		var bp := c + Vector3(cos(a) * (r + 1.6), 0, sin(a) * (r + 1.6))
+		if _tile_clear(bp.x, bp.z, 2.0):
+			var rk := _sphere(self, _rng.randf_range(0.6, 1.1), bp + Vector3(0, 0.35, 0), "rock" if k % 2 == 0 else "moon_dark",
+				Vector3(_rng.randf_range(0.9, 1.3), _rng.randf_range(0.6, 0.9), _rng.randf_range(0.9, 1.3)), false, 7)
+			rk.rotation.y = _rng.randf_range(0.0, TAU)
+	for k in 2:
+		var bp := c + Vector3(k * 8.0 - 4.0, 0, -(r + 2.4))
+		if _tile_clear(bp.x, bp.z, 1.9):
+			_bench(bp, 0.0)
+	_count("crater park")
+
+
+## The power plant: a solar field, the reactor with its cooling towers, a substation; the dish
+## (the view's) at the block's corner.
+func _block_power(c: Vector3, r: float, yaw: float) -> void:
+	_solar_array(_at(c, yaw, -3.4, -3.0), yaw, 3)
+	var rn := _node(_at(c, yaw, 4.2, -2.4), yaw)
+	_cyl(rn, 2.2, 2.4, 3.2, Vector3(0, 1.6, 0), "metal", Vector3.ZERO, 16)
+	_cyl(rn, 2.3, 2.3, 0.3, Vector3(0, 3.3, 0), "counter_dark", Vector3.ZERO, 16)
+	_sphere(rn, 1.9, Vector3(0, 3.4, 0), "paper", Vector3(1, 0.6, 1), true, 16)
+	_torus(rn, 2.25, 2.45, Vector3(0, 1.0, 0), "glow_cyan", Vector3.ZERO, Vector3(1, 0.5, 1))
+	_box(rn, Vector3(0.5, 1.6, 1.2), Vector3(-2.3, 0.8, 0.4), "counter_dark")
+	_box(rn, Vector3(0.12, 0.3, 0.3), Vector3(-2.58, 1.3, 0.4), "glow_yellow")
+	for k in 2:
+		var ct := Vector3(1.6, 0, 3.6 + k * 2.6)
+		_cyl(rn, 0.9, 1.3, 4.6, ct + Vector3(0, 2.3, 0), "paper", Vector3.ZERO, 14)
+		_cyl(rn, 0.95, 0.95, 0.2, ct + Vector3(0, 4.7, 0), "counter_dark", Vector3.ZERO, 14)
+		_torus(rn, 1.28, 1.4, ct + Vector3(0, 0.5, 0), "counter_dark", Vector3.ZERO, Vector3(1, 0.5, 1))
+	_cyl(rn, 0.14, 0.14, 3.6, Vector3(1.6, 0.9, 2.0), "counter_dark", Vector3(PI * 0.5, 0, 0), 8)
+	var sb := _node(_at(c, yaw, 4.6, 4.8), yaw + 0.2)
+	_box(sb, Vector3(1.6, 1.2, 1.0), Vector3(0, 0.6, 0), "metal")
+	for k in 3:
+		_cyl(sb, 0.08, 0.1, 0.6, Vector3(k * 0.5 - 0.5, 1.5, 0), "paper", Vector3.ZERO, 8)
+	_box(sb, Vector3(0.3, 0.2, 0.06), Vector3(0.5, 0.7, 0.53), "glow_red")
+	for k in 8:
+		var fa := k * TAU / 8.0
+		_cyl(sb, 0.04, 0.04, 1.0, Vector3(cos(fa) * 1.8, 0.5, sin(fa) * 1.8), "ink", Vector3.ZERO, 5)
+	_count("reactor")
+
+
+## The plaza off the start: benches either side of the crew and the flag (the view's), facing
+## the walkway.
+func _block_plaza(c: Vector3, r: float, yaw: float) -> void:
+	for k in 2:
+		_bench(_at(c, yaw, k * 5.6 - 2.8, 0.0), yaw + PI)
+	_count("plaza")
+
+
+func _bench(at: Vector3, yaw: float) -> void:
+	var bn := _node(at, yaw)
+	_box(bn, Vector3(1.6, 0.08, 0.5), Vector3(0, 0.5, 0), "paper")
+	_box(bn, Vector3(1.6, 0.4, 0.08), Vector3(0, 0.78, -0.24), "paper")
+	for bx: float in [-0.65, 0.65]:
+		_box(bn, Vector3(0.1, 0.5, 0.5), Vector3(bx, 0.25, 0), "counter_dark")
+	_occupied.append(Vector3(at.x, at.z, 1.0))
+
+
+## Comms mast: a lattice tower with a small dish and a blinking light.
+func _comms_mast(at: Vector3) -> void:
+	var mn := _node(at)
+	for i in 3:
+		var a := i * TAU / 3.0
+		_cyl(mn, 0.05, 0.07, 7.0, Vector3(cos(a) * 0.45, 3.5, sin(a) * 0.45), "ink", Vector3(sin(a) * 0.05, 0, -cos(a) * 0.05))
+	for lvl in 5:
+		_box(mn, Vector3(1.0, 0.06, 1.0), Vector3(0, 1.2 + lvl * 1.35, 0), "counter_dark")
+	_cyl(mn, 0.06, 0.06, 1.6, Vector3(0, 7.7, 0), "ink")
+	_cyl(mn, 0.75, 0.15, 0.3, Vector3(0.7, 4.5, 0), "paper", Vector3(0, 0, -1.1), 12)
+	var b := _sphere(mn, 0.18, Vector3(0, 8.55, 0), "glow_red", Vector3.ONE, false, 8)
+	_blinkers.append({"node": b, "period": 0.9, "phase": 0.3})
+	_occupied.append(Vector3(at.x, at.z, 1.6))
+	_count("comms mast")
+
+
+## A drill rig straddling a crater of radius `r`.
+func _drill_rig(at: Vector3, r: float, yaw: float) -> void:
+	var rig := _node(at, yaw)
+	var s := r * 0.9
+	for i in 4:
+		var a := i * TAU / 4.0 + PI * 0.25
+		_cyl(rig, 0.08, 0.1, 5.0, Vector3(cos(a) * s * 0.55, 2.4, sin(a) * s * 0.55), "counter_dark",
+			Vector3(sin(a) * 0.2, 0, -cos(a) * 0.2))
+	_box(rig, Vector3(s * 0.9, 0.16, s * 0.9), Vector3(0, 4.7, 0), "counter_dark")
+	_box(rig, Vector3(s * 0.7, 0.12, s * 0.7), Vector3(0, 2.6, 0), "counter_dark")
+	_cyl(rig, 0.16, 0.16, 5.2, Vector3(0, 2.4, 0), "metal")
+	_box(rig, Vector3(1.2, 0.8, 0.8), Vector3(0, 5.2, 0), "accent_lit")
+	var b := _sphere(rig, 0.14, Vector3(0, 5.75, 0), "glow_yellow", Vector3.ONE, false, 8)
+	_blinkers.append({"node": b, "period": 1.7, "phase": 0.5})
+	_count("drill rig")
+
+
+## A few boulders of different sizes and a scatter of pebbles.
+func _rock_cluster(at: Vector3) -> void:
+	var c := _node(at, _rng.randf_range(0.0, TAU))
+	var n := 2 + _rng.randi() % 3
+	for j in n:
+		var r := _rng.randf_range(0.28, 0.75)
+		var off := Vector3(_rng.randf_range(-1.0, 1.0), 0, _rng.randf_range(-1.0, 1.0))
+		var rock := _sphere(c, r, off + Vector3(0, r * 0.4, 0), "rock" if j % 2 == 0 else "moon_dark",
+			Vector3(_rng.randf_range(0.8, 1.3), _rng.randf_range(0.5, 0.85), _rng.randf_range(0.8, 1.3)), false, 7)
+		rock.rotation.y = _rng.randf_range(0.0, TAU)
+	for j in 4 + _rng.randi() % 4:
+		var r := _rng.randf_range(0.08, 0.16)
+		var off := Vector3(_rng.randf_range(-1.6, 1.6), r * 0.5, _rng.randf_range(-1.6, 1.6))
+		_sphere(c, r, off, "crater", Vector3(1.2, 0.7, 1.0), false, 6)
+	_count("rock cluster")
+
+
+## Antenna masts: short whips with a light, two of them, wherever they fit.
+func _antennas() -> void:
 	for k in 2:
 		var sp := _spot(2.2, 0.8, 0.15, 0.95, 200)
 		if sp == Vector2.INF:
@@ -941,34 +1206,36 @@ func _structures(craters: Array, landmarks: Array) -> void:
 		var b := _sphere(an, 0.12, Vector3(0, 3.8, 0), "glow_green" if k == 0 else "glow_cyan", Vector3.ONE, false, 8)
 		_blinkers.append({"node": b, "period": 2.1 + k, "phase": 0.7 * k})
 		_count("antenna")
-	# Drill rig over the largest crater away from the tiles.
+
+
+## The scatter a board without blocks gets: solar arrays, cargo stacks, a comms mast, a drill
+## rig over its biggest crater, oxygen, landing lights round the pad.
+func _scatter(craters: Array, landmarks: Array) -> void:
+	for k in roundi(2 * sqrt(_density)):
+		var farm := _spot(3.4, 2.4, 0.15, 0.94, 500)
+		if farm != Vector2.INF:
+			_solar_array(Vector3(farm.x, _top, farm.y), _rng.randf_range(0.0, TAU), 1)
+	for k in roundi(3 * sqrt(_density)):
+		var sp := _spot(2.7, 1.6, 0.15, 0.92, 300)
+		if sp == Vector2.INF:
+			break
+		_cargo(Vector3(sp.x, _top, sp.y), _rng.randf_range(0.0, TAU), 3 + _rng.randi() % 3)
+	var mast := _spot(2.8, 1.6, 0.2, 0.9, 300)
+	if mast != Vector2.INF:
+		_comms_mast(Vector3(mast.x, _top, mast.y))
 	var best: Vector3 = Vector3.INF
 	for cr in craters:
 		if cr.z >= 1.8 and _tile_clear(cr.x, cr.y, cr.z + 2.2) and (best == Vector3.INF or cr.z > best.z):
 			best = cr
 	if best != Vector3.INF:
-		var rig := _node(Vector3(best.x, _top, best.y), _rng.randf_range(0.0, TAU))
-		var s := best.z * 0.9
-		for i in 4:
-			var a := i * TAU / 4.0 + PI * 0.25
-			_cyl(rig, 0.08, 0.1, 5.0, Vector3(cos(a) * s * 0.55, 2.4, sin(a) * s * 0.55), "counter_dark",
-				Vector3(sin(a) * 0.2, 0, -cos(a) * 0.2))
-		_box(rig, Vector3(s * 0.9, 0.16, s * 0.9), Vector3(0, 4.7, 0), "counter_dark")
-		_box(rig, Vector3(s * 0.7, 0.12, s * 0.7), Vector3(0, 2.6, 0), "counter_dark")
-		_cyl(rig, 0.16, 0.16, 5.2, Vector3(0, 2.4, 0), "metal")
-		_box(rig, Vector3(1.2, 0.8, 0.8), Vector3(0, 5.2, 0), "accent_lit")
-		var b := _sphere(rig, 0.14, Vector3(0, 5.75, 0), "glow_yellow", Vector3.ONE, false, 8)
-		_blinkers.append({"node": b, "period": 1.7, "phase": 0.5})
-		_count("drill rig")
-	# Oxygen tank pairs on a stand.
+		_drill_rig(Vector3(best.x, _top, best.y), best.z, _rng.randf_range(0.0, TAU))
 	for k in 2:
 		var sp := _spot(2.0, 0.9, 0.15, 0.95, 200)
 		if sp == Vector2.INF:
 			break
 		_oxygen(_node(Vector3(sp.x, _top, sp.y), _rng.randf_range(0.0, TAU)), k)
-	# Landing lights around the pad (landmark 0): low, just outside its ring.
 	if landmarks.size() > 0:
-		var pad: Vector2 = landmarks[0]
+		var pad := Vector2(landmarks[0].x, landmarks[0].y)
 		var lit := 0
 		for i in 12:
 			var a := i * TAU / 12.0
@@ -1031,7 +1298,7 @@ func _signs_and_pennants(landmarks: Array) -> void:
 		_count("start banner")
 	# PAD 1 by the landing pad, and an arrow post somewhere on the loop.
 	if landmarks.size() > 0:
-		var pad: Vector2 = landmarks[0]
+		var pad := Vector2(landmarks[0].x, landmarks[0].y)
 		var at := _spot_near(pad.x, pad.y, 4.6, 6.5, 1.9, 0.6, 300)
 		if at != Vector2.INF:
 			var yaw := atan2(-(pad.x - at.x), -(pad.y - at.y)) + PI
@@ -1067,7 +1334,7 @@ func _life() -> void:
 	var g := _graph
 	var sid: String = g.start_id
 	var seen := {}
-	for step in 90:
+	for step in 240:
 		if seen.has(sid):
 			break
 		seen[sid] = true

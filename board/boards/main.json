@@ -1,1258 +1,2288 @@
 {
+  "annexes": [
+    0.0,
+    3.1416
+  ],
   "display_name": "BOMBA BAY",
   "id": "main",
+  "slab": {
+    "centre": [
+      0.0,
+      0.0
+    ],
+    "n": 3.2,
+    "rx": 64.0,
+    "rz": 50.0
+  },
   "spaces": [
     {
       "goal": false,
-      "id": "L0",
+      "id": "R0",
       "next": [
-        "L1"
+        "R1"
       ],
       "position": [
-        60.65,
-        0.75,
-        0.0
+        30.0,
+        0.15,
+        40.83
       ],
       "type": "start"
     },
     {
       "goal": false,
-      "id": "L1",
+      "id": "R1",
       "next": [
-        "L2"
+        "R2"
       ],
       "position": [
-        61.08,
-        0.75,
-        3.69
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "L2",
-      "next": [
-        "L3"
-      ],
-      "position": [
-        61.01,
-        0.9,
-        7.39
+        26.02,
+        0.15,
+        41.65
       ],
       "type": "blank"
     },
     {
       "goal": false,
-      "id": "L3",
+      "id": "R2",
       "next": [
-        "L4"
+        "R3",
+        "E0"
       ],
       "position": [
-        60.39,
-        0.9,
-        11.04
+        22.0,
+        0.0,
+        42.23
       ],
       "type": "coin"
     },
     {
       "goal": false,
-      "id": "L4",
+      "id": "R3",
       "next": [
-        "L5"
+        "R4"
       ],
       "position": [
-        59.2,
-        0.9,
-        14.56
+        17.51,
+        0.0,
+        42.63
       ],
       "type": "coin"
     },
     {
       "goal": false,
-      "id": "L5",
+      "id": "R4",
       "next": [
-        "L6"
+        "R5",
+        "B0"
       ],
       "position": [
-        57.49,
-        0.9,
-        17.86
+        13.0,
+        0.0,
+        42.86
       ],
       "type": "coin"
     },
     {
       "goal": false,
-      "id": "L6",
+      "id": "R5",
       "next": [
-        "L7"
+        "R6"
       ],
       "position": [
-        55.34,
-        0.9,
-        20.87
+        9.29,
+        0.0,
+        42.95
       ],
       "type": "blank"
     },
     {
       "goal": false,
-      "id": "L7",
+      "id": "R6",
       "next": [
-        "L8",
-        "A1"
+        "R7"
       ],
       "position": [
-        52.83,
-        0.9,
-        23.59
+        5.57,
+        0.0,
+        42.99
       ],
       "type": "lose"
     },
     {
       "goal": false,
-      "id": "L8",
+      "id": "R7",
       "next": [
-        "L9"
+        "R8"
       ],
       "position": [
-        50.04,
-        0.9,
-        26.02
+        1.86,
+        0.15,
+        43.0
       ],
       "type": "item"
     },
     {
       "goal": false,
-      "id": "L9",
+      "id": "R8",
       "next": [
-        "L10"
+        "R9"
       ],
       "position": [
-        47.0,
-        0.9,
-        28.2
+        -1.86,
+        0.15,
+        43.0
       ],
       "type": "lose"
     },
     {
       "goal": false,
-      "id": "L10",
+      "id": "R9",
       "next": [
-        "L11"
+        "R10"
       ],
       "position": [
-        43.83,
-        0.75,
-        30.12
-      ],
-      "type": "blank"
-    },
-    {
-      "goal": false,
-      "id": "L11",
-      "next": [
-        "L12"
-      ],
-      "position": [
-        40.48,
-        0.75,
-        31.82
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "L12",
-      "next": [
-        "L13"
-      ],
-      "position": [
-        37.07,
-        0.75,
-        33.31
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "L13",
-      "next": [
-        "L14"
-      ],
-      "position": [
-        33.57,
-        0.6,
-        34.61
-      ],
-      "type": "lose"
-    },
-    {
-      "goal": false,
-      "id": "L14",
-      "next": [
-        "L15"
-      ],
-      "position": [
-        30.02,
-        0.6,
-        35.73
-      ],
-      "type": "item"
-    },
-    {
-      "goal": false,
-      "id": "L15",
-      "next": [
-        "L16"
-      ],
-      "position": [
-        26.43,
-        0.45,
-        36.69
-      ],
-      "type": "lose"
-    },
-    {
-      "goal": false,
-      "id": "L16",
-      "next": [
-        "L17"
-      ],
-      "position": [
-        22.78,
-        0.45,
-        37.5
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "L17",
-      "next": [
-        "L18"
-      ],
-      "position": [
-        19.13,
-        0.45,
-        38.16
-      ],
-      "type": "blank"
-    },
-    {
-      "goal": false,
-      "id": "L18",
-      "next": [
-        "L19"
-      ],
-      "position": [
-        15.42,
+        -5.57,
         0.3,
-        38.69
+        42.99
       ],
-      "type": "coin"
+      "type": "blank"
     },
     {
       "goal": false,
-      "id": "L19",
+      "id": "R10",
       "next": [
-        "L20"
+        "R11"
       ],
       "position": [
-        11.69,
+        -9.29,
         0.3,
-        39.09
+        42.95
       ],
       "type": "coin"
     },
     {
       "goal": false,
-      "id": "L20",
+      "id": "R11",
       "next": [
-        "L21"
+        "R12"
       ],
       "position": [
-        7.95,
-        0.15,
-        39.37
-      ],
-      "type": "event"
-    },
-    {
-      "goal": false,
-      "id": "L21",
-      "next": [
-        "L22"
-      ],
-      "position": [
-        4.23,
-        0.15,
-        39.54
-      ],
-      "type": "event"
-    },
-    {
-      "goal": false,
-      "id": "L22",
-      "next": [
-        "L23"
-      ],
-      "position": [
-        0.53,
-        0.15,
-        39.6
+        -13.0,
+        0.45,
+        42.86
       ],
       "type": "coin"
     },
     {
       "goal": false,
-      "id": "L23",
+      "id": "R12",
       "next": [
-        "L24"
+        "R13"
       ],
       "position": [
-        -3.23,
-        0.0,
-        39.56
+        -17.51,
+        0.45,
+        42.63
+      ],
+      "type": "lose"
+    },
+    {
+      "goal": false,
+      "id": "R13",
+      "next": [
+        "R14"
+      ],
+      "position": [
+        -22.0,
+        0.6,
+        42.23
       ],
       "type": "item"
     },
     {
       "goal": false,
-      "id": "L24",
+      "id": "R14",
       "next": [
-        "L25"
+        "R15"
       ],
       "position": [
-        -6.99,
-        0.0,
-        39.43
+        -25.76,
+        0.75,
+        41.7
       ],
-      "type": "event"
+      "type": "lose"
     },
     {
       "goal": false,
-      "id": "L25",
+      "id": "R15",
       "next": [
-        "L26"
+        "R16"
       ],
       "position": [
-        -10.73,
-        0.0,
-        39.2
+        -29.48,
+        0.75,
+        40.96
       ],
       "type": "coin"
     },
     {
       "goal": false,
-      "id": "L26",
+      "id": "R16",
       "next": [
-        "L27",
-        "B1"
+        "R17"
       ],
       "position": [
-        -14.46,
-        0.0,
-        38.88
+        -33.13,
+        0.75,
+        39.95
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "R17",
+      "next": [
+        "R18"
+      ],
+      "position": [
+        -36.69,
+        0.9,
+        38.63
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R18",
+      "next": [
+        "R19"
+      ],
+      "position": [
+        -40.08,
+        0.9,
+        36.94
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R19",
+      "next": [
+        "R20"
+      ],
+      "position": [
+        -43.23,
+        0.9,
+        34.83
+      ],
+      "type": "event"
+    },
+    {
+      "goal": false,
+      "id": "R20",
+      "next": [
+        "R21"
+      ],
+      "position": [
+        -46.04,
+        0.75,
+        32.28
+      ],
+      "type": "event"
+    },
+    {
+      "goal": false,
+      "id": "R21",
+      "next": [
+        "R22"
+      ],
+      "position": [
+        -48.43,
+        0.75,
+        29.34
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R22",
+      "next": [
+        "R23"
+      ],
+      "position": [
+        -50.33,
+        0.6,
+        26.06
       ],
       "type": "item"
     },
     {
       "goal": false,
-      "id": "L27",
+      "id": "R23",
       "next": [
-        "L28"
+        "R24"
       ],
       "position": [
-        -18.16,
+        -51.76,
+        0.6,
+        22.55
+      ],
+      "type": "event"
+    },
+    {
+      "goal": false,
+      "id": "R24",
+      "next": [
+        "R25"
+      ],
+      "position": [
+        -52.75,
+        0.45,
+        18.89
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R25",
+      "next": [
+        "R26"
+      ],
+      "position": [
+        -53.39,
+        0.3,
+        15.15
+      ],
+      "type": "item"
+    },
+    {
+      "goal": false,
+      "id": "R26",
+      "next": [
+        "R27"
+      ],
+      "position": [
+        -53.76,
+        0.3,
+        11.38
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R27",
+      "next": [
+        "R28"
+      ],
+      "position": [
+        -53.93,
+        0.15,
+        7.59
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R28",
+      "next": [
+        "R29"
+      ],
+      "position": [
+        -53.99,
+        0.15,
+        3.79
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "R29",
+      "next": [
+        "R30",
+        "M0"
+      ],
+      "position": [
+        -54.0,
         0.0,
+        0.0
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": true,
+      "id": "R30",
+      "next": [
+        "R31"
+      ],
+      "position": [
+        -53.99,
+        0.0,
+        -3.76
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "R31",
+      "next": [
+        "R32"
+      ],
+      "position": [
+        -53.94,
+        0.0,
+        -7.51
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R32",
+      "next": [
+        "R33"
+      ],
+      "position": [
+        -53.77,
+        0.15,
+        -11.26
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "R33",
+      "next": [
+        "R34"
+      ],
+      "position": [
+        -53.41,
+        0.15,
+        -15.0
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R34",
+      "next": [
+        "R35"
+      ],
+      "position": [
+        -52.79,
+        0.15,
+        -18.7
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R35",
+      "next": [
+        "R36"
+      ],
+      "position": [
+        -51.83,
+        0.3,
+        -22.33
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R36",
+      "next": [
+        "R37"
+      ],
+      "position": [
+        -50.45,
+        0.45,
+        -25.82
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R37",
+      "next": [
+        "R38"
+      ],
+      "position": [
+        -48.6,
+        0.45,
+        -29.09
+      ],
+      "type": "item"
+    },
+    {
+      "goal": false,
+      "id": "R38",
+      "next": [
+        "R39"
+      ],
+      "position": [
+        -46.28,
+        0.6,
+        -32.03
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "R39",
+      "next": [
+        "R40"
+      ],
+      "position": [
+        -43.53,
+        0.6,
+        -34.59
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R40",
+      "next": [
+        "R41"
+      ],
+      "position": [
+        -40.44,
+        0.75,
+        -36.72
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R41",
+      "next": [
+        "R42"
+      ],
+      "position": [
+        -37.11,
+        0.75,
+        -38.45
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "R42",
+      "next": [
+        "R43"
+      ],
+      "position": [
+        -33.61,
+        0.75,
+        -39.8
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "R43",
+      "next": [
+        "R44"
+      ],
+      "position": [
+        -30.0,
+        0.75,
+        -40.83
+      ],
+      "type": "shield"
+    },
+    {
+      "goal": false,
+      "id": "R44",
+      "next": [
+        "R45"
+      ],
+      "position": [
+        -26.02,
+        0.6,
+        -41.65
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "R45",
+      "next": [
+        "R46",
+        "W0"
+      ],
+      "position": [
+        -22.0,
+        0.6,
+        -42.23
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R46",
+      "next": [
+        "R47"
+      ],
+      "position": [
+        -18.01,
+        0.45,
+        -42.6
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R47",
+      "next": [
+        "R48",
+        "P0"
+      ],
+      "position": [
+        -14.0,
+        0.45,
+        -42.82
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R48",
+      "next": [
+        "R49"
+      ],
+      "position": [
+        -10.5,
+        0.3,
+        -42.93
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "R49",
+      "next": [
+        "R50"
+      ],
+      "position": [
+        -7.0,
+        0.3,
+        -42.98
+      ],
+      "type": "event"
+    },
+    {
+      "goal": false,
+      "id": "R50",
+      "next": [
+        "R51"
+      ],
+      "position": [
+        -3.5,
+        0.3,
+        -43.0
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R51",
+      "next": [
+        "R52"
+      ],
+      "position": [
+        0.0,
+        0.15,
+        -43.0
+      ],
+      "type": "lose"
+    },
+    {
+      "goal": false,
+      "id": "R52",
+      "next": [
+        "R53"
+      ],
+      "position": [
+        3.5,
+        0.15,
+        -43.0
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R53",
+      "next": [
+        "R54"
+      ],
+      "position": [
+        7.0,
+        0.15,
+        -42.98
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R54",
+      "next": [
+        "R55"
+      ],
+      "position": [
+        10.5,
+        0.15,
+        -42.93
+      ],
+      "type": "event"
+    },
+    {
+      "goal": false,
+      "id": "R55",
+      "next": [
+        "R56"
+      ],
+      "position": [
+        14.0,
+        0.15,
+        -42.82
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R56",
+      "next": [
+        "R57"
+      ],
+      "position": [
+        18.01,
+        0.15,
+        -42.6
+      ],
+      "type": "lose"
+    },
+    {
+      "goal": false,
+      "id": "R57",
+      "next": [
+        "R58"
+      ],
+      "position": [
+        22.0,
+        0.15,
+        -42.23
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R58",
+      "next": [
+        "R59"
+      ],
+      "position": [
+        25.76,
+        0.15,
+        -41.7
+      ],
+      "type": "event"
+    },
+    {
+      "goal": false,
+      "id": "R59",
+      "next": [
+        "R60"
+      ],
+      "position": [
+        29.48,
+        0.15,
+        -40.96
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R60",
+      "next": [
+        "R61"
+      ],
+      "position": [
+        33.13,
+        0.3,
+        -39.95
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R61",
+      "next": [
+        "R62"
+      ],
+      "position": [
+        36.69,
+        0.3,
+        -38.63
+      ],
+      "type": "item"
+    },
+    {
+      "goal": false,
+      "id": "R62",
+      "next": [
+        "R63"
+      ],
+      "position": [
+        40.08,
+        0.45,
+        -36.94
+      ],
+      "type": "item"
+    },
+    {
+      "goal": false,
+      "id": "R63",
+      "next": [
+        "R64"
+      ],
+      "position": [
+        43.23,
+        0.45,
+        -34.83
+      ],
+      "type": "item"
+    },
+    {
+      "goal": false,
+      "id": "R64",
+      "next": [
+        "R65"
+      ],
+      "position": [
+        46.04,
+        0.45,
+        -32.28
+      ],
+      "type": "lose"
+    },
+    {
+      "goal": false,
+      "id": "R65",
+      "next": [
+        "R66"
+      ],
+      "position": [
+        48.43,
+        0.45,
+        -29.34
+      ],
+      "type": "item"
+    },
+    {
+      "goal": false,
+      "id": "R66",
+      "next": [
+        "R67"
+      ],
+      "position": [
+        50.33,
+        0.45,
+        -26.06
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "R67",
+      "next": [
+        "R68"
+      ],
+      "position": [
+        51.76,
+        0.45,
+        -22.55
+      ],
+      "type": "item"
+    },
+    {
+      "goal": false,
+      "id": "R68",
+      "next": [
+        "R69"
+      ],
+      "position": [
+        52.75,
+        0.3,
+        -18.89
+      ],
+      "type": "lose"
+    },
+    {
+      "goal": false,
+      "id": "R69",
+      "next": [
+        "R70"
+      ],
+      "position": [
+        53.39,
+        0.3,
+        -15.15
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "R70",
+      "next": [
+        "R71"
+      ],
+      "position": [
+        53.76,
+        0.3,
+        -11.38
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "R71",
+      "next": [
+        "R72"
+      ],
+      "position": [
+        53.93,
+        0.3,
+        -7.59
+      ],
+      "type": "lose"
+    },
+    {
+      "goal": false,
+      "id": "R72",
+      "next": [
+        "R73"
+      ],
+      "position": [
+        53.99,
+        0.3,
+        -3.79
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "R73",
+      "next": [
+        "R74"
+      ],
+      "position": [
+        54.0,
+        0.3,
+        0.0
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": true,
+      "id": "R74",
+      "next": [
+        "R75"
+      ],
+      "position": [
+        53.99,
+        0.3,
+        3.76
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "R75",
+      "next": [
+        "R76"
+      ],
+      "position": [
+        53.94,
+        0.3,
+        7.51
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R76",
+      "next": [
+        "R77"
+      ],
+      "position": [
+        53.77,
+        0.3,
+        11.26
+      ],
+      "type": "lose"
+    },
+    {
+      "goal": false,
+      "id": "R77",
+      "next": [
+        "R78"
+      ],
+      "position": [
+        53.41,
+        0.45,
+        15.0
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R78",
+      "next": [
+        "R79"
+      ],
+      "position": [
+        52.79,
+        0.45,
+        18.7
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "R79",
+      "next": [
+        "R80"
+      ],
+      "position": [
+        51.83,
+        0.45,
+        22.33
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R80",
+      "next": [
+        "R81"
+      ],
+      "position": [
+        50.45,
+        0.45,
+        25.82
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R81",
+      "next": [
+        "R82"
+      ],
+      "position": [
+        48.6,
+        0.45,
+        29.09
+      ],
+      "type": "event"
+    },
+    {
+      "goal": false,
+      "id": "R82",
+      "next": [
+        "R83"
+      ],
+      "position": [
+        46.28,
+        0.45,
+        32.03
+      ],
+      "type": "item"
+    },
+    {
+      "goal": false,
+      "id": "R83",
+      "next": [
+        "R84"
+      ],
+      "position": [
+        43.53,
+        0.45,
+        34.59
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "R84",
+      "next": [
+        "R85"
+      ],
+      "position": [
+        40.44,
+        0.3,
+        36.72
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "R85",
+      "next": [
+        "R86"
+      ],
+      "position": [
+        37.11,
+        0.3,
         38.45
       ],
       "type": "coin"
     },
     {
       "goal": false,
-      "id": "L28",
+      "id": "R86",
       "next": [
-        "L29"
+        "R0"
       ],
       "position": [
-        -21.86,
-        0.0,
-        37.92
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "L29",
-      "next": [
-        "L30"
-      ],
-      "position": [
-        -25.55,
-        0.0,
-        37.26
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "L30",
-      "next": [
-        "L31"
-      ],
-      "position": [
-        -29.19,
-        0.0,
-        36.48
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "L31",
-      "next": [
-        "L32"
-      ],
-      "position": [
-        -32.8,
+        33.61,
         0.15,
-        35.54
-      ],
-      "type": "item"
-    },
-    {
-      "goal": false,
-      "id": "L32",
-      "next": [
-        "L33"
-      ],
-      "position": [
-        -36.35,
-        0.15,
-        34.42
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "L33",
-      "next": [
-        "L34"
-      ],
-      "position": [
-        -39.82,
-        0.15,
-        33.09
-      ],
-      "type": "blank"
-    },
-    {
-      "goal": false,
-      "id": "L34",
-      "next": [
-        "L35"
-      ],
-      "position": [
-        -43.21,
-        0.3,
-        31.5
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "L35",
-      "next": [
-        "L36"
-      ],
-      "position": [
-        -46.43,
-        0.3,
-        29.61
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "L36",
-      "next": [
-        "L37"
-      ],
-      "position": [
-        -49.39,
-        0.3,
-        27.38
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "L37",
-      "next": [
-        "L38"
-      ],
-      "position": [
-        -52.02,
-        0.45,
-        24.76
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "L38",
-      "next": [
-        "L39"
-      ],
-      "position": [
-        -54.21,
-        0.45,
-        21.75
-      ],
-      "type": "item"
-    },
-    {
-      "goal": false,
-      "id": "L39",
-      "next": [
-        "L40",
-        "D1"
-      ],
-      "position": [
-        -55.83,
-        0.6,
-        18.41
-      ],
-      "type": "blank"
-    },
-    {
-      "goal": false,
-      "id": "L40",
-      "next": [
-        "L41"
-      ],
-      "position": [
-        -56.89,
-        0.6,
-        14.83
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "L41",
-      "next": [
-        "L42"
-      ],
-      "position": [
-        -57.41,
-        0.6,
-        11.14
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "L42",
-      "next": [
-        "L43"
-      ],
-      "position": [
-        -57.5,
-        0.75,
-        7.44
-      ],
-      "type": "blank"
-    },
-    {
-      "goal": false,
-      "id": "L43",
-      "next": [
-        "L44"
-      ],
-      "position": [
-        -57.23,
-        0.75,
-        3.74
-      ],
-      "type": "blank"
-    },
-    {
-      "goal": false,
-      "id": "L44",
-      "next": [
-        "L45"
-      ],
-      "position": [
-        -56.69,
-        0.75,
-        0.05
-      ],
-      "type": "shield"
-    },
-    {
-      "goal": false,
-      "id": "L45",
-      "next": [
-        "L46"
-      ],
-      "position": [
-        -55.93,
-        0.9,
-        -3.59
-      ],
-      "type": "blank"
-    },
-    {
-      "goal": false,
-      "id": "L46",
-      "next": [
-        "L47"
-      ],
-      "position": [
-        -54.99,
-        0.9,
-        -7.19
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "L47",
-      "next": [
-        "L48"
-      ],
-      "position": [
-        -53.89,
-        0.9,
-        -10.76
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "L48",
-      "next": [
-        "L49"
-      ],
-      "position": [
-        -52.63,
-        0.9,
-        -14.24
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": true,
-      "id": "L49",
-      "next": [
-        "L50"
-      ],
-      "position": [
-        -51.18,
-        0.9,
-        -17.68
-      ],
-      "type": "blank"
-    },
-    {
-      "goal": false,
-      "id": "L50",
-      "next": [
-        "L51"
-      ],
-      "position": [
-        -49.51,
-        0.9,
-        -21.03
-      ],
-      "type": "event"
-    },
-    {
-      "goal": false,
-      "id": "L51",
-      "next": [
-        "L52"
-      ],
-      "position": [
-        -47.56,
-        0.9,
-        -24.22
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "L52",
-      "next": [
-        "L53"
-      ],
-      "position": [
-        -45.3,
-        0.9,
-        -27.16
+        39.8
       ],
       "type": "lose"
     },
     {
       "goal": false,
-      "id": "L53",
+      "id": "M0",
       "next": [
-        "L54"
+        "M1"
       ],
       "position": [
-        -42.69,
-        0.75,
-        -29.78
+        -50.44,
+        0.0,
+        0.0
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "M1",
+      "next": [
+        "M2"
+      ],
+      "position": [
+        -46.89,
+        0.0,
+        0.0
       ],
       "type": "coin"
     },
     {
       "goal": false,
-      "id": "L54",
+      "id": "M2",
       "next": [
-        "L55"
+        "M3"
       ],
       "position": [
-        -39.72,
-        0.75,
-        -32.02
+        -43.33,
+        0.0,
+        0.0
       ],
       "type": "coin"
     },
     {
       "goal": false,
-      "id": "L55",
+      "id": "M3",
       "next": [
-        "L56"
+        "M4"
       ],
       "position": [
-        -36.5,
-        0.75,
-        -33.84
+        -39.78,
+        0.0,
+        0.0
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "M4",
+      "next": [
+        "M5"
+      ],
+      "position": [
+        -36.22,
+        0.0,
+        0.0
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "M5",
+      "next": [
+        "M6"
+      ],
+      "position": [
+        -32.67,
+        0.15,
+        0.0
       ],
       "type": "event"
     },
     {
       "goal": false,
-      "id": "L56",
+      "id": "M6",
       "next": [
-        "L57"
+        "M7"
       ],
       "position": [
-        -33.06,
-        0.6,
-        -35.3
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "L57",
-      "next": [
-        "L58"
-      ],
-      "position": [
-        -29.51,
-        0.6,
-        -36.43
-      ],
-      "type": "lose"
-    },
-    {
-      "goal": false,
-      "id": "L58",
-      "next": [
-        "L59",
-        "C1"
-      ],
-      "position": [
-        -25.89,
-        0.45,
-        -37.32
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "L59",
-      "next": [
-        "L60"
-      ],
-      "position": [
-        -22.25,
-        0.45,
-        -38.01
-      ],
-      "type": "event"
-    },
-    {
-      "goal": false,
-      "id": "L60",
-      "next": [
-        "L61"
-      ],
-      "position": [
-        -18.55,
-        0.45,
-        -38.54
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "L61",
-      "next": [
-        "L62"
-      ],
-      "position": [
-        -14.83,
-        0.3,
-        -38.94
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "L62",
-      "next": [
-        "L63"
-      ],
-      "position": [
-        -11.08,
-        0.3,
-        -39.24
+        -29.11,
+        0.15,
+        0.0
       ],
       "type": "item"
     },
     {
       "goal": false,
-      "id": "L63",
+      "id": "M7",
       "next": [
-        "L64"
+        "M8"
+      ],
+      "position": [
+        -25.56,
+        0.3,
+        0.0
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "M8",
+      "next": [
+        "M9",
+        "W10"
+      ],
+      "position": [
+        -22.0,
+        0.3,
+        0.0
+      ],
+      "type": "lose"
+    },
+    {
+      "goal": false,
+      "id": "M9",
+      "next": [
+        "M10"
+      ],
+      "position": [
+        -18.33,
+        0.45,
+        0.0
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "M10",
+      "next": [
+        "M11"
+      ],
+      "position": [
+        -14.67,
+        0.45,
+        0.0
+      ],
+      "type": "event"
+    },
+    {
+      "goal": false,
+      "id": "M11",
+      "next": [
+        "M12"
+      ],
+      "position": [
+        -11.0,
+        0.6,
+        0.0
+      ],
+      "type": "event"
+    },
+    {
+      "goal": false,
+      "id": "M12",
+      "next": [
+        "M13"
       ],
       "position": [
         -7.33,
-        0.15,
-        -39.44
+        0.6,
+        0.0
       ],
-      "type": "item"
+      "type": "coin"
     },
     {
       "goal": false,
-      "id": "L64",
+      "id": "M13",
       "next": [
-        "L65"
+        "M14"
       ],
       "position": [
-        -3.63,
-        0.15,
-        -39.56
+        -3.67,
+        0.75,
+        0.0
       ],
-      "type": "item"
+      "type": "coin"
     },
     {
       "goal": false,
-      "id": "L65",
+      "id": "M14",
       "next": [
-        "L66"
+        "M15"
       ],
       "position": [
-        0.13,
-        0.15,
-        -39.6
-      ],
-      "type": "lose"
-    },
-    {
-      "goal": false,
-      "id": "L66",
-      "next": [
-        "L67"
-      ],
-      "position": [
-        3.84,
         0.0,
-        -39.56
+        0.75,
+        0.0
       ],
       "type": "item"
     },
     {
       "goal": false,
-      "id": "L67",
+      "id": "M15",
       "next": [
-        "L68"
+        "M16"
       ],
       "position": [
-        7.54,
-        0.0,
-        -39.43
+        3.67,
+        0.75,
+        0.0
       ],
       "type": "blank"
     },
     {
       "goal": false,
-      "id": "L68",
+      "id": "M16",
       "next": [
-        "L69"
+        "M17"
       ],
       "position": [
-        11.25,
-        0.0,
-        -39.2
+        7.33,
+        0.9,
+        0.0
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "M17",
+      "next": [
+        "M18"
+      ],
+      "position": [
+        11.0,
+        0.9,
+        0.0
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "M18",
+      "next": [
+        "M19"
+      ],
+      "position": [
+        14.67,
+        0.9,
+        0.0
       ],
       "type": "item"
     },
     {
       "goal": false,
-      "id": "L69",
+      "id": "M19",
       "next": [
-        "L70"
+        "M20"
       ],
       "position": [
-        14.95,
-        0.0,
-        -38.86
+        18.33,
+        0.9,
+        0.0
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "M20",
+      "next": [
+        "M21",
+        "E10"
+      ],
+      "position": [
+        22.0,
+        0.9,
+        0.0
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "M21",
+      "next": [
+        "M22"
+      ],
+      "position": [
+        25.56,
+        0.75,
+        0.0
       ],
       "type": "lose"
     },
     {
       "goal": false,
-      "id": "L70",
+      "id": "M22",
       "next": [
-        "L71"
+        "M23"
       ],
       "position": [
-        18.65,
-        0.0,
+        29.11,
+        0.75,
+        0.0
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "M23",
+      "next": [
+        "M24"
+      ],
+      "position": [
+        32.67,
+        0.75,
+        0.0
+      ],
+      "type": "item"
+    },
+    {
+      "goal": false,
+      "id": "M24",
+      "next": [
+        "M25"
+      ],
+      "position": [
+        36.22,
+        0.6,
+        0.0
+      ],
+      "type": "item"
+    },
+    {
+      "goal": false,
+      "id": "M25",
+      "next": [
+        "M26"
+      ],
+      "position": [
+        39.78,
+        0.6,
+        0.0
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "M26",
+      "next": [
+        "M27"
+      ],
+      "position": [
+        43.33,
+        0.45,
+        0.0
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "M27",
+      "next": [
+        "M28"
+      ],
+      "position": [
+        46.89,
+        0.45,
+        0.0
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "M28",
+      "next": [
+        "R73"
+      ],
+      "position": [
+        50.44,
+        0.3,
+        0.0
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "W0",
+      "next": [
+        "W1"
+      ],
+      "position": [
+        -22.0,
+        0.6,
         -38.39
       ],
-      "type": "blank"
+      "type": "coin"
     },
     {
       "goal": false,
-      "id": "L71",
+      "id": "W1",
       "next": [
-        "L72"
+        "W2"
       ],
       "position": [
-        22.33,
-        0.0,
-        -37.75
-      ],
-      "type": "blank"
-    },
-    {
-      "goal": false,
-      "id": "L72",
-      "next": [
-        "L73"
-      ],
-      "position": [
-        25.95,
-        0.0,
-        -36.9
+        -22.0,
+        0.45,
+        -34.55
       ],
       "type": "lose"
     },
     {
       "goal": false,
-      "id": "L73",
+      "id": "W2",
       "next": [
-        "L74"
+        "W3"
       ],
       "position": [
-        29.5,
-        0.0,
-        -35.81
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": true,
-      "id": "L74",
-      "next": [
-        "L75"
-      ],
-      "position": [
-        32.97,
-        0.15,
-        -34.44
-      ],
-      "type": "blank"
-    },
-    {
-      "goal": false,
-      "id": "L75",
-      "next": [
-        "L76"
-      ],
-      "position": [
-        36.3,
-        0.15,
-        -32.78
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "L76",
-      "next": [
-        "L77"
-      ],
-      "position": [
-        39.47,
-        0.15,
-        -30.82
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "L77",
-      "next": [
-        "L78"
-      ],
-      "position": [
-        42.47,
-        0.3,
-        -28.6
-      ],
-      "type": "lose"
-    },
-    {
-      "goal": false,
-      "id": "L78",
-      "next": [
-        "L79"
-      ],
-      "position": [
-        45.28,
-        0.3,
-        -26.16
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "L79",
-      "next": [
-        "L80"
-      ],
-      "position": [
-        47.91,
-        0.3,
-        -23.51
-      ],
-      "type": "blank"
-    },
-    {
-      "goal": false,
-      "id": "L80",
-      "next": [
-        "L81"
-      ],
-      "position": [
-        50.36,
+        -22.0,
         0.45,
-        -20.71
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "L81",
-      "next": [
-        "L82"
-      ],
-      "position": [
-        52.61,
-        0.45,
-        -17.77
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "L82",
-      "next": [
-        "L83"
-      ],
-      "position": [
-        54.67,
-        0.6,
-        -14.7
-      ],
-      "type": "event"
-    },
-    {
-      "goal": false,
-      "id": "L83",
-      "next": [
-        "L84"
-      ],
-      "position": [
-        56.53,
-        0.6,
-        -11.47
+        -30.71
       ],
       "type": "item"
     },
     {
       "goal": false,
-      "id": "L84",
+      "id": "W3",
       "next": [
-        "L85"
+        "W4"
       ],
       "position": [
-        58.14,
-        0.6,
-        -8.13
+        -22.0,
+        0.45,
+        -26.87
       ],
       "type": "coin"
     },
     {
       "goal": false,
-      "id": "L85",
+      "id": "W4",
       "next": [
-        "L0"
+        "W5"
       ],
       "position": [
-        59.47,
+        -22.0,
+        0.45,
+        -23.03
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "W5",
+      "next": [
+        "W6"
+      ],
+      "position": [
+        -22.0,
+        0.3,
+        -19.19
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "W6",
+      "next": [
+        "W7"
+      ],
+      "position": [
+        -22.0,
+        0.3,
+        -15.35
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "W7",
+      "next": [
+        "W8"
+      ],
+      "position": [
+        -22.0,
+        0.3,
+        -11.52
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "W8",
+      "next": [
+        "W9"
+      ],
+      "position": [
+        -22.0,
+        0.3,
+        -7.68
+      ],
+      "type": "item"
+    },
+    {
+      "goal": false,
+      "id": "W9",
+      "next": [
+        "M8"
+      ],
+      "position": [
+        -22.0,
+        0.3,
+        -3.84
+      ],
+      "type": "item"
+    },
+    {
+      "goal": false,
+      "id": "W10",
+      "next": [
+        "W11"
+      ],
+      "position": [
+        -22.0,
+        0.3,
+        3.84
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "W11",
+      "next": [
+        "W12"
+      ],
+      "position": [
+        -22.0,
+        0.3,
+        7.68
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "W12",
+      "next": [
+        "W13"
+      ],
+      "position": [
+        -22.0,
+        0.3,
+        11.52
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "W13",
+      "next": [
+        "W14"
+      ],
+      "position": [
+        -22.0,
+        0.45,
+        15.35
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "W14",
+      "next": [
+        "W15"
+      ],
+      "position": [
+        -22.0,
+        0.45,
+        19.19
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "W15",
+      "next": [
+        "W16"
+      ],
+      "position": [
+        -22.0,
+        0.45,
+        23.03
+      ],
+      "type": "lose"
+    },
+    {
+      "goal": false,
+      "id": "W16",
+      "next": [
+        "W17"
+      ],
+      "position": [
+        -22.0,
+        0.6,
+        26.87
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "W17",
+      "next": [
+        "W18"
+      ],
+      "position": [
+        -22.0,
+        0.6,
+        30.71
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "W18",
+      "next": [
+        "W19"
+      ],
+      "position": [
+        -22.0,
+        0.6,
+        34.55
+      ],
+      "type": "lose"
+    },
+    {
+      "goal": false,
+      "id": "W19",
+      "next": [
+        "R13"
+      ],
+      "position": [
+        -22.0,
+        0.6,
+        38.39
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "E0",
+      "next": [
+        "E1"
+      ],
+      "position": [
+        22.0,
+        0.0,
+        38.39
+      ],
+      "type": "lose"
+    },
+    {
+      "goal": false,
+      "id": "E1",
+      "next": [
+        "E2"
+      ],
+      "position": [
+        22.0,
+        0.15,
+        34.55
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "E2",
+      "next": [
+        "E3"
+      ],
+      "position": [
+        22.0,
+        0.15,
+        30.71
+      ],
+      "type": "lose"
+    },
+    {
+      "goal": false,
+      "id": "E3",
+      "next": [
+        "E4"
+      ],
+      "position": [
+        22.0,
+        0.3,
+        26.87
+      ],
+      "type": "item"
+    },
+    {
+      "goal": false,
+      "id": "E4",
+      "next": [
+        "E5"
+      ],
+      "position": [
+        22.0,
+        0.3,
+        23.03
+      ],
+      "type": "lose"
+    },
+    {
+      "goal": false,
+      "id": "E5",
+      "next": [
+        "E6"
+      ],
+      "position": [
+        22.0,
+        0.45,
+        19.19
+      ],
+      "type": "item"
+    },
+    {
+      "goal": false,
+      "id": "E6",
+      "next": [
+        "E7"
+      ],
+      "position": [
+        22.0,
+        0.6,
+        15.35
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "E7",
+      "next": [
+        "E8"
+      ],
+      "position": [
+        22.0,
+        0.6,
+        11.52
+      ],
+      "type": "lose"
+    },
+    {
+      "goal": false,
+      "id": "E8",
+      "next": [
+        "E9"
+      ],
+      "position": [
+        22.0,
         0.75,
-        -4.65
+        7.68
+      ],
+      "type": "lose"
+    },
+    {
+      "goal": false,
+      "id": "E9",
+      "next": [
+        "M20"
+      ],
+      "position": [
+        22.0,
+        0.75,
+        3.84
+      ],
+      "type": "lose"
+    },
+    {
+      "goal": false,
+      "id": "E10",
+      "next": [
+        "E11"
+      ],
+      "position": [
+        22.0,
+        0.9,
+        -3.84
       ],
       "type": "blank"
     },
     {
       "goal": false,
-      "id": "A1",
+      "id": "E11",
       "next": [
-        "A2"
+        "E12"
       ],
       "position": [
-        49.09,
-        1.2,
-        22.66
+        22.0,
+        0.9,
+        -7.68
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "E12",
+      "next": [
+        "E13"
+      ],
+      "position": [
+        22.0,
+        0.75,
+        -11.52
+      ],
+      "type": "lose"
+    },
+    {
+      "goal": false,
+      "id": "E13",
+      "next": [
+        "E14"
+      ],
+      "position": [
+        22.0,
+        0.75,
+        -15.35
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "E14",
+      "next": [
+        "E15"
+      ],
+      "position": [
+        22.0,
+        0.75,
+        -19.19
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "E15",
+      "next": [
+        "E16"
+      ],
+      "position": [
+        22.0,
+        0.6,
+        -23.03
       ],
       "type": "coin"
     },
     {
       "goal": false,
-      "id": "A2",
+      "id": "E16",
       "next": [
-        "A3"
+        "E17"
       ],
       "position": [
-        45.43,
-        1.2,
-        21.89
+        22.0,
+        0.45,
+        -26.87
       ],
-      "type": "blank"
+      "type": "coin"
     },
     {
       "goal": false,
-      "id": "A3",
+      "id": "E17",
       "next": [
-        "A4"
+        "E18"
       ],
       "position": [
-        41.6,
-        1.2,
-        21.37
+        22.0,
+        0.45,
+        -30.71
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "E18",
+      "next": [
+        "E19"
+      ],
+      "position": [
+        22.0,
+        0.3,
+        -34.55
       ],
       "type": "item"
     },
     {
       "goal": false,
-      "id": "A4",
+      "id": "E19",
       "next": [
-        "A5"
+        "R57"
       ],
       "position": [
-        37.85,
-        1.2,
-        21.33
-      ],
-      "type": "lose"
-    },
-    {
-      "goal": false,
-      "id": "A5",
-      "next": [
-        "A6"
-      ],
-      "position": [
-        34.14,
-        1.2,
-        21.98
-      ],
-      "type": "lose"
-    },
-    {
-      "goal": false,
-      "id": "A6",
-      "next": [
-        "A7"
-      ],
-      "position": [
-        30.66,
-        1.2,
-        23.5
-      ],
-      "type": "lose"
-    },
-    {
-      "goal": false,
-      "id": "A7",
-      "next": [
-        "A8"
-      ],
-      "position": [
-        27.65,
-        1.2,
-        25.78
+        22.0,
+        0.15,
+        -38.39
       ],
       "type": "coin"
     },
     {
       "goal": false,
-      "id": "A8",
+      "id": "P0",
       "next": [
-        "A9"
+        "P1"
       ],
       "position": [
-        25.11,
-        1.2,
-        28.56
+        -14.0,
+        0.45,
+        -39.46
       ],
       "type": "blank"
     },
     {
       "goal": false,
-      "id": "A9",
+      "id": "P1",
       "next": [
-        "A10"
+        "P2"
       ],
       "position": [
-        22.88,
-        1.2,
-        31.72
+        -14.0,
+        0.45,
+        -36.09
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "P2",
+      "next": [
+        "P3"
+      ],
+      "position": [
+        -14.0,
+        0.45,
+        -32.73
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "P3",
+      "next": [
+        "P4"
+      ],
+      "position": [
+        -14.0,
+        0.45,
+        -29.36
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "P4",
+      "next": [
+        "P5"
+      ],
+      "position": [
+        -14.0,
+        0.45,
+        -26.0
+      ],
+      "type": "lose"
+    },
+    {
+      "goal": false,
+      "id": "P5",
+      "next": [
+        "P6"
+      ],
+      "position": [
+        -10.5,
+        0.45,
+        -26.0
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "P6",
+      "next": [
+        "P7"
+      ],
+      "position": [
+        -7.0,
+        0.45,
+        -26.0
+      ],
+      "type": "lose"
+    },
+    {
+      "goal": false,
+      "id": "P7",
+      "next": [
+        "P8"
+      ],
+      "position": [
+        -3.5,
+        0.45,
+        -26.0
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "P8",
+      "next": [
+        "P9"
+      ],
+      "position": [
+        0.0,
+        0.45,
+        -26.0
       ],
       "type": "item"
     },
     {
       "goal": false,
-      "id": "A10",
+      "id": "P9",
       "next": [
-        "L17"
+        "P10"
       ],
       "position": [
-        20.94,
-        1.2,
-        34.94
+        3.5,
+        0.45,
+        -26.0
       ],
       "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "P10",
+      "next": [
+        "P11"
+      ],
+      "position": [
+        7.0,
+        0.45,
+        -26.0
+      ],
+      "type": "item"
+    },
+    {
+      "goal": false,
+      "id": "P11",
+      "next": [
+        "P12"
+      ],
+      "position": [
+        10.5,
+        0.45,
+        -26.0
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "P12",
+      "next": [
+        "P13"
+      ],
+      "position": [
+        14.0,
+        0.45,
+        -26.0
+      ],
+      "type": "lose"
+    },
+    {
+      "goal": false,
+      "id": "P13",
+      "next": [
+        "P14"
+      ],
+      "position": [
+        14.0,
+        0.45,
+        -29.36
+      ],
+      "type": "lose"
+    },
+    {
+      "goal": false,
+      "id": "P14",
+      "next": [
+        "P15"
+      ],
+      "position": [
+        14.0,
+        0.3,
+        -32.73
+      ],
+      "type": "blank"
+    },
+    {
+      "goal": false,
+      "id": "P15",
+      "next": [
+        "P16"
+      ],
+      "position": [
+        14.0,
+        0.15,
+        -36.09
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "P16",
+      "next": [
+        "R55"
+      ],
+      "position": [
+        14.0,
+        0.15,
+        -39.46
+      ],
+      "type": "item"
+    },
+    {
+      "goal": false,
+      "id": "B0",
+      "next": [
+        "B1"
+      ],
+      "position": [
+        13.5,
+        0.0,
+        39.32
+      ],
+      "type": "item"
     },
     {
       "goal": false,
@@ -1261,11 +2291,11 @@
         "B2"
       ],
       "position": [
-        -16.69,
-        0.9,
-        35.65
+        13.11,
+        0.0,
+        35.77
       ],
-      "type": "blank"
+      "type": "event"
     },
     {
       "goal": false,
@@ -1274,11 +2304,11 @@
         "B3"
       ],
       "position": [
-        -19.13,
-        0.9,
-        32.72
+        11.8,
+        0.15,
+        32.44
       ],
-      "type": "lose"
+      "type": "event"
     },
     {
       "goal": false,
@@ -1287,11 +2317,11 @@
         "B4"
       ],
       "position": [
-        -22.23,
-        0.9,
-        30.39
+        9.66,
+        0.15,
+        29.57
       ],
-      "type": "blank"
+      "type": "item"
     },
     {
       "goal": false,
@@ -1300,11 +2330,11 @@
         "B5"
       ],
       "position": [
-        -25.96,
-        0.9,
-        29.66
+        6.84,
+        0.3,
+        27.36
       ],
-      "type": "blank"
+      "type": "coin"
     },
     {
       "goal": false,
@@ -1313,207 +2343,186 @@
         "B6"
       ],
       "position": [
-        -29.72,
-        0.9,
-        30.61
+        3.55,
+        0.3,
+        25.97
       ],
-      "type": "lose"
+      "type": "item"
     },
     {
       "goal": false,
       "id": "B6",
       "next": [
-        "L32"
+        "B7"
       ],
       "position": [
-        -33.12,
-        0.9,
-        32.38
-      ],
-      "type": "lose"
-    },
-    {
-      "goal": false,
-      "id": "C1",
-      "next": [
-        "C2"
-      ],
-      "position": [
-        -22.86,
-        0.6,
-        -34.78
-      ],
-      "type": "item"
-    },
-    {
-      "goal": false,
-      "id": "C2",
-      "next": [
-        "C3"
-      ],
-      "position": [
-        -19.55,
-        0.6,
-        -32.46
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "C3",
-      "next": [
-        "C4"
-      ],
-      "position": [
-        -15.96,
-        0.6,
-        -31.06
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "C4",
-      "next": [
-        "C5"
-      ],
-      "position": [
-        -12.03,
-        0.6,
-        -31.48
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "C5",
-      "next": [
-        "C6"
-      ],
-      "position": [
-        -8.8,
-        0.6,
-        -33.6
-      ],
-      "type": "item"
-    },
-    {
-      "goal": false,
-      "id": "C6",
-      "next": [
-        "L64"
-      ],
-      "position": [
-        -6.02,
-        0.6,
-        -36.55
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "D1",
-      "next": [
-        "D2"
-      ],
-      "position": [
-        -59.61,
+        0.0,
         0.3,
-        16.52
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "D2",
-      "next": [
-        "D3"
-      ],
-      "position": [
-        -63.23,
-        0.3,
-        14.56
+        25.5
       ],
       "type": "event"
     },
     {
       "goal": false,
-      "id": "D3",
+      "id": "B7",
       "next": [
-        "D4"
+        "B8"
       ],
       "position": [
-        -66.55,
+        -3.55,
         0.3,
-        12.37
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "D4",
-      "next": [
-        "D5"
-      ],
-      "position": [
-        -69.36,
-        0.3,
-        9.38
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "D5",
-      "next": [
-        "D6"
-      ],
-      "position": [
-        -69.33,
-        0.3,
-        5.49
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "D6",
-      "next": [
-        "D7"
-      ],
-      "position": [
-        -66.5,
-        0.3,
-        2.47
-      ],
-      "type": "coin"
-    },
-    {
-      "goal": false,
-      "id": "D7",
-      "next": [
-        "D8"
-      ],
-      "position": [
-        -63.17,
-        0.3,
-        0.26
+        25.97
       ],
       "type": "item"
     },
     {
       "goal": false,
-      "id": "D8",
+      "id": "B8",
       "next": [
-        "L45"
+        "B9"
       ],
       "position": [
-        -59.55,
+        -6.84,
         0.3,
-        -1.74
+        27.36
       ],
       "type": "item"
+    },
+    {
+      "goal": false,
+      "id": "B9",
+      "next": [
+        "B10"
+      ],
+      "position": [
+        -9.66,
+        0.3,
+        29.57
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "B10",
+      "next": [
+        "B11"
+      ],
+      "position": [
+        -11.8,
+        0.45,
+        32.44
+      ],
+      "type": "coin"
+    },
+    {
+      "goal": false,
+      "id": "B11",
+      "next": [
+        "B12"
+      ],
+      "position": [
+        -13.11,
+        0.45,
+        35.77
+      ],
+      "type": "item"
+    },
+    {
+      "goal": false,
+      "id": "B12",
+      "next": [
+        "R11"
+      ],
+      "position": [
+        -13.5,
+        0.45,
+        39.32
+      ],
+      "type": "event"
     }
   ],
-  "start": "L0"
+  "start": "R0",
+  "zones": [
+    {
+      "centre": [
+        -35.0,
+        -16.0
+      ],
+      "kind": "hab",
+      "r": 8.0,
+      "yaw": 0.35
+    },
+    {
+      "centre": [
+        0.0,
+        -34.5
+      ],
+      "kind": "pad",
+      "r": 4.5,
+      "yaw": 0.0
+    },
+    {
+      "centre": [
+        0.0,
+        -13.0
+      ],
+      "kind": "depot",
+      "r": 8.0,
+      "yaw": 0.2
+    },
+    {
+      "centre": [
+        35.0,
+        -16.0
+      ],
+      "kind": "farm",
+      "r": 8.0,
+      "yaw": 0.0
+    },
+    {
+      "centre": [
+        -35.0,
+        16.0
+      ],
+      "kind": "tanks",
+      "r": 8.0,
+      "yaw": -0.4
+    },
+    {
+      "centre": [
+        0.0,
+        12.0
+      ],
+      "kind": "park",
+      "r": 7.0,
+      "yaw": 0.0
+    },
+    {
+      "centre": [
+        0.0,
+        33.97
+      ],
+      "kind": "crater",
+      "r": 4.0,
+      "yaw": 0.6
+    },
+    {
+      "centre": [
+        35.0,
+        16.0
+      ],
+      "kind": "power",
+      "r": 8.0,
+      "yaw": 0.15
+    },
+    {
+      "centre": [
+        30.0,
+        45.0
+      ],
+      "kind": "plaza",
+      "r": 1.6,
+      "yaw": 0.0
+    }
+  ]
 }

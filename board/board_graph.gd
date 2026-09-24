@@ -16,6 +16,9 @@ var id: String = ""
 var display_name: String = ""
 var start_id: String = ""
 var spaces: Dictionary = {}
+var slab: MoonSlab = null      # the moon chunk the board stands on (board files since 2026-09-24)
+var zones: Array = []          # the blocks between the streets: {kind, centre [x, z], r, yaw}, for the look
+var annex_angles: Array = []   # where the two annexes stand off the rim, when the board says
 var _prev: Dictionary = {}
 
 
@@ -44,6 +47,11 @@ static func from_dict(d: Dictionary) -> BoardGraph:
 	g.id = str(d.get("id", "board"))
 	g.display_name = str(d.get("display_name", g.id.to_upper()))
 	g.start_id = str(d.get("start", "0"))
+	g.slab = MoonSlab.from_dict(d.get("slab", {}))
+	for zd in d.get("zones", []):
+		g.zones.append(zd)
+	for a in d.get("annexes", []):
+		g.annex_angles.append(float(a))
 	for sd in d.get("spaces", []):
 		var s := Space.new()
 		s.id = str(sd.get("id", ""))
