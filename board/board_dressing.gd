@@ -131,16 +131,17 @@ func _next_frame() -> void:
 		await (Engine.get_main_loop() as SceneTree).process_frame
 
 
-## The buggy's road: the longest clear stretch of a ring near the rim, chosen after the annexes
-## (their bridge mouths are reserved) and before the ground props so they keep off it. Falls
-## back to a loop around the base annex.
+## The buggy's road: the longest clear stretch of a ring near the rim (on the district, the strip
+## of open moon between the ring road and the rim, which the annex bridges cut into two arcs),
+## chosen after the annexes (their bridge mouths are reserved) and before the ground props so
+## they keep off it. Falls back to a loop around the base annex.
 func _plan_road() -> void:
 	var samples: Array = []
 	var clear: Array = []
 	var n := 96
 	for i in n:
 		var a := i * TAU / n
-		var q := _slab.point(a, 0.93)
+		var q := _slab.point(a, 0.955)
 		var p := Vector3(q.x, _top, q.y)
 		samples.append(p)
 		clear.append(_tile_clear(p.x, p.z, 2.3) and _prop_clear(p.x, p.z, 1.0))

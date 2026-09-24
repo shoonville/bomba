@@ -866,8 +866,8 @@ board match on the new board.
   | render CPU ms | 0.70 | 1.26 |
   | first build under the wipe | 18 frames, longest 38 ms | 19 frames, longest 42 ms |
 
-  Frames: `board_overview.png`, `board_map.png`, `board_turn.png` (retaken),
-  `board_district_north.png`, `board_district_east.png` (new). His verdict pending.
+  Frames: `board_overview.png`, `board_map.png`, `board_turn.png`, `board_fork.png`, `board_machine.png`
+  (retaken), `board_district_north.png`, `board_district_east.png` (new). His verdict pending.
 
 ### Next
 1. Sean: the district (the layout, the paved bands, the chevrons), and whether the short
