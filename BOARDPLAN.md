@@ -56,11 +56,11 @@ Every rule returns a list of **events** (`roll`, `move`, `tickets`, `goal`, `ite
 ## 3. The board data
 
 `board/boards/<id>.json`: `spaces` (id, position `[x, y, z]`, type, `next: [ids]`) and `start`.
-Types: `start`, `blank`, `ticket` (+3), `lose` (−3), `item` (draw one; the event space that
-teleported is gone, 2026-09-24), `goal` (the moving goal's spawn candidates carry `"goal": true`). A fork is any
+Types: `start`, `blank`, `ticket` (+3), `lose` (−3), `heal` (+6 HP, never over the full bar),
+`item` (draw one; the event space that teleported is gone, 2026-09-24), `goal` (the moving goal's spawn candidates carry `"goal": true`). A fork is any
 space with two or more `next` entries. BOMBA BAY (`tools/gen_board.gd`, 2026-09-24) is Sean's drawing: the blue lines traced as
 polylines in the drawing's pixels (0.115 m each), spaces every 3.7 m, every junction a shared
-space, the arrows as the one-way directions (0.074 m a pixel: Sean wanted "around 80"): 82 spaces, 4 forks (the start, the F3 junction,
+space, the arrows as the one-way directions (0.115 m a pixel): 127 spaces, 4 forks (the start, the F3 junction,
 F2, F4), every space reaching every other. The file also carries the look's data: `slab` (the
 moon chunk, a rounded hull of the spaces, `MoonSlab`), `annexes` (the rim angles of the two
 domes), `shuttle` (the rocket) and `zones` (the blocks between the streets and a few spots in the
@@ -92,9 +92,9 @@ right click puts any of them away; the portal picks a player.
 
 - Spaces are six-sided floating tiles (cel material by type: blank in the field colour, ticket
   in LEMON, lose in the danger red, item in LAGOON, goal in paper with a ring), ink outlines
-  from the post pass, the swirl sky. Each special space's emblem is part of the tile, sitting on
-  its face (2026-09-24): a fan of ticket stubs, a mystery bag with a "?", a spiked disc, the
-  safe spot's dome, the start's flag. The board palette is its own map entry.
+  from the post pass, the swirl sky. Each special space's emblem is painted on the tile
+  (2026-09-24): two ticket stubs, a star for an item, a mine for damage, a med bag for the health
+  spot; the safe spot keeps its dome, the start its flag. The board palette is its own map entry.
 - Pawns are the same capsule-and-head silhouette as the arena, in identity colours, hopping
   space to space (`board.hop_seconds` per step) with a small burst on landing.
 - Camera: third person behind and above the active pawn, easing between pawns on turn change,

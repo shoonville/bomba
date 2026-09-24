@@ -34,6 +34,7 @@ var _annex_r: float = 8.0
 # Alive things
 var _blinkers: Array = []        # [{node, period, phase}]
 var _bobbers: Array = []         # [{node, base_y, period}]: the balloon, the pilot, gently up and down
+var _spinners: Array = []        # [{node, rate}]: the station's radar dish, turning
 var _drone: Node3D
 var _drone_path: Array = []      # Vector3 waypoints above the loop
 var _drone_t: float = 0.0
@@ -952,6 +953,11 @@ func _blocks(craters: Array, landmarks: Array) -> void:
 			"lander": _block_lander(c, r, yaw)
 			"ufo": _block_ufo(c, r, yaw)
 			"balloon": _block_balloon(c, r, yaw)
+			"radio": _block_radio(c, r, yaw)
+			"station": _block_station(c, r, yaw)
+			"satellite": _block_satellite(c, r, yaw)
+			"arch": _block_arch(c, r, yaw)
+			"telescope": _block_telescope(c, r, yaw)
 		_occupied.append(Vector3(c.x, c.z, r + 0.8))
 		_count("block")
 
@@ -982,6 +988,8 @@ func _block_pad(c: Vector3, r: float, yaw: float) -> void:
 	_box(dn, Vector3(0.7, 0.35, 0.4), Vector3(0.2, 0.18, 0.8), "counter_dark")
 	_box(dn, Vector3(0.74, 0.06, 0.44), Vector3(0.2, 0.37, 0.8), "metal")
 	_count("drums")
+	# The rover, parked (the view keeps its spot as a landmark).
+	_rover(self, _at(c, yaw, 1.2, 0.4), yaw + PI * 0.5, [])
 
 
 ## The fuel bowser: a tank on a cart with a hose run out.
@@ -1397,20 +1405,7 @@ func _life() -> void:
 		var last := _buggy_road.size() if _road_loop else _buggy_road.size() - 1
 		for k in range(1, last + 1):
 			_buggy_len += (_buggy_road[k % _buggy_road.size()] - _buggy_road[k - 1]).length()
-		_buggy = Node3D.new()
-		add_child(_buggy)
-		_box(_buggy, Vector3(2.2, 0.4, 1.3), Vector3(0, 0.75, 0), "metal")
-		_box(_buggy, Vector3(0.8, 0.55, 1.0), Vector3(-0.45, 1.2, 0), "counter")
-		_box(_buggy, Vector3(0.6, 0.06, 0.9), Vector3(0.55, 0.98, 0), "field_dark")
-		_cyl(_buggy, 0.03, 0.03, 1.5, Vector3(0.8, 1.75, 0.45), "ink")
-		var b := _sphere(_buggy, 0.1, Vector3(0.8, 2.55, 0.45), "glow_cyan", Vector3.ONE, false, 8)
-		_blinkers.append({"node": b, "period": 1.0, "phase": 0.2})
-		for wx: float in [-0.8, 0.8]:
-			for wz: float in [-0.8, 0.8]:
-				var wheel := _cyl(_buggy, 0.42, 0.42, 0.3, Vector3(wx, 0.42, wz), "ink", Vector3(PI * 0.5, 0, 0), 10)
-				_buggy_wheels.append(wheel)
-				_cyl(_buggy, 0.2, 0.2, 0.32, Vector3(wx, 0.42, wz), "metal", Vector3(PI * 0.5, 0, 0), 8)
-		_buggy.position = _buggy_road[0]
+		_buggy = _rover(self, _buggy_road[0], 0.0, _buggy_wheels)
 		# Tyre tracks along the road.
 		var segs := _buggy_road.size() if _road_loop else _buggy_road.size() - 1
 		for k in range(1, segs + 1):
@@ -1475,6 +1470,8 @@ func _process(delta: float) -> void:
 	for bb in _bobbers:
 		var bn: Node3D = bb["node"]
 		bn.position.y = float(bb["base_y"]) + sin(_anim_t * TAU / float(bb["period"])) * 0.12
+	for sp in _spinners:
+		(sp["node"] as Node3D).rotation.y += delta * float(sp["rate"])
 	if _drone != null and _drone_path.size() >= 2:
 		_drone_t += delta * 3.4
 		var n := _drone_path.size()
@@ -1662,3 +1659,234 @@ func _block_balloon(c: Vector3, r: float, yaw: float) -> void:
 	_blinkers.append({"node": b, "period": 2.2, "phase": 0.6})
 	_bobbers.append({"node": balloon, "base_y": 7.5, "period": 4.2})
 	_count("balloon")
+
+
+## The rover, one design for the parked one and the driving one (Sean, 2026-09-24, asked whether
+## the rover was the same as before: there were two; this is the driving buggy's): a metal body,
+## a cab, a panel on the back, an antenna with a blinking light, four wheels with hubs. Returns
+## the node; the wheels go on `wheels` for whoever turns them.
+func _rover(parent: Node3D, at: Vector3, yaw: float, wheels: Array) -> Node3D:
+	var rv := Node3D.new()
+	rv.position = at
+	rv.rotation.y = yaw
+	parent.add_child(rv)
+	_box(rv, Vector3(2.2, 0.4, 1.3), Vector3(0, 0.75, 0), "metal")
+	_box(rv, Vector3(0.8, 0.55, 1.0), Vector3(-0.45, 1.2, 0), "counter")
+	_box(rv, Vector3(0.7, 0.4, 0.06), Vector3(-0.02, 1.2, 0), "glass")   # the cab's window
+	_box(rv, Vector3(0.6, 0.06, 0.9), Vector3(0.55, 0.98, 0), "field_dark")
+	_cyl(rv, 0.03, 0.03, 1.5, Vector3(0.8, 1.75, 0.45), "ink")
+	var b := _sphere(rv, 0.1, Vector3(0.8, 2.55, 0.45), "glow_cyan", Vector3.ONE, false, 8)
+	_blinkers.append({"node": b, "period": 1.0, "phase": 0.2})
+	_cyl(rv, 0.2, 0.06, 0.12, Vector3(-0.7, 1.55, -0.3), "paper", Vector3(-0.7, 0, 0), 8)   # a little dish
+	for wx: float in [-0.8, 0.8]:
+		for wz: float in [-0.8, 0.8]:
+			var wheel := _cyl(rv, 0.42, 0.42, 0.3, Vector3(wx, 0.42, wz), "ink", Vector3(PI * 0.5, 0, 0), 10)
+			wheels.append(wheel)
+			_cyl(rv, 0.2, 0.2, 0.32, Vector3(wx, 0.42, wz), "metal", Vector3(PI * 0.5, 0, 0), 8)
+	return rv
+
+
+## A small radio tower (Sean: "a space themed small radio tower"): a tapering lattice mast with
+## cross braces, three ring antennas up it, a big dish and a small one on a platform, guy lines
+## to anchor blocks, a cabin at the foot, a red light on top and a cyan one half way.
+func _block_radio(c: Vector3, r: float, yaw: float) -> void:
+	var rt := _node(c, yaw)
+	var h := 8.5
+	for i in 4:
+		var a := i * TAU / 4.0 + PI * 0.25
+		var foot := Vector3(cos(a) * 0.9, 0.0, sin(a) * 0.9)
+		var top := Vector3(cos(a) * 0.25, h, sin(a) * 0.25)
+		_strut(rt, foot, top, 0.05, "counter_dark", 6)
+	for lvl in 6:
+		var t := (lvl + 1) / 7.0
+		var w := lerpf(1.8, 0.5, t)
+		_box(rt, Vector3(w, 0.05, w), Vector3(0, t * h, 0), "metal")
+		if lvl % 2 == 0:
+			_strut(rt, Vector3(-w * 0.5, t * h, w * 0.5), Vector3(w * 0.45, (lvl + 2) / 7.0 * h, -w * 0.45), 0.03, "counter_dark", 5)
+	for k in 3:
+		_torus(rt, 0.45 + k * 0.1, 0.5 + k * 0.1, Vector3(0, h * (0.55 + k * 0.12), 0), "accent_lit", Vector3.ZERO, Vector3(1, 0.4, 1))
+	_box(rt, Vector3(1.4, 0.08, 1.4), Vector3(0, h * 0.45, 0), "metal")   # the platform
+	var big := _cyl(rt, 0.95, 0.15, 0.32, Vector3(0.7, h * 0.45 + 0.6, 0), "paper", Vector3(0, 0, -1.0), 14)
+	big.rotation.y = 0.4
+	_cyl(rt, 0.05, 0.05, 0.9, Vector3(0.7, h * 0.45 + 0.3, 0), "ink")
+	var small := _cyl(rt, 0.4, 0.08, 0.16, Vector3(-0.6, h * 0.45 + 0.45, -0.3), "paper", Vector3(-0.8, 0, 0), 10)
+	small.rotation.y = -0.6
+	_cyl(rt, 0.04, 0.05, 1.8, Vector3(0, h + 0.9, 0), "ink")
+	var top_light := _sphere(rt, 0.16, Vector3(0, h + 1.85, 0), "glow_red", Vector3.ONE, false, 8)
+	_blinkers.append({"node": top_light, "period": 1.2, "phase": 0.1})
+	var mid_light := _sphere(rt, 0.11, Vector3(0.35, h * 0.72, 0.35), "glow_cyan", Vector3.ONE, false, 8)
+	_blinkers.append({"node": mid_light, "period": 2.4, "phase": 0.6})
+	for k in 3:
+		var a := k * TAU / 3.0 + 0.5
+		var anchor := Vector3(cos(a) * 2.6, 0.0, sin(a) * 2.6)
+		_box(rt, Vector3(0.4, 0.3, 0.4), anchor + Vector3(0, 0.15, 0), "counter_dark")
+		var line := _strut(rt, anchor + Vector3(0, 0.3, 0), Vector3(cos(a) * 0.3, h * 0.8, sin(a) * 0.3), 0.015, "ink", 4)
+		line.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var cab := _node(_at(c, yaw, 1.9, 1.2), yaw + 0.3)
+	_box(cab, Vector3(1.4, 1.1, 1.1), Vector3(0, 0.55, 0), "metal")
+	_box(cab, Vector3(0.5, 0.7, 0.06), Vector3(0, 0.45, 0.56), "ink")
+	_box(cab, Vector3(0.14, 0.12, 0.05), Vector3(0.4, 0.9, 0.57), "glow_yellow")
+	_count("radio tower")
+
+
+## The space station (Sean: "a space station in the bottom middle part of the map, to take up
+## space, spend a lot of time to make it look detailed"): a plated apron; a hub on a plinth with
+## a band, windows all round, a glass cupola and a mast; a ring corridor on four spokes with
+## windows; four modules on the ring's diagonals, one the docking module with a hatch and an
+## airlock light, one a lab with a LAB 1 sign; two solar wings on a boom through the hub, framed;
+## a radar dish turning on a stand; a fuel tank on a pipe; landing lights round the apron.
+func _block_station(c: Vector3, r: float, yaw: float) -> void:
+	var st := _node(c, yaw)
+	_cyl(st, 6.9, 7.0, 0.08, Vector3(0, 0.04, 0), "metal", Vector3.ZERO, 24)
+	_torus(st, 6.6, 7.0, Vector3(0, 0.08, 0), "counter_dark", Vector3.ZERO, Vector3(1, 0.25, 1))
+	for k in 4:
+		var a := k * TAU / 4.0
+		_box(st, Vector3(0.12, 0.02, 5.8), Vector3(cos(a) * 3.8, 0.09, sin(a) * 3.8), "paper", Vector3(0, -a, 0))
+	# The hub.
+	_cyl(st, 2.6, 2.8, 0.5, Vector3(0, 0.25, 0), "counter_dark", Vector3.ZERO, 16)
+	_cyl(st, 2.2, 2.3, 3.0, Vector3(0, 2.0, 0), "metal", Vector3.ZERO, 16)
+	for k in 8:
+		var a := k * TAU / 8.0 + 0.2
+		var win := _cyl(st, 0.26, 0.26, 0.1, Vector3(cos(a) * 2.22, 2.4, sin(a) * 2.22), "glass", Vector3.ZERO, 10)
+		win.look_at(st.to_global(Vector3(0, 2.4, 0)), Vector3.UP)
+		win.rotate_object_local(Vector3.RIGHT, PI * 0.5)
+	_torus(st, 2.2, 2.38, Vector3(0, 3.35, 0), "accent_lit", Vector3.ZERO, Vector3(1, 0.5, 1))
+	_torus(st, 2.2, 2.38, Vector3(0, 0.75, 0), "accent_lit", Vector3.ZERO, Vector3(1, 0.5, 1))
+	_cyl(st, 2.0, 2.25, 0.3, Vector3(0, 3.65, 0), "counter_dark", Vector3.ZERO, 16)
+	_sphere(st, 1.3, Vector3(0, 3.8, 0), "glass", Vector3(1.0, 0.7, 1.0), true, 16)
+	for k in 6:
+		var a := k * TAU / 6.0
+		_strut(st, Vector3(cos(a) * 1.28, 3.8, sin(a) * 1.28), Vector3(0, 4.7, 0), 0.03, "counter_dark", 5)
+	_cyl(st, 0.3, 0.35, 0.3, Vector3(0, 4.85, 0), "metal", Vector3.ZERO, 10)
+	_cyl(st, 0.04, 0.05, 3.0, Vector3(0, 6.5, 0), "ink")
+	var top := _sphere(st, 0.16, Vector3(0, 8.05, 0), "glow_red", Vector3.ONE, false, 8)
+	_blinkers.append({"node": top, "period": 1.4, "phase": 0.0})
+	_box(st, Vector3(0.5, 1.8, 1.3), Vector3(0, 1.2, -2.35), "counter_dark", Vector3(0, PI * 0.5, 0))   # the airlock, north
+	_box(st, Vector3(0.9, 1.4, 0.2), Vector3(0, 1.1, -2.55), "metal")
+	_box(st, Vector3(0.3, 0.3, 0.12), Vector3(0, 2.3, -2.6), "glow_yellow")
+	_label(st, "LAB 1", Vector3(0, 2.95, -2.34), 48, Palette.hud_colour("paper"), PI)
+	# The ring corridor on four spokes.
+	var ring := _torus(st, 4.45, 5.95, Vector3(0, 1.6, 0), "metal")
+	ring.mesh.rings = 48
+	ring.mesh.ring_segments = 10
+	for k in 4:
+		var a := k * TAU / 4.0 + PI * 0.5
+		_cyl(st, 0.5, 0.5, 3.2, Vector3(cos(a) * 3.7, 1.6, sin(a) * 3.7), "metal", Vector3(0, PI - a, PI * 0.5), 10)
+		_torus(st, 0.5, 0.62, Vector3(cos(a) * 2.4, 1.6, sin(a) * 2.4), "counter_dark", Vector3(0, -a, PI * 0.5))
+	for k in 12:
+		var a := k * TAU / 12.0 + 0.13
+		var win := _cyl(st, 0.2, 0.2, 0.1, Vector3(cos(a) * 5.95, 1.72, sin(a) * 5.95), "glass", Vector3.ZERO, 8)
+		win.look_at(st.to_global(Vector3(0, 1.72, 0)), Vector3.UP)
+		win.rotate_object_local(Vector3.RIGHT, PI * 0.5)
+	# Four modules on the ring's diagonals, tangent to it.
+	for k in 4:
+		var a := k * TAU / 4.0 + PI * 0.25
+		var at := Vector3(cos(a) * 5.2, 1.6, sin(a) * 5.2)
+		var tangent := a + PI * 0.5
+		var mod := _cyl(st, 1.0, 1.0, 3.6, at, "paper" if k % 2 == 0 else "metal", Vector3(0, PI - tangent, PI * 0.5), 12)
+		for e: float in [-1.85, 1.85]:
+			_cyl(st, 1.04, 1.04, 0.14, at + Vector3(cos(tangent) * e, 0, sin(tangent) * e), "counter_dark", Vector3(0, PI - tangent, PI * 0.5), 12)
+		for w in 3:
+			var off := (w - 1) * 1.1
+			var wp := at + Vector3(cos(tangent) * off, 0.35, sin(tangent) * off) + Vector3(cos(a), 0, sin(a)) * 0.95
+			var win := _cyl(st, 0.2, 0.2, 0.1, wp, "glass", Vector3.ZERO, 8)
+			win.look_at(st.to_global(at + Vector3(cos(tangent) * off, 0.35, sin(tangent) * off)), Vector3.UP)
+			win.rotate_object_local(Vector3.RIGHT, PI * 0.5)
+		if k == 1:
+			# The docking module: a hatch ring on its outer end and an airlock light.
+			var end := at + Vector3(cos(tangent), 0, sin(tangent)) * 1.95
+			_torus(st, 0.5, 0.75, end, "ink", Vector3(0, -tangent, PI * 0.5))
+			_cyl(st, 0.45, 0.45, 0.2, end, "counter_dark", Vector3(0, PI - tangent, PI * 0.5), 10)
+			var al := _sphere(st, 0.12, end + Vector3(0, 0.95, 0), "glow_green", Vector3.ONE, false, 8)
+			_blinkers.append({"node": al, "period": 1.9, "phase": 0.4})
+		if k == 3:
+			_box(st, Vector3(1.6, 0.3, 0.3), at + Vector3(0, 1.15, 0), "accent_lit", Vector3(0, -tangent, 0))
+	# Solar wings on a boom through the hub.
+	_cyl(st, 0.12, 0.12, 15.0, Vector3(0, 3.1, 0), "counter_dark", Vector3(0, 0, PI * 0.5), 8)
+	for s: float in [-1.0, 1.0]:
+		var wing := Node3D.new()
+		wing.position = Vector3(s * 5.9, 3.1, 0)
+		wing.rotation.x = 0.35
+		st.add_child(wing)
+		_box(wing, Vector3(6.4, 0.08, 2.6), Vector3.ZERO, "field_dark")
+		for e: float in [-1.3, 1.3]:
+			_box(wing, Vector3(6.5, 0.12, 0.08), Vector3(0, 0, e), "metal")
+		for k in 3:
+			_box(wing, Vector3(0.06, 0.1, 2.6), Vector3(k * 2.1 - 2.1, 0, 0), "metal")
+		var tip := _sphere(wing, 0.1, Vector3(s * 3.3, 0.1, 0), "glow_red" if s < 0 else "glow_cyan", Vector3.ONE, false, 8)
+		_blinkers.append({"node": tip, "period": 1.6, "phase": 0.5 if s < 0 else 0.0})
+	# A radar dish turning on a stand, past the ring.
+	var rd := _node(_at(c, yaw, 0.0, 7.6), yaw)
+	_cyl(rd, 0.5, 0.6, 0.3, Vector3(0, 0.15, 0), "counter_dark", Vector3.ZERO, 10)
+	_cyl(rd, 0.1, 0.12, 1.6, Vector3(0, 1.1, 0), "metal")
+	var head := Node3D.new()
+	head.position = Vector3(0, 1.9, 0)
+	rd.add_child(head)
+	_cyl(head, 1.1, 0.15, 0.35, Vector3(0, 0.3, 0), "paper", Vector3(-0.8, 0, 0), 14)
+	_cyl(head, 0.04, 0.04, 1.0, Vector3(0, 0.55, 0.4), "ink", Vector3(-0.8, 0, 0))
+	_sphere(head, 0.08, Vector3(0, 0.95, 0.7), "glow_red", Vector3.ONE, false, 6)
+	_spinners.append({"node": head, "rate": 0.5})
+	# A fuel tank on a pipe.
+	var tk := _node(_at(c, yaw, 6.2, -4.6), yaw + 0.4)
+	_cyl(tk, 0.7, 0.7, 2.6, Vector3(0, 0.9, 0), "paper", Vector3(0, 0, PI * 0.5), 12)
+	_sphere(tk, 0.7, Vector3(1.3, 0.9, 0), "paper", Vector3(0.4, 1, 1), false, 10)
+	_sphere(tk, 0.7, Vector3(-1.3, 0.9, 0), "paper", Vector3(0.4, 1, 1), false, 10)
+	for hx: float in [-0.7, 0.7]:
+		_box(tk, Vector3(0.4, 0.5, 1.5), Vector3(hx, 0.25, 0), "counter_dark")
+	_torus(tk, 0.68, 0.76, Vector3(0, 0.9, 0), "accent_lit", Vector3(0, 0, PI * 0.5))
+	_cyl(tk, 0.08, 0.08, 4.4, Vector3(-2.0, 0.4, 0.9), "counter_dark", Vector3(0, 0.5, PI * 0.5), 8)
+	_torus(tk, 0.12, 0.2, Vector3(-0.3, 1.75, 0), "ink", Vector3(PI * 0.5, 0, 0))
+	# Landing lights round the apron.
+	for i in 10:
+		var a := i * TAU / 10.0
+		var lp := c + Vector3(cos(a) * 7.6, 0, sin(a) * 7.6)
+		if _tile_clear(lp.x, lp.z, 1.6) and _inside(lp.x, lp.z, 0.98):
+			_cyl(self, 0.1, 0.12, 0.26, Vector3(lp.x, _top + 0.13, lp.z), "counter_dark")
+			_sphere(self, 0.1, Vector3(lp.x, _top + 0.3, lp.z), "glow_yellow" if i % 2 == 0 else "glow_cyan", Vector3.ONE, false, 8)
+	_count("space station")
+
+
+## A crashed satellite in the margin: the body nose-down in the ground, one panel bent up, a dish
+## askew, a scorch mark and some debris.
+func _block_satellite(c: Vector3, r: float, yaw: float) -> void:
+	var sn := _node(c, yaw)
+	var scorch := _sphere(sn, 2.4, Vector3(0.2, -0.02, 0.1), "crater", Vector3(1.0, 0.012, 0.8), false, 12)
+	scorch.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var body := _box(sn, Vector3(1.0, 1.0, 1.4), Vector3(0, 0.45, 0), "metal", Vector3(0.6, 0.3, 0.4))
+	body.position.y = 0.35
+	_box(sn, Vector3(3.0, 0.08, 1.0), Vector3(1.4, 1.3, 0.2), "field_dark", Vector3(0.2, 0.3, 0.9))
+	_box(sn, Vector3(1.4, 0.08, 1.0), Vector3(-1.2, 0.2, -0.3), "field_dark", Vector3(0.1, -0.4, 0.15))
+	var dish := _cyl(sn, 0.55, 0.1, 0.24, Vector3(-0.4, 1.0, 0.9), "paper", Vector3(1.2, 0.3, 0.4), 10)
+	dish.rotation.y = 0.8
+	_cyl(sn, 0.03, 0.03, 1.2, Vector3(0.3, 1.2, -0.6), "ink", Vector3(0.5, 0, 0.6))
+	for k in 5:
+		var a := k * 1.3
+		var d := _cyl(sn, 0.0, 0.12, 0.2, Vector3(cos(a) * (1.4 + k * 0.2), 0.1, sin(a) * (1.4 + k * 0.2)), "counter_dark", Vector3(0.9, a, 0.4), 6)
+		d.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var b := _sphere(sn, 0.08, Vector3(0.25, 1.05, 0.15), "glow_red", Vector3.ONE, false, 6)
+	_blinkers.append({"node": b, "period": 2.8, "phase": 0.0})
+	_count("crashed satellite")
+
+
+## A rock arch in the margin: two boulders with a slab across, pebbles round them.
+func _block_arch(c: Vector3, r: float, yaw: float) -> void:
+	var an := _node(c, yaw)
+	for s: float in [-1.0, 1.0]:
+		var rock := _sphere(an, 1.3, Vector3(s * 1.9, 0.6, 0), "rock", Vector3(1.0, 1.25, 0.9), false, 8)
+		rock.rotation.y = s * 0.5
+	var slab := _sphere(an, 1.2, Vector3(0, 2.15, 0), "moon_dark", Vector3(2.3, 0.45, 0.8), false, 8)
+	slab.rotation.z = 0.06
+	for k in 7:
+		var a := k * 0.9
+		var rr := _rng.randf_range(0.1, 0.2)
+		_sphere(an, rr, Vector3(cos(a) * 2.6, rr * 0.5, sin(a) * 1.4), "crater" if k % 2 == 0 else "moon_dark", Vector3(1.3, 0.6, 1.0), false, 6)
+	_count("rock arch")
+
+
+## A telescope dome in the margin with a couple of instrument boxes.
+func _block_telescope(c: Vector3, r: float, yaw: float) -> void:
+	_telescope(c, yaw)
+	var ib := _node(_at(c, yaw, -2.4, 1.0), yaw - 0.4)
+	_box(ib, Vector3(0.8, 0.6, 0.6), Vector3(0, 0.3, 0), "metal")
+	_cyl(ib, 0.03, 0.03, 1.4, Vector3(0.2, 1.3, 0), "ink")
+	_box(ib, Vector3(0.2, 0.14, 0.06), Vector3(0, 0.45, 0.31), "glow_green")

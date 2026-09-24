@@ -27,7 +27,7 @@ extends SceneTree
 const SPACING := 3.7
 const MAX_HOP := 5.6
 const MIN_PAIR := 3.0
-const SCALE := 0.074          # metres per drawing pixel (0.115 gave 127 spaces; Sean: "around 80")
+const SCALE := 0.115          # metres per drawing pixel (127 spaces; 0.074 gave 82, and Sean asked for the 127 back)
 const ORIGIN := Vector2(701.0, 561.0)   # the drawing pixel that becomes (0, 0)
 const MARGIN := 9.0           # the slab past the hull of the spaces
 const SHUTTLE_PRICE := 10
@@ -47,6 +47,10 @@ const TR := Vector2(1222, 692)
 const SHIELD_AT := Vector2(280, 806)   # the safe spot: the bottom of the big loop, opposite the start
 const ANNEX_L := Vector2(375, 335)     # the yellow domes
 const ANNEX_R := Vector2(1300, 740)
+# Ground for the space station at the bottom middle (Sean: "a space station in the bottom middle
+# part of the map, to take up space"): these points, in metres, join the hull so the slab bulges
+# there.
+const STATION_GROUND := [Vector2(-16.0, 36.0), Vector2(0.0, 36.0)]
 
 var _rng := RandomNumberGenerator.new()
 var _nodes: Array = []
@@ -66,6 +70,8 @@ func _initialize() -> void:
 	var pts: Array = []
 	for nd in _nodes:
 		pts.append(nd["p"])
+	for g in STATION_GROUND:
+		pts.append(g)
 	_slab = MoonSlab.from_hull(pts, MARGIN)
 	var problems := _check()
 	for p in problems:
@@ -129,9 +135,8 @@ func _build_streets() -> void:
 	# M1 to F4.
 	_poly([M1, Vector2(540, 360), Vector2(590, 340), F4], "K", "main")
 	# The LENS: two arcs from F4 to the start.
-	# (the arcs pushed a little apart from the drawing, so the spaces on them keep 3 m between)
-	_poly([F4, Vector2(660, 300), Vector2(720, 288), Vector2(790, 292), START], "A", "rich")
-	_poly([F4, Vector2(640, 358), Vector2(700, 364), Vector2(770, 356), Vector2(825, 340), START], "B", "branch")
+	_poly([F4, Vector2(660, 308), Vector2(720, 296), Vector2(790, 298), START], "A", "rich")
+	_poly([F4, Vector2(640, 356), Vector2(700, 362), Vector2(770, 350), Vector2(820, 326), START], "B", "branch")
 	# The RECTANGLE: south from F3 to the pad, east along the bottom, north, then west along the
 	# top edge through M3 back to F3.
 	_poly([F3, Vector2(860, 760), PAD], "P", "branch")
@@ -253,15 +258,17 @@ func _pick_type(kind: String) -> String:
 	var r := _rng.randf()
 	match kind:
 		"rich":
-			return "item" if r < 0.45 else ("ticket" if r < 0.8 else "blank")
+			return "item" if r < 0.45 else ("ticket" if r < 0.75 else ("heal" if r < 0.85 else "blank"))
 		"branch":
-			return "lose" if r < 0.28 else ("ticket" if r < 0.6 else ("item" if r < 0.8 else "blank"))
-	if r < 0.44:
+			return "lose" if r < 0.26 else ("ticket" if r < 0.56 else ("item" if r < 0.74 else ("heal" if r < 0.84 else "blank")))
+	if r < 0.40:
 		return "ticket"
-	if r < 0.7:
+	if r < 0.62:
 		return "blank"
-	if r < 0.84:
+	if r < 0.76:
 		return "item"
+	if r < 0.86:
+		return "heal"   # the health spot, +6 HP (Sean, 2026-09-24)
 	return "lose"
 
 
@@ -288,16 +295,24 @@ func _zones() -> Array:
 	var start_m := _m(START)
 	var plaza := Vector2(start_m.x, start_m.y - 7.6)
 	return [
-		_zone("hab", Vector2(360, 625), 7.0, 0.4),          # inside the big loop: HAB 2, the comms tower
-		_zone("farm", Vector2(700, 610), 7.0, -0.2),        # the bay: greenhouses in rows
+		_zone("hab", Vector2(330, 640), 8.0, 0.4),          # inside the big loop: HAB 2, the comms tower
+		_zone("farm", Vector2(690, 555), 8.0, -0.2),        # the bay: greenhouses in rows
+		_zone("park", Vector2(640, 700), 6.0, 0.6),         # the bay's crater with the rig
 		_zone("rocket", Vector2(768, 768), 4.6, 0.0),       # the rocket on its pad, by the pad space
-		_zone("pad", Vector2(1030, 400), 4.8, 0.3),         # inside the top loop: the rover's pad and lights
-		_zone("park", Vector2(1040, 585), 4.5, 0.6),        # ... and the crater with the rig
-		_zone("solar", Vector2(1040, 758), 3.2, 0.0),       # inside the rectangle: a solar row
+		_zone("pad", Vector2(1000, 400), 6.0, 0.3),         # inside the top loop: the rover's pad and lights
+		_zone("depot", Vector2(1040, 585), 7.0, 0.2),       # ... and the hangar, cargo, the crane
+		_zone("power", Vector2(1040, 758), 6.5, 0.0),       # inside the rectangle: the reactor, solar
+		_zone("solar", Vector2(690, 396), 2.4, 0.15),       # the sliver under the lens: a solar row
 		{"kind": "plaza", "centre": [snappedf(plaza.x, 0.01), snappedf(plaza.y, 0.01)], "r": 1.6, "yaw": 0.0},
+		{"kind": "station", "centre": [-8.0, 34.0], "r": 6.5, "yaw": 0.0},   # the space station, bottom middle
 		_margin_zone("lander", -28.0, 0.93, 2.4, 0.5),      # north-east margin: the lander
 		_margin_zone("ufo", 138.0, 0.93, 3.0, 0.0),         # south-west margin: a parked saucer and its pilot
 		_margin_zone("balloon", -112.0, 0.93, 1.6, 0.0),    # north margin: the tethered balloon
+		_margin_zone("radio", -88.0, 0.93, 2.0, 0.3),       # a radio tower behind the start
+		_margin_zone("radio", 60.0, 0.93, 2.0, -0.5),       # ... and one at the bottom-right corner
+		_margin_zone("satellite", -5.0, 0.93, 2.6, 0.8),    # a crashed satellite, east margin
+		_margin_zone("arch", 172.0, 0.945, 2.2, 1.71),      # a rock arch, west margin, spanning along the rim
+		_margin_zone("telescope", 86.0, 0.93, 2.4, 0.0),    # a telescope dome, south margin
 	]
 
 

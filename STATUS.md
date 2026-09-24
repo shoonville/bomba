@@ -888,16 +888,20 @@ identical, the headless four-seat board match on the new board.
   the rocket flying over with the rider in it and home again empty. Rules, bots, HUD, view, sound,
   a harness flag (`--rocket_test`) and tests.
 - **Tickets, not coins**, everywhere (state, events, tuning, HUD, lobby, results, the sound).
-- **Emblems part of the tile**: ticket stubs, a mystery bag with a "?", a spiked disc, the dome,
-  the flag, all still; no floating markers. **No teleport space.** The rover and more cute things:
-  the lander, the parked saucer and its pilot, the balloon.
+- **Emblems painted on the tile** (his second note on them): two ticket stubs, a star for an item
+  (the "?" bag was ugly), a mine for damage, a med bag for the new **health spot** (+6 HP, a green
+  tile, 12 of 127); the dome and the flag stay. **No teleport space.** One rover design, parked and
+  driving. More on the map: two radio towers, a crashed satellite, a rock arch, a telescope dome,
+  and the **space station** at the bottom middle on its own bulge of slab (hub, ring corridor, four
+  modules, solar wings, a turning radar dish, a fuel tank, landing lights). The status rows are
+  500 px, no steps-to-machine count.
 
   | BOMBA BAY | district (morning) | drawn (evening) |
   |---|---|---|
-  | spaces / forks | 186 / 7 | 82 / 4 (127 at first; Sean: "around 80") |
-  | routes from the start back to it | 36–116 steps | 18–61 steps, mean 39.5 (8.8 turns) |
-  | machine spots | R30, R74 | L19 (left dome), P11 (right dome) |
-  | rocket | — | P2 → L3 for 10 tickets |
+  | spaces / forks | 186 / 7 | 127 / 4 (82 for one commit; Sean: back to 127) |
+  | routes from the start back to it | 36–116 steps | 27–93 steps, mean 60 (13.3 turns) |
+  | machine spots | R30, R74 | L31 (left dome), P18 (right dome) |
+  | rocket | — | P4 → L5 for 10 tickets |
   | GPU ms mean / p95, 1080p on the 5090 | 0.72 / 0.74 | 0.62 / 0.63 |
   | render CPU ms | 1.26 | 0.73 |
   | first build under the wipe, longest chunk | 42 ms (craters) | 18–23 ms (the annexes) |

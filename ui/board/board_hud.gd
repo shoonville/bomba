@@ -131,7 +131,7 @@ func _on_events(events: Array) -> void:
 			"claw":
 				if int(e.get("target", 0)) != 0:
 					_row_flash[int(e["target"])] = 1.0
-			"tickets":
+			"tickets", "heal":
 				_row_flash[int(e["peer"])] = 1.0
 				if e.has("rank"):
 					rewards.append(e)
@@ -600,7 +600,7 @@ func _draw() -> void:
 		var col := Palette.player_colour(p.colour_index)
 		var active := i == st.active
 		var targeted := _item_target_mode != "" and i == _target_index
-		var w := 600.0
+		var w := 500.0   # was 600: the steps to the machine are gone (Sean, 2026-09-24)
 		var h := 44.0
 		var x := 24.0 + (14.0 if active else 0.0)
 		var skew := 12.0
@@ -610,34 +610,31 @@ func _draw() -> void:
 		draw_colored_polygon(PackedVector2Array([Vector2(x + skew, y), Vector2(x + skew + 34, y), Vector2(x + 34, y + h), Vector2(x, y + h)]), col)
 		if active or targeted:
 			draw_polyline(PackedVector2Array([Vector2(x + skew, y), Vector2(x + w, y), Vector2(x + w - skew, y + h), Vector2(x, y + h), Vector2(x + skew, y)]), Palette.hud_colour("danger") if targeted else accent, 3.0)
-		_text(Vector2(x + 48, y + 29), p.display_name.to_upper(), 20, paper if p != lp else accent)
-		# Tickets (Sean: arcade tickets, not coins): a stub before the count.
-		_ticket_icon(Vector2(x + 200, y + 21), 1.0, ink)
-		_text(Vector2(x + 220, y + 29), "%d" % p.tickets, 20, Palette.player_colour(3))
-		_text(Vector2(x + 268, y + 29), "● %d" % p.toys, 20, Palette.hud_colour("score"))
-		# Steps to the vending machine, so everyone can plan; the leader's distance is what matters.
-		if st.goal != "" and director.graph != null:
-			var d := director.graph.distance(p.space, st.goal)
-			if d >= 0:
-				_text(Vector2(x + 325, y + 29), "%d TO ●" % d, 14, Color(paper, 0.85))
+		_text(Vector2(x + 48, y + 29), p.display_name.to_upper(), 18, paper if p != lp else accent)
+		# Tickets (Sean: arcade tickets, not coins): a stub before the count. The name gets 180 px
+		# (BOT TANGERINE at 18 px is 160); the steps to the machine are gone (Sean, 2026-09-24:
+		# "you don't need to put '41 to'").
+		_ticket_icon(Vector2(x + 240, y + 21), 1.0, ink)
+		_text(Vector2(x + 256, y + 29), "%d" % p.tickets, 20, Palette.player_colour(3))
+		_text(Vector2(x + 300, y + 29), "● %d" % p.toys, 20, Palette.hud_colour("score"))
 		# HP: a small shaped bar, cyan while healthy and the danger red once a laser would finish it.
 		var hp_max := maxi(1, int(director.cfg.get("hp", 30)))
 		var hp_f := clampf(float(p.hp) / float(hp_max), 0.0, 1.0)
-		var hx := x + 392.0
+		var hx := x + 340.0
 		var hy := y + 17.0
 		draw_colored_polygon(PackedVector2Array([Vector2(hx + 3, hy), Vector2(hx + 57, hy), Vector2(hx + 54, hy + 9), Vector2(hx, hy + 9)]), Color(paper, 0.22))
 		if hp_f > 0.0:
 			var hw := 54.0 * hp_f
 			draw_colored_polygon(PackedVector2Array([Vector2(hx + 3, hy), Vector2(hx + 3 + hw, hy), Vector2(hx + hw, hy + 9), Vector2(hx, hy + 9)]),
 				Palette.hud_colour("danger") if hp_f <= 0.34 else Palette.hud_colour("meter"))
-		_text(Vector2(x + 454, y + 29), "%d" % p.hp, 14, Color(paper, 0.9))
+		_text(Vector2(x + 402, y + 29), "%d" % p.hp, 14, Color(paper, 0.9))
 		var chips := ""
 		for it in p.items:
 			chips += str(it).substr(0, 2).to_upper() + " "
 		if chips != "":
-			_text(Vector2(x + 494, y + 29), chips.strip_edges(), 14, Palette.player_colour(5))
+			_text(Vector2(x + 466, y + 29), chips.strip_edges(), 14, Palette.player_colour(5))
 		if not active and st.players.size() > 1 and i == (st.active + 1) % st.players.size() and st.phase != BoardState.PHASE_FINISHED:
-			_text(Vector2(x + w - 52, y + 27), "NEXT", 13, Color(accent, 0.9))
+			_text(Vector2(x + 428, y + 27), "NEXT", 13, Color(accent, 0.9))
 		if _row_delta.has(p.peer_id) and float(_row_delta[p.peer_id]["t"]) > 0.0:
 			# The minigame reward, beside the row, drifting up and fading with the reward card.
 			var rt: float = _row_delta[p.peer_id]["t"]

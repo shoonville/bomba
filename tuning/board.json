@@ -14,7 +14,8 @@
   "land_pause_seconds": 0.9,
   "space_effects": {
     "ticket": 3,
-    "lose": -3
+    "lose": -3,
+    "heal": 6
   },
   "rewards": {
     "tickets_by_rank": [

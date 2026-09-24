@@ -383,7 +383,7 @@ func _estimate_pause(events: Array) -> float:
 		match str(e.get("kind", "")):
 			"roll": t += 0.7
 			"move": t += hop * (e["path"] as Array).size()
-			"tickets", "item", "item_used": t += 0.55
+			"tickets", "heal", "item", "item_used": t += 0.55
 			"toy": t += 1.4
 			"laser":
 				t += 1.5

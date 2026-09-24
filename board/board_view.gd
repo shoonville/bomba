@@ -276,12 +276,12 @@ func clear_highlight() -> void:
 	_highlighted.clear()
 
 
-## The special spaces' emblems, part of the tile (Sean, 2026-09-24: "get rid of the fact that
-## the coins, presents, question mark, and spike hover over the spot... I want it to be part of
-## the actual spot"): a child of the tile, sitting on its face, still, so the fork hover lift
-## carries it. A fan of ticket stubs with a star for TICKETS, a tied mystery bag with a "?" for
-## an item, a spiked disc set into the face for damage, the glass dome for the safe spot, the
-## flag for the start.
+## The special spaces' emblems, painted on the tile (Sean, 2026-09-24: "the events on the spots
+## (item, tickets, damage) they should be painted on the tile"): flat pieces a hair above the
+## face, children of the tile so the fork hover lift carries them, still. Two ticket stubs
+## fanned for TICKETS, a paper star for an item (the "?" bag was ugly, his word), an ink mine
+## on a paper disc for damage, a paper med bag with a green cross for the health spot; the safe
+## spot keeps its dome and the start its flag.
 func _build_marker(space: BoardGraph.Space, shadow: Color) -> void:
 	var tile: Node3D = tiles.get(space.id, null)
 	if tile == null:
@@ -291,89 +291,55 @@ func _build_marker(space: BoardGraph.Space, shadow: Color) -> void:
 	var paper_mat := CelMaterial.for_colour(Palette.hud_colour("paper"), shadow)
 	var root := Node3D.new()
 	root.position = Vector3(0, 0.21, 0)   # the tile's face
+	var y := 0.052                        # the paint, over the dressing's inset hex
 	match space.type:
 		"ticket":
 			var tone := CelMaterial.for_colour(Palette.player_colour(2), shadow, 0.25)   # TANGERINE, like an arcade ticket
+			var hole := CelMaterial.for_colour(Color(_tone_for("ticket")).lightened(0.16), shadow)   # the inset's tone: punched
 			for k in 2:
 				var stub := Node3D.new()
-				stub.position = Vector3(k * 0.1 - 0.05, 0.03 + k * 0.04, k * 0.06 - 0.03)
-				stub.rotation.y = -0.32 + k * 0.64
+				stub.position = Vector3(k * 0.08 - 0.04, y + k * 0.014, k * 0.05 - 0.025)
+				stub.rotation.y = -0.3 + k * 0.6
 				root.add_child(stub)
-				_prop_box(stub, Vector3(0.8, 0.035, 0.44), Vector3.ZERO, tone)
-				for ex: float in [-0.4, 0.4]:
-					_prop_cyl(stub, 0.07, 0.05, Vector3(ex, 0.0, 0.0), ink_mat)   # the punched notches
-					for d in 4:
-						_prop_box(stub, Vector3(0.025, 0.04, 0.05), Vector3(ex * 0.8, 0.0, d * 0.1 - 0.15), paper_mat)   # the perforation
-				for s in 2:   # a star: two triangles laid flat, one turned round
-					var tri := MeshInstance3D.new()
-					var pm := PrismMesh.new()
-					pm.size = Vector3(0.24, 0.22, 0.012)
-					tri.mesh = pm
-					tri.position = Vector3(0, 0.024, 0.0)
-					tri.rotation = Vector3(-PI * 0.5, s * PI, 0)
-					tri.material_override = paper_mat
-					stub.add_child(tri)
+				_prop_box(stub, Vector3(0.92, 0.012, 0.5), Vector3.ZERO, tone)
+				for ex: float in [-0.46, 0.46]:
+					_prop_cyl(stub, 0.085, 0.02, Vector3(ex, 0.004, 0.0), hole)
+				for d in 5:
+					_prop_box(stub, Vector3(0.028, 0.02, 0.05), Vector3(0.3, 0.004, d * 0.1 - 0.2), paper_mat)
+				_prop_box(stub, Vector3(0.36, 0.02, 0.3), Vector3(-0.08, 0.004, 0), paper_mat)
+				_prop_box(stub, Vector3(0.26, 0.02, 0.05), Vector3(-0.08, 0.01, 0.06), tone)
+				_prop_box(stub, Vector3(0.18, 0.02, 0.05), Vector3(-0.08, 0.01, -0.06), tone)
 		"item":
-			var tone := CelMaterial.for_colour(_tone_for("item"), shadow, 0.2)
-			var body := MeshInstance3D.new()
-			var sm := SphereMesh.new()
-			sm.radius = 0.3
-			sm.height = 0.6
-			sm.radial_segments = 14
-			sm.rings = 7
-			body.mesh = sm
-			body.position = Vector3(0, 0.27, 0)
-			body.scale = Vector3(1.0, 0.88, 0.95)
-			body.material_override = tone
-			root.add_child(body)
-			_prop_cyl(root, 0.12, 0.2, Vector3(0, 0.6, 0), tone)   # the gathered neck
-			var tie := MeshInstance3D.new()
-			var tm := TorusMesh.new()
-			tm.inner_radius = 0.1
-			tm.outer_radius = 0.15
-			tm.rings = 12
-			tm.ring_segments = 6
-			tie.mesh = tm
-			tie.position = Vector3(0, 0.53, 0)
-			tie.material_override = ink_mat
-			root.add_child(tie)
-			var q := Label3D.new()
-			q.text = "?"
-			q.font_size = 72
-			q.pixel_size = 0.006
-			q.outline_size = 18
-			q.modulate = Palette.hud_colour("paper")
-			q.outline_modulate = ink
-			q.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-			q.alpha_cut = Label3D.ALPHA_CUT_DISCARD
-			q.position = Vector3(0, 0.3, 0.4)   # outside the bag, so the billboard is not inside its sphere
-			root.add_child(q)
+			_flat_ngon(root, 0.2, 5, Vector3(0, y, 0), paper_mat, -PI * 0.5)
+			for k in 5:
+				var a := k * TAU / 5.0 - PI * 0.5
+				_flat_point(root, 0.24, 0.36, Vector3(cos(a) * 0.32, y, sin(a) * 0.32), a, paper_mat)
+			for sp: Vector2 in [Vector2(0.58, 0.3), Vector2(-0.52, -0.36), Vector2(0.44, -0.52)]:
+				_prop_cyl(root, 0.045, 0.012, Vector3(sp.x, y, sp.y), paper_mat)
 		"lose":
-			var tone := CelMaterial.for_colour(_tone_for("lose"), shadow, 0.2)
-			_prop_cyl(root, 0.44, 0.06, Vector3(0, 0.03, 0), tone)   # a disc set into the face
-			for k in 7:
-				var at := Vector3.ZERO if k == 6 else Vector3(cos(k * TAU / 6.0) * 0.26, 0, sin(k * TAU / 6.0) * 0.26)
-				var h := 0.5 if k == 6 else 0.36
-				var spike := MeshInstance3D.new()
-				var cm := CylinderMesh.new()
-				cm.top_radius = 0.0
-				cm.bottom_radius = 0.085
-				cm.height = h
-				cm.radial_segments = 6
-				spike.mesh = cm
-				spike.position = at + Vector3(0, 0.06 + h * 0.5, 0)
-				spike.material_override = tone
-				root.add_child(spike)
-				var tip := MeshInstance3D.new()
-				var tmesh := CylinderMesh.new()
-				tmesh.top_radius = 0.0
-				tmesh.bottom_radius = 0.032
-				tmesh.height = 0.15
-				tmesh.radial_segments = 6
-				tip.mesh = tmesh
-				tip.position = at + Vector3(0, 0.06 + h - 0.07, 0)
-				tip.material_override = ink_mat
-				root.add_child(tip)
+			_flat_ngon(root, 0.5, 16, Vector3(0, y, 0), paper_mat, 0.0)
+			_flat_ngon(root, 0.23, 12, Vector3(0, y + 0.006, 0), ink_mat, 0.0)
+			for k in 8:
+				var a := k * TAU / 8.0
+				_flat_point(root, 0.13, 0.2, Vector3(cos(a) * 0.3, y + 0.006, sin(a) * 0.3), a, ink_mat)
+			_prop_cyl(root, 0.05, 0.012, Vector3(-0.07, y + 0.012, -0.07), paper_mat)   # a glint
+		"heal":
+			var cross := CelMaterial.for_colour(Color.from_hsv(128.0 / 360.0, 0.72, 0.52), shadow)
+			_prop_box(root, Vector3(0.72, 0.012, 0.5), Vector3(0, y, 0.06), paper_mat)   # the bag
+			_prop_box(root, Vector3(0.6, 0.012, 0.08), Vector3(0, y, -0.22), paper_mat)   # its top edge
+			var handle := MeshInstance3D.new()
+			var hm := TorusMesh.new()
+			hm.inner_radius = 0.12
+			hm.outer_radius = 0.19
+			hm.rings = 16
+			hm.ring_segments = 4
+			handle.mesh = hm
+			handle.position = Vector3(0, y, -0.28)
+			handle.scale = Vector3(1.0, 0.15, 1.0)
+			handle.material_override = paper_mat
+			root.add_child(handle)
+			_prop_box(root, Vector3(0.36, 0.012, 0.12), Vector3(0, y + 0.006, 0.06), cross)
+			_prop_box(root, Vector3(0.12, 0.012, 0.36), Vector3(0, y + 0.006, 0.06), cross)
 		"shield":
 			var dome := MeshInstance3D.new()
 			var dm := SphereMesh.new()
@@ -421,6 +387,34 @@ func _build_marker(space: BoardGraph.Space, shadow: Color) -> void:
 			return
 	tile.add_child(root)
 	markers.append(root)
+
+
+## A flat regular polygon lying on the face, for the painted emblems.
+func _flat_ngon(parent: Node3D, radius: float, sides: int, pos: Vector3, mat: Material, turn: float) -> void:
+	var mi := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = radius
+	cm.bottom_radius = radius
+	cm.height = 0.012
+	cm.radial_segments = sides
+	cm.rings = 1
+	mi.mesh = cm
+	mi.position = pos
+	mi.rotation.y = turn
+	mi.material_override = mat
+	parent.add_child(mi)
+
+
+## A flat triangle lying on the face with its apex pointing along angle `a` (from +x toward +z).
+func _flat_point(parent: Node3D, width: float, length: float, pos: Vector3, a: float, mat: Material) -> void:
+	var mi := MeshInstance3D.new()
+	var pm := PrismMesh.new()
+	pm.size = Vector3(width, length, 0.012)
+	mi.mesh = pm
+	mi.position = pos
+	mi.rotation = Vector3(-PI * 0.5, atan2(-cos(a), -sin(a)), 0.0)
+	mi.material_override = mat
+	parent.add_child(mi)
 
 
 ## The tile whose centre projects nearest the screen point, within `max_px`; "" if none.
@@ -1265,24 +1259,8 @@ func _build_moon_props(from: int, to: int) -> void:
 				prop.add_child(dish)
 				_prop_cyl(prop, 0.05, 1.6, Vector3(0, 3.3, -0.55), ink_mat)
 				_prop_sphere(prop, 0.16, Vector3(0, 4.1, -1.05), glow_mat)
-			2:   # moon buggy
-				_prop_box(prop, Vector3(2.4, 0.5, 1.4), Vector3(0, 0.8, 0), metal_mat)
-				_prop_box(prop, Vector3(0.9, 0.6, 1.1), Vector3(-0.5, 1.3, 0), accent_mat)
-				for wx: float in [-0.85, 0.85]:
-					for wz: float in [-0.85, 0.85]:
-						var wheel := MeshInstance3D.new()
-						var wm := CylinderMesh.new()
-						wm.top_radius = 0.45
-						wm.bottom_radius = 0.45
-						wm.height = 0.3
-						wm.radial_segments = 10
-						wheel.mesh = wm
-						wheel.position = Vector3(wx, 0.45, wz)
-						wheel.rotation.x = PI * 0.5
-						wheel.material_override = ink_mat
-						prop.add_child(wheel)
-				_prop_cyl(prop, 0.04, 1.8, Vector3(0.9, 1.9, 0.5), ink_mat)
-				_prop_sphere(prop, 0.1, Vector3(0.9, 2.8, 0.5), glow_mat)
+			2:   # the rover parks here; the dressing builds it, one design with the driving one (2026-09-24)
+				pass
 			3:   # a half-buried probe with antennas and a blinking light
 				_prop_sphere(prop, 1.1, Vector3(0, -0.35, 0), metal_mat)
 				for ak in 3:
@@ -1535,6 +1513,7 @@ func _tone_for(type: String) -> Color:
 		"lose": return Palette.hud_colour("danger")
 		"item": return Palette.player_colour(5)
 		"shield": return Palette.hud_colour("meter")
+		"heal": return Palette.map_colour("board", "heal")
 		"start": return Palette.map_colour("board", "accent")
 	return Palette.map_colour("board", "field")
 
@@ -1851,6 +1830,10 @@ func _play_next() -> void:
 			_float_label(int(e["peer"]), ("+%d" if int(e["delta"]) >= 0 else "%d") % int(e["delta"]),
 				Palette.player_colour(3) if int(e["delta"]) >= 0 else Palette.hud_colour("danger"))
 			Audio.play("ticket" if int(e["delta"]) >= 0 else "hurt", -6.0)
+			wait = 0.5
+		"heal":
+			_float_label(int(e["peer"]), "+%d HP" % int(e["delta"]), Palette.map_colour("board", "heal"))
+			Audio.play("heal", -6.0)
 			wait = 0.5
 		"item":
 			# The HUD pops the item's icon over the pawn's head (Sean: an icon, not the name); a

@@ -726,3 +726,24 @@ func test_rocket_state_round_trip() -> void:
 	var back := BoardState.from_dict(s.to_dict())
 	assert_eq(back.pending_kind, "shuttle")
 	assert_eq(back.pending_options, PackedStringArray(["1", "12"]))
+
+
+func test_heal_space() -> void:
+	# The health spot (Sean, 2026-09-24): +6 HP on landing, never over the full bar.
+	var s := _fresh(3)
+	var me := s.active_player()
+	graph.get_space("2").type = "heal"
+	me.space = "2"
+	me.hp = 20
+	var ev := []
+	BoardRules._land(s, graph, cfg, ev)
+	assert_eq(me.hp, 26)
+	var heals: Array = ev.filter(func(e): return e["kind"] == "heal")
+	assert_eq(heals.size(), 1)
+	assert_eq(int(heals[0]["delta"]), 6)
+	me.hp = 28
+	ev.clear()
+	BoardRules._land(s, graph, cfg, ev)
+	assert_eq(me.hp, int(cfg["hp"]), "capped at full")
+	assert_eq(int(ev[0]["delta"]), 2)
+	graph.get_space("2").type = "ticket"

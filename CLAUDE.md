@@ -43,17 +43,21 @@ that travels with the repo.
 - Board: one board (BOMBA BAY, `tools/gen_board.gd`, GDScript). Since 2026-09-24 (evening) it is SEAN'S DRAWING
   (`reference/board_drawing.png`: blue lines for the spaces, black arrows for the one-way directions, two arrows at
   a fork, the start, two yellow domes for the annexes, a rocket with a dotted line to its landing spot): the
-  generator traces it in the drawing's pixels (0.074 m each: he wanted "around 80" spots), 82 spaces, 4 forks, every space reaching every
+  generator traces it in the drawing's pixels (0.115 m each; an 82-space trace at 0.074 lasted one commit, he asked for the 127 back), 127 spaces, 4 forks, every space reaching every
   other. Do not redesign the layout; if it changes, it changes from a new drawing of his. The blocks between the
   streets and a few margin spots are "zones" in the board file and the dressing builds a set-piece in each
   (`BoardDressing._blocks`); the slab is the rounded hull of the spaces (`MoonSlab`, shared by the view, the
   dressing, `AnnexPlan` and `tools/mark_spots.gd`). Regenerate with gen_board, then mark_spots. ONE rocket
   on the map, on its pad by the pad space (his: "there's only gonna be 1 rocket"): reaching that space with
   10 tickets offers a flight to the landing spot (its own prompt, not a fork). The currency is TICKETS, like
-  an arcade's (not coins). No teleport ("event") space. The spaces' emblems are PART OF THE TILE, still
-  (his note: "get rid of the fact that the coins, presents, question mark, and spike hover over the spot");
-  the item is a mystery bag with a "?". Cute space things stay (the rover, the crew, the saucer and its pilot,
-  the lander, the balloon, the drone, the station, the freighter). Pink sky kept, moon-base theme under it, close Pummel-Party camera on ONE fixed heading (south of the pawn looking north, whichever way it
+  an arcade's (not coins). No teleport ("event") space. The spaces' emblems are PAINTED ON THE TILE, still
+  (his notes: nothing hovering, then "painted on the tile"): two ticket stubs, a star for an item (the "?" bag
+  was ugly, his word), a mine for damage, a med bag for the HEALTH spot (+6 HP, a green tile, his ask). ONE
+  rover design (the driving buggy's), parked on its pad and driving the rim. The SPACE STATION at the bottom
+  middle is his ask ("to take up space... detailed"): keep it. Cute space things stay (the crew, the saucer
+  and its pilot, the lander, the balloon, the radio towers, the crashed satellite, the rock arch, the
+  telescope, the drone, the orbiting station, the freighter). The status rows are 500 px with no steps-to-
+  machine count (his: "you don't need to put '41 to'"). Pink sky kept, moon-base theme under it, close Pummel-Party camera on ONE fixed heading (south of the pawn looking north, whichever way it
   travels; 2026-09-23), eight-sided die, no water.
   The vending machine lives on the two annexes only (his "original two spots", the bridges to the
   egg domes; the district names their rim angles, the two ends of main street); never add machine pads or more spots.
@@ -91,7 +95,7 @@ that travels with the repo.
   `--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results|shield|roll|move|laser|hit` to arm
   on an event (`--screenshot_event_index=N` for its Nth occurrence; a `myturn` frame needs
   `--screenshot_at=5` or more, the view is still playing the previous turn's hops before that).
-  Handy flags: `--board_overview`, `--board_map`, `--rocket_test` (everyone a space before the rocket pad with the fare; with `--machine_at=L19`, the left annex, the bots fly), `--spawn_index=N`, `--board_cam=x,y,z:tx,ty,tz`, `--hover_fork=left`,
+  Handy flags: `--board_overview`, `--board_map`, `--rocket_test` (everyone a space before the rocket pad with the fare; with `--machine_at=L31`, the left annex, the bots fly), `--spawn_index=N`, `--board_cam=x,y,z:tx,ty,tz`, `--hover_fork=left`,
   `--social_test`, `--show_scoreboard`, `--figure_test`, `--ads_progress=0..1`, `--force_weapon=0|1`,
   `--force_ads`, `--give_item=ID`, `--give_bots_item=ID`, `--hotbar_test`, `--target_test`, `--pop_test=ITEM`, `--aim_test=DEG`,
   `--machine_at=ID`, `--minigame=ID`, `--render_scale=N`, `--port=N`, `--no_warmup`,

@@ -171,7 +171,7 @@ static func names() -> PackedStringArray:
 	return PackedStringArray(["sniper_fire", "ar_fire", "hitmarker", "headshot", "kill", "death", "hurt",
 		"bolt", "reload_start", "reload_end", "dry", "swap", "jump", "land", "footstep", "respawn",
 		"ui_hover", "ui_click", "ui_back", "dice", "ticket", "shell_in",
-		"ping", "emote", "laser", "splat", "bomb_throw", "bomb_blast", "portal", "claw", "rocket"])
+		"ping", "emote", "laser", "splat", "bomb_throw", "bomb_blast", "portal", "claw", "rocket", "heal"])
 
 
 ## Build a named sound as float samples. Unknown names return a short click so a typo is audible.
@@ -362,6 +362,12 @@ static func build(name: String) -> PackedFloat32Array:
 				out = mix(out, mul(highpass(noise(cn, 301 + k), 2200.0), env_exp(cn, 0.004)), 0.5, samples(0.036 * k))
 			var bn := samples(0.16)
 			return mix(out, mul(tone(bn, 1318.5, 1760.0, "square"), env_exp(bn, 0.05)), 0.45, samples(0.3))
+		"heal":
+			# The health spot: a soft two-note chime rising.
+			var n := samples(0.4)
+			var out := mul(tone(n, 660.0, 660.0, "sine"), env_exp(n, 0.12))
+			out = mix(out, mul(tone(n, 880.0, 990.0, "sine"), env_exp(n, 0.14)), 0.8, samples(0.12))
+			return mix(out, mul(tone(n, 1320.0, 1320.0, "tri"), env_exp(n, 0.1)), 0.3, samples(0.12))
 		"rocket":
 			# The board's rocket lifting off: a low rumble of noise under a sub tone sliding down.
 			var n := samples(1.6)

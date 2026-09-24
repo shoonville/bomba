@@ -493,6 +493,12 @@ static func _land(state: BoardState, graph: BoardGraph, cfg: Dictionary, events:
 				var before := ap.tickets
 				ap.tickets = maxi(0, ap.tickets + delta)
 				events.append({"kind": "tickets", "peer": ap.peer_id, "delta": ap.tickets - before, "total": ap.tickets})
+		"heal":
+			# The health spot (Sean, 2026-09-24): a few HP back, never over the full bar.
+			var hp_max := int(cfg.get("hp", 30))
+			var before_hp := ap.hp
+			ap.hp = mini(hp_max, ap.hp + int(effects.get("heal", 6)))
+			events.append({"kind": "heal", "peer": ap.peer_id, "delta": ap.hp - before_hp, "total": ap.hp})
 		"shield":
 			# The one safe spot: you leave it invulnerable to the next hit (bomb or damage space).
 			if not ap.items.has("shield"):
