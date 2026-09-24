@@ -145,7 +145,7 @@ func _build() -> void:
 	_match_col.add_child(_stepper("ROUND CAP", func(): return Session.config.rounds,
 		func(v: int): Session.config.rounds = v, 1, 0, 20, func(v: int): return "NONE" if v == 0 else "%d" % v))
 	_match_col.add_child(_stepper("TOY PRICE", func(): return Session.config.toy_price,
-		func(v: int): Session.config.toy_price = v, 1, 3, 25, func(v: int): return "%d COINS" % v))
+		func(v: int): Session.config.toy_price = v, 1, 3, 25, func(v: int): return "%d TICKETS" % v))
 
 	var hint := UiStyle.label("WASD MOVE · SPACE JUMP · LMB FIRE · RMB SCOPE · 1/2/Q WEAPONS · R RELOAD · ESC PAUSE", 15)
 	hint.position = Vector2(80, 840)

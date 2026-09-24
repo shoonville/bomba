@@ -71,6 +71,13 @@ func start(players_data: Array, seed_value: int, p_board_id: String) -> void:
 			for p in state.players:
 				if p.is_bot:
 					p.items.append(str(Game.args["give_bots_item"]))
+		if Game.args.has("rocket_test") and graph.shuttle_from != "":
+			# Harness: everyone starts one space before the rocket pad with the fare in hand, so
+			# the first roll brings the offer and (with --machine_at on the far side) the flight.
+			var before := graph.prev_of(graph.shuttle_from)
+			for p in state.players:
+				p.space = str(before[0]) if not before.is_empty() else graph.shuttle_from
+				p.tickets = 25
 		if Game.args.has("machine_at"):
 			# Harness: pin the first machine spot so a purchase can be framed from a fresh match.
 			for c in graph.goal_candidates():
@@ -80,7 +87,7 @@ func start(players_data: Array, seed_value: int, p_board_id: String) -> void:
 	else:
 		state = null
 	_show_board()
-	Log.info("board", "Board match on '%s' with %d players (server=%s), machine at %s, first to %d toys at %d coins" % [
+	Log.info("board", "Board match on '%s' with %d players (server=%s), machine at %s, first to %d toys at %d tickets" % [
 		board_id, players_data.size(), is_server(), state.goal if state != null else "?", int(cfg.get("toys_to_win", 0)), int(cfg.get("toy_price", 0))])
 
 
@@ -357,7 +364,7 @@ func _broadcast(events: Array) -> void:
 		elif str(e.get("kind", "")) == "claw":
 			var thief := state.player(int(e["peer"]))
 			var mark := state.player(int(e.get("target", 0)))
-			var what := "nothing (shielded)" if bool(e.get("shielded", false)) else (str(e["item"]).to_upper() if str(e["item"]) != "" else "%d coins" % int(e["coins"]))
+			var what := "nothing (shielded)" if bool(e.get("shielded", false)) else (str(e["item"]).to_upper() if str(e["item"]) != "" else "%d tickets" % int(e["tickets"]))
 			if mark == null:
 				Log.info("board", "%s extends the claw at %.2f rad: nobody in its path" % [thief.display_name if thief != null else "?", float(e["aim"])])
 			else:
@@ -376,7 +383,7 @@ func _estimate_pause(events: Array) -> float:
 		match str(e.get("kind", "")):
 			"roll": t += 0.7
 			"move": t += hop * (e["path"] as Array).size()
-			"coins", "item", "item_used": t += 0.55
+			"tickets", "item", "item_used": t += 0.55
 			"toy": t += 1.4
 			"laser":
 				t += 1.5
@@ -388,12 +395,12 @@ func _estimate_pause(events: Array) -> float:
 				for h in e.get("hits", []):
 					t += 0.9 if bool(h.get("dead", false)) else 0.35 * (h.get("knock", []) as Array).size()
 			"portal": t += 2.8
+			"shuttle": t += 5.6
 			"claw": t += 1.4
-			"teleport": t += 1.1
 			"turn": t += 0.35
 			"minigame": t += 2.4
 			"finished": t += 1.0
-	if events.any(func(e): return e.get("kind") == "coins" and e.has("rank")):
+	if events.any(func(e): return e.get("kind") == "tickets" and e.has("rank")):
 		t += 2.4  # the reward card
 	return t + float(cfg.get("land_pause_seconds", 0.9)) * 0.3
 

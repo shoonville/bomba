@@ -9,8 +9,8 @@ var round_seconds: int = 0  # 0 = use the minigame's own tuning
 var bot_difficulty: String = "normal"
 var toys_to_win: int = 4    # first to this many toys ends the board match (0 = only the round cap)
 var turn_seconds: int = 20  # seconds a human has to roll before the server rolls for them
-var rounds: int = 10        # the round cap (0 = none): after it, most toys wins, coins break ties
-var toy_price: int = 10     # coins the vending machine takes for a toy
+var rounds: int = 10        # the round cap (0 = none): after it, most toys wins, tickets break ties
+var toy_price: int = 10     # tickets the vending machine takes for a toy
 
 
 ## The lobby's starting values come from tuning/board.json (Session reads them once it is up).

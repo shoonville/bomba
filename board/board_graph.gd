@@ -19,6 +19,9 @@ var spaces: Dictionary = {}
 var slab: MoonSlab = null      # the moon chunk the board stands on (board files since 2026-09-24)
 var zones: Array = []          # the blocks between the streets: {kind, centre [x, z], r, yaw}, for the look
 var annex_angles: Array = []   # where the two annexes stand off the rim, when the board says
+var shuttle_from := ""         # the rocket pad, when the board has a rocket (2026-09-24, Sean's drawing)
+var shuttle_to := ""           # ... and the spot it lands on
+var shuttle_price := 10        # the fare, in tickets
 var _prev: Dictionary = {}
 
 
@@ -52,6 +55,10 @@ static func from_dict(d: Dictionary) -> BoardGraph:
 		g.zones.append(zd)
 	for a in d.get("annexes", []):
 		g.annex_angles.append(float(a))
+	var sh: Dictionary = d.get("shuttle", {})
+	g.shuttle_from = str(sh.get("from", ""))
+	g.shuttle_to = str(sh.get("to", ""))
+	g.shuttle_price = int(sh.get("price", 10))
 	for sd in d.get("spaces", []):
 		var s := Space.new()
 		s.id = str(sd.get("id", ""))
@@ -83,6 +90,8 @@ func validate() -> PackedStringArray:
 				errors.append("space '%s' links to missing '%s'" % [sid, n])
 	if goal_candidates().is_empty():
 		errors.append("no goal candidates")
+	if shuttle_from != "" and not (spaces.has(shuttle_from) and spaces.has(shuttle_to)):
+		errors.append("the rocket runs from '%s' to '%s', and one is missing" % [shuttle_from, shuttle_to])
 	return errors
 
 

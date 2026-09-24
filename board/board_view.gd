@@ -2,7 +2,7 @@ class_name BoardView
 extends Node3D
 ## The board in 3D (BOARDPLAN.md §5): six-sided floating tiles by space type, planks between
 ## them, a ring on the goal, pawns hopping space to space, a camera that follows the active
-## pawn, floating coin/item labels. Plays the director's event queue in order.
+## pawn, floating ticket/item labels. Plays the director's event queue in order.
 
 var director: BoardDirector
 var tiles: Dictionary = {}
@@ -31,6 +31,12 @@ var _env_node: WorldEnvironment
 var _env: Environment
 var markers: Array = []
 var _marker_t: float = 0.0
+var _shuttle: Node3D               # the rocket on its pad: the board's one rocket (Sean's drawing, 2026-09-24)
+var _shuttle_home: Vector3 = Vector3.ZERO
+var _shuttle_flame: MeshInstance3D
+var _shuttle_follow: bool = false  # the camera rides along during a flight
+var _cam_zoom: float = 1.0         # the camera's distance, scaled: pulled back while the rocket flies
+var _shuttle_tween: Tween
 var _cam_target: Vector3 = Vector3.ZERO
 var _cam_look: Vector3 = Vector3.ZERO
 var _cam_yaw: float = 0.0          # one heading for the whole board: south of the pawn, looking north (Sean, 2026-09-23)
@@ -249,7 +255,7 @@ func highlight_path(ids: Array) -> void:
 		var tile: MeshInstance3D = tiles[sid]
 		var base: Color = _tone_for(director.graph.get_space(sid).type)
 		var landing := k == ids.size() - 1
-		# Landing tile in glowing cream: distinct on every tile colour (the accent is coin yellow).
+		# Landing tile in glowing cream: distinct on every tile colour (the accent is ticket yellow).
 		var mat := CelMaterial.for_colour(Palette.hud_colour("paper") if landing else base.lightened(0.3), shadow, 1.4 if landing else 0.9)
 		_highlighted.append({"tile": tile, "mat": tile.material_override})
 		tile.material_override = mat
@@ -270,105 +276,126 @@ func clear_highlight() -> void:
 	_highlighted.clear()
 
 
-## A marker over every special space so the board reads without a legend: a spinning coin,
-## a crate for items, a spiked ball for LOSE, a "?" sign for events, a flag for the start.
+## The special spaces' emblems, part of the tile (Sean, 2026-09-24: "get rid of the fact that
+## the coins, presents, question mark, and spike hover over the spot... I want it to be part of
+## the actual spot"): a child of the tile, sitting on its face, still, so the fork hover lift
+## carries it. A fan of ticket stubs with a star for TICKETS, a tied mystery bag with a "?" for
+## an item, a spiked disc set into the face for damage, the glass dome for the safe spot, the
+## flag for the start.
 func _build_marker(space: BoardGraph.Space, shadow: Color) -> void:
+	var tile: Node3D = tiles.get(space.id, null)
+	if tile == null:
+		return
 	var ink := Palette.map_colour("board", "line")
 	var ink_mat := CelMaterial.for_colour(Color.from_hsv(ink.h, 0.45, 0.24), shadow)
+	var paper_mat := CelMaterial.for_colour(Palette.hud_colour("paper"), shadow)
 	var root := Node3D.new()
-	root.position = space.position + Vector3(0, 0.55, 0)
+	root.position = Vector3(0, 0.21, 0)   # the tile's face
 	match space.type:
-		"coin":
-			var coin := MeshInstance3D.new()
-			var cm := CylinderMesh.new()
-			cm.top_radius = 0.28
-			cm.bottom_radius = 0.28
-			cm.height = 0.08
-			cm.radial_segments = 16
-			coin.mesh = cm
-			coin.rotation.x = PI * 0.5
-			coin.material_override = CelMaterial.for_colour(_tone_for("coin"), shadow, 0.35)
-			root.add_child(coin)
-			var rim := MeshInstance3D.new()
-			var rm := TorusMesh.new()
-			rm.inner_radius = 0.26
-			rm.outer_radius = 0.31
-			rm.rings = 16
-			rm.ring_segments = 6
-			rim.mesh = rm
-			rim.rotation.x = PI * 0.5
-			rim.material_override = ink_mat
-			root.add_child(rim)
+		"ticket":
+			var tone := CelMaterial.for_colour(Palette.player_colour(2), shadow, 0.25)   # TANGERINE, like an arcade ticket
+			for k in 2:
+				var stub := Node3D.new()
+				stub.position = Vector3(k * 0.1 - 0.05, 0.03 + k * 0.04, k * 0.06 - 0.03)
+				stub.rotation.y = -0.32 + k * 0.64
+				root.add_child(stub)
+				_prop_box(stub, Vector3(0.8, 0.035, 0.44), Vector3.ZERO, tone)
+				for ex: float in [-0.4, 0.4]:
+					_prop_cyl(stub, 0.07, 0.05, Vector3(ex, 0.0, 0.0), ink_mat)   # the punched notches
+					for d in 4:
+						_prop_box(stub, Vector3(0.025, 0.04, 0.05), Vector3(ex * 0.8, 0.0, d * 0.1 - 0.15), paper_mat)   # the perforation
+				for s in 2:   # a star: two triangles laid flat, one turned round
+					var tri := MeshInstance3D.new()
+					var pm := PrismMesh.new()
+					pm.size = Vector3(0.24, 0.22, 0.012)
+					tri.mesh = pm
+					tri.position = Vector3(0, 0.024, 0.0)
+					tri.rotation = Vector3(-PI * 0.5, s * PI, 0)
+					tri.material_override = paper_mat
+					stub.add_child(tri)
 		"item":
-			var crate := MeshInstance3D.new()
-			var bm := BoxMesh.new()
-			bm.size = Vector3(0.42, 0.42, 0.42)
-			crate.mesh = bm
-			crate.material_override = CelMaterial.for_colour(_tone_for("item"), shadow, 0.2)
-			root.add_child(crate)
-			for axis in [Vector3(1, 0, 0), Vector3(0, 0, 1)]:
-				var strap := MeshInstance3D.new()
-				var sb := BoxMesh.new()
-				sb.size = Vector3(0.46, 0.46, 0.46) - axis * 0.36
-				strap.mesh = sb
-				strap.material_override = ink_mat
-				root.add_child(strap)
-		"lose":
-			var ball := MeshInstance3D.new()
+			var tone := CelMaterial.for_colour(_tone_for("item"), shadow, 0.2)
+			var body := MeshInstance3D.new()
 			var sm := SphereMesh.new()
-			sm.radius = 0.24
-			sm.height = 0.48
-			ball.mesh = sm
-			ball.material_override = CelMaterial.for_colour(_tone_for("lose"), shadow, 0.2)
-			root.add_child(ball)
-			for k in 6:
+			sm.radius = 0.3
+			sm.height = 0.6
+			sm.radial_segments = 14
+			sm.rings = 7
+			body.mesh = sm
+			body.position = Vector3(0, 0.27, 0)
+			body.scale = Vector3(1.0, 0.88, 0.95)
+			body.material_override = tone
+			root.add_child(body)
+			_prop_cyl(root, 0.12, 0.2, Vector3(0, 0.6, 0), tone)   # the gathered neck
+			var tie := MeshInstance3D.new()
+			var tm := TorusMesh.new()
+			tm.inner_radius = 0.1
+			tm.outer_radius = 0.15
+			tm.rings = 12
+			tm.ring_segments = 6
+			tie.mesh = tm
+			tie.position = Vector3(0, 0.53, 0)
+			tie.material_override = ink_mat
+			root.add_child(tie)
+			var q := Label3D.new()
+			q.text = "?"
+			q.font_size = 72
+			q.pixel_size = 0.006
+			q.outline_size = 18
+			q.modulate = Palette.hud_colour("paper")
+			q.outline_modulate = ink
+			q.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			q.alpha_cut = Label3D.ALPHA_CUT_DISCARD
+			q.position = Vector3(0, 0.3, 0.4)   # outside the bag, so the billboard is not inside its sphere
+			root.add_child(q)
+		"lose":
+			var tone := CelMaterial.for_colour(_tone_for("lose"), shadow, 0.2)
+			_prop_cyl(root, 0.44, 0.06, Vector3(0, 0.03, 0), tone)   # a disc set into the face
+			for k in 7:
+				var at := Vector3.ZERO if k == 6 else Vector3(cos(k * TAU / 6.0) * 0.26, 0, sin(k * TAU / 6.0) * 0.26)
+				var h := 0.5 if k == 6 else 0.36
 				var spike := MeshInstance3D.new()
 				var cm := CylinderMesh.new()
 				cm.top_radius = 0.0
-				cm.bottom_radius = 0.07
-				cm.height = 0.22
+				cm.bottom_radius = 0.085
+				cm.height = h
 				cm.radial_segments = 6
 				spike.mesh = cm
-				var dir := [Vector3.UP, Vector3.DOWN, Vector3.LEFT, Vector3.RIGHT, Vector3.FORWARD, Vector3.BACK][k] as Vector3
-				spike.position = dir * 0.3
-				if dir.is_equal_approx(Vector3.UP):
-					pass
-				elif dir.is_equal_approx(Vector3.DOWN):
-					spike.rotation.x = PI
-				else:
-					spike.basis = Basis(Quaternion(Vector3.UP, dir))
-				spike.material_override = ink_mat
+				spike.position = at + Vector3(0, 0.06 + h * 0.5, 0)
+				spike.material_override = tone
 				root.add_child(spike)
-		"event":
-			var sign := Label3D.new()
-			sign.text = "?"
-			sign.font_size = 96
-			sign.pixel_size = 0.008
-			sign.outline_size = 22
-			sign.modulate = Palette.hud_colour("paper")
-			sign.outline_modulate = ink
-			sign.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-			sign.alpha_cut = Label3D.ALPHA_CUT_DISCARD
-			sign.position.y = 0.2
-			root.add_child(sign)
+				var tip := MeshInstance3D.new()
+				var tmesh := CylinderMesh.new()
+				tmesh.top_radius = 0.0
+				tmesh.bottom_radius = 0.032
+				tmesh.height = 0.15
+				tmesh.radial_segments = 6
+				tip.mesh = tmesh
+				tip.position = at + Vector3(0, 0.06 + h - 0.07, 0)
+				tip.material_override = ink_mat
+				root.add_child(tip)
 		"shield":
 			var dome := MeshInstance3D.new()
 			var dm := SphereMesh.new()
-			dm.radius = 0.3
-			dm.height = 0.6
+			dm.radius = 0.36
+			dm.height = 0.72
 			dm.radial_segments = 14
 			dm.rings = 7
+			dm.is_hemisphere = true
 			dome.mesh = dm
-			dome.scale = Vector3(1.0, 0.6, 1.0)
+			dome.position = Vector3(0, 0.02, 0)
+			dome.scale = Vector3(1.0, 0.8, 1.0)
 			dome.material_override = CelMaterial.for_colour(Palette.hud_colour("meter"), shadow, 0.5)
 			root.add_child(dome)
 			var band := MeshInstance3D.new()
 			var bm2 := TorusMesh.new()
-			bm2.inner_radius = 0.3
-			bm2.outer_radius = 0.38
+			bm2.inner_radius = 0.34
+			bm2.outer_radius = 0.42
 			bm2.rings = 16
 			bm2.ring_segments = 6
 			band.mesh = bm2
+			band.position = Vector3(0, 0.03, 0)
+			band.scale = Vector3(1.0, 0.5, 1.0)
 			band.material_override = ink_mat
 			root.add_child(band)
 		"start":
@@ -378,22 +405,21 @@ func _build_marker(space: BoardGraph.Space, shadow: Color) -> void:
 			pm.bottom_radius = 0.04
 			pm.height = 1.3
 			pole.mesh = pm
-			pole.position = Vector3(0.7, 0.1, -0.7)
+			pole.position = Vector3(0.7, 0.65, -0.7)
 			pole.material_override = ink_mat
 			root.add_child(pole)
 			var flag := MeshInstance3D.new()
 			var fm := PrismMesh.new()
 			fm.size = Vector3(0.5, 0.34, 0.04)
 			flag.mesh = fm
-			flag.position = Vector3(0.7 + 0.27, 0.58, -0.7)
+			flag.position = Vector3(0.7 + 0.27, 1.13, -0.7)
 			flag.rotation.z = -PI * 0.5
 			flag.material_override = CelMaterial.for_colour(Palette.map_colour("board", "accent"), shadow, 0.3)
 			root.add_child(flag)
 		_:
 			root.queue_free()
 			return
-	add_child(root)
-	root.set_meta("base_y", root.position.y)
+	tile.add_child(root)
 	markers.append(root)
 
 
@@ -886,15 +912,18 @@ func _build_moon_chunk() -> void:
 	# The five landmark props' spots: the rocket's pad and the parked buggy in the pad block, the
 	# dish at the power plant, the probe on the park's lawn, the crew by the flag on the plaza off
 	# the start. A board without blocks gets the old search for clear spots.
+	var rocket := _zone("rocket")
 	var pad := _zone("pad")
 	var power := _zone("power")
 	var park := _zone("park")
 	var plaza := _zone("plaza")
 	_prop_spots = []
 	_prop_yaws = []
-	if not (pad.is_empty() or power.is_empty() or park.is_empty() or plaza.is_empty()):
-		_prop_spots = [_zone_at(pad, 0.0, 0.0), _zone_at(power, -4.6, 4.4), _zone_at(pad, 7.6, 0.6),
-			_zone_at(park, -4.2, -2.4), _zone_at(plaza, 0.0, 0.0)]
+	if not (rocket.is_empty() or pad.is_empty() or power.is_empty() or park.is_empty() or plaza.is_empty()):
+		# The rocket on its pad by the pad space, the dish at the power plant, the rover on its
+		# own pad, the probe on the park's lawn past the crater, the crew by the flag off the start.
+		_prop_spots = [_zone_at(rocket, 0.0, 0.0), _zone_at(power, -3.8, 3.4), _zone_at(pad, 1.2, 0.4),
+			_zone_at(park, -4.8, -2.2), _zone_at(plaza, 0.0, 0.0)]
 		_prop_yaws = [rng.randf_range(0.0, TAU), rng.randf_range(0.0, TAU), float(pad.get("yaw", 0.0)) + PI * 0.5,
 			rng.randf_range(0.0, TAU), float(plaza.get("yaw", 0.0)) + 0.4]
 	var c := _slab.centre
@@ -981,9 +1010,14 @@ func _build_moon_craters() -> void:
 	var rock_mat := CelMaterial.for_colour(Palette.map_colour("board", "rock"), shadow)
 	var craters: Array = []
 	var big := _zone("crater")
+	var big_r := float(big.get("r", 4.0))
+	if big.is_empty():
+		# The drawn board's park holds its crater in the middle of the block.
+		big = _zone("park")
+		big_r = float(big.get("r", 6.0)) * 0.55
 	if not big.is_empty():
 		var bc := _zone_at(big, 0.0, 0.0)
-		craters.append(Vector3(bc.x, bc.y, float(big.get("r", 4.0))))
+		craters.append(Vector3(bc.x, bc.y, big_r))
 	# Small craters in the margin past the ring road (a band a few metres wide, so they are
 	# small), and two on the park's lawn.
 	var park := _zone("park")
@@ -1139,13 +1173,31 @@ func _build_moon_props(from: int, to: int) -> void:
 				ring.scale = Vector3(1.0, 0.3, 1.0)
 				ring.material_override = accent_mat
 				prop.add_child(ring)
+				# The rocket itself on a node of its own, so it can fly (the board's one rocket, Sean's
+				# drawing, 2026-09-24); a flame under the bell shows only in flight.
+				var rocket := Node3D.new()
+				prop.add_child(rocket)
+				_shuttle = rocket
+				_shuttle_home = at
+				var flame := MeshInstance3D.new()
+				var flm := CylinderMesh.new()
+				flm.top_radius = 0.5
+				flm.bottom_radius = 0.06
+				flm.height = 1.5
+				flm.radial_segments = 10
+				flame.mesh = flm
+				flame.position = Vector3(0, -0.5, 0)
+				flame.material_override = CelMaterial.for_colour(Palette.hud_colour("score"), shadow, 1.6)
+				flame.visible = false
+				rocket.add_child(flame)
+				_shuttle_flame = flame
 				# The rocket's foot (Sean: the bottom was "random triangles pasted on it"): the
 				# body ends in a wider skirt, an engine bell hangs under it, and three fins are
 				# right-triangle plates standing on the pad with their straight edge against the
 				# skirt and the body, the slope running out to the tip.
-				_prop_cyl(prop, 0.72, 3.6, Vector3(0, 2.5, 0), paper_mat)     # body, foot at 0.7
-				_prop_cyl(prop, 0.74, 0.5, Vector3(0, 2.0, 0), accent_mat)    # band
-				_prop_cyl(prop, 0.8, 0.36, Vector3(0, 0.88, 0), accent_mat)   # skirt
+				_prop_cyl(rocket, 0.72, 3.6, Vector3(0, 2.5, 0), paper_mat)     # body, foot at 0.7
+				_prop_cyl(rocket, 0.74, 0.5, Vector3(0, 2.0, 0), accent_mat)    # band
+				_prop_cyl(rocket, 0.8, 0.36, Vector3(0, 0.88, 0), accent_mat)   # skirt
 				var bell := MeshInstance3D.new()
 				var bellm := CylinderMesh.new()
 				bellm.top_radius = 0.34
@@ -1155,8 +1207,8 @@ func _build_moon_props(from: int, to: int) -> void:
 				bell.mesh = bellm
 				bell.position.y = 0.47
 				bell.material_override = ink_mat
-				prop.add_child(bell)
-				_prop_cyl(prop, 0.3, 0.06, Vector3(0, 0.3, 0), metal_mat)     # the throat
+				rocket.add_child(bell)
+				_prop_cyl(rocket, 0.3, 0.06, Vector3(0, 0.3, 0), metal_mat)     # the throat
 				for fk in 3:
 					var fa := fk * TAU / 3.0 + 0.5
 					var fin := MeshInstance3D.new()
@@ -1167,7 +1219,7 @@ func _build_moon_props(from: int, to: int) -> void:
 					fin.position = Vector3(cos(fa) * 1.2, 0.99, sin(fa) * 1.2)
 					fin.rotation.y = -fa   # local +x points out from the axis
 					fin.material_override = accent_mat
-					prop.add_child(fin)
+					rocket.add_child(fin)
 				var nose := MeshInstance3D.new()
 				var nm := CylinderMesh.new()
 				nm.top_radius = 0.0
@@ -1177,7 +1229,7 @@ func _build_moon_props(from: int, to: int) -> void:
 				nose.mesh = nm
 				nose.position.y = 5.05
 				nose.material_override = accent_mat
-				prop.add_child(nose)
+				rocket.add_child(nose)
 				var port := MeshInstance3D.new()
 				var pm := CylinderMesh.new()
 				pm.top_radius = 0.26
@@ -1187,7 +1239,7 @@ func _build_moon_props(from: int, to: int) -> void:
 				port.position = Vector3(0, 3.2, -0.72)
 				port.rotation.x = PI * 0.5
 				port.material_override = CelMaterial.for_colour(Palette.hud_colour("meter"), shadow, 0.6)
-				prop.add_child(port)
+				rocket.add_child(port)
 			1:   # satellite dish on a tripod
 				for lk in 3:
 					var leg := MeshInstance3D.new()
@@ -1479,10 +1531,9 @@ func _prop_cyl(parent: Node3D, radius: float, height: float, pos: Vector3, mat: 
 
 func _tone_for(type: String) -> Color:
 	match type:
-		"coin": return Palette.player_colour(3)
+		"ticket": return Palette.player_colour(3)
 		"lose": return Palette.hud_colour("danger")
 		"item": return Palette.player_colour(5)
-		"event": return Palette.player_colour(0)
 		"shield": return Palette.hud_colour("meter")
 		"start": return Palette.map_colour("board", "accent")
 	return Palette.map_colour("board", "field")
@@ -1796,10 +1847,10 @@ func _play_next() -> void:
 				if not Game.headless:
 					Burst.spawn(self, pawn.global_position + Vector3(0, 0.2, 0), pawn.colour, 0.45, 0.18, 7)
 			wait = 0.1
-		"coins":
+		"tickets":
 			_float_label(int(e["peer"]), ("+%d" if int(e["delta"]) >= 0 else "%d") % int(e["delta"]),
 				Palette.player_colour(3) if int(e["delta"]) >= 0 else Palette.hud_colour("danger"))
-			Audio.play("coin" if int(e["delta"]) >= 0 else "hurt", -6.0)
+			Audio.play("ticket" if int(e["delta"]) >= 0 else "hurt", -6.0)
 			wait = 0.5
 		"item":
 			# The HUD pops the item's icon over the pawn's head (Sean: an icon, not the name); a
@@ -1866,8 +1917,8 @@ func _play_next() -> void:
 						victim.snap_to(director.space_position(str(h["respawn"])))
 						victim.set_bleeding(false)
 						Audio.play("respawn", -4.0)
-						if int(h.get("coins", 0)) > 0:
-							_float_label(shooter.peer_id, "+%d" % int(h["coins"]), Palette.player_colour(3))
+						if int(h.get("tickets", 0)) > 0:
+							_float_label(shooter.peer_id, "+%d" % int(h["tickets"]), Palette.player_colour(3))
 				get_tree().create_timer(1.0).timeout.connect(func():
 					if is_instance_valid(shooter) and not _aiming:
 						shooter.show_gun(false))
@@ -1942,8 +1993,8 @@ func _play_next() -> void:
 						victim.snap_to(director.space_position(str(h["respawn"])))
 						victim.set_bleeding(false)
 						Audio.play("respawn", -4.0)
-						if int(h.get("coins", 0)) > 0 and victim != thrower:
-							_float_label(thrower.peer_id, "+%d" % int(h["coins"]), Palette.player_colour(3))
+						if int(h.get("tickets", 0)) > 0 and victim != thrower:
+							_float_label(thrower.peer_id, "+%d" % int(h["tickets"]), Palette.player_colour(3))
 			wait = 0.6 + 0.4 * deaths
 		"portal":
 			# A portal opens a step ahead of the user, who skates in and steps out of a second one
@@ -2046,11 +2097,11 @@ func _play_next() -> void:
 				elif str(e["item"]) != "":
 					Events.board_item_picked.emit(thief.peer_id, str(e["item"]), false)
 					_float_label(mark.peer_id, "-%s" % str(e["item"]).to_upper(), Palette.hud_colour("danger"))
-					Audio.play("coin", -6.0)
-				elif int(e.get("coins", 0)) > 0:
-					_float_label(mark.peer_id, "-%d" % int(e["coins"]), Palette.hud_colour("danger"))
-					_float_label(thief.peer_id, "+%d" % int(e["coins"]), Palette.player_colour(3))
-					Audio.play("coin", -6.0)
+					Audio.play("ticket", -6.0)
+				elif int(e.get("tickets", 0)) > 0:
+					_float_label(mark.peer_id, "-%d" % int(e["tickets"]), Palette.hud_colour("danger"))
+					_float_label(thief.peer_id, "+%d" % int(e["tickets"]), Palette.player_colour(3))
+					Audio.play("ticket", -6.0)
 			wait = 0.5
 		"toy":
 			var pawn: BoardPawn = pawns.get(int(e["peer"]), null)
@@ -2080,19 +2131,66 @@ func _play_next() -> void:
 			_float_label(int(e["peer"]), "SHIELDED!", Palette.player_colour(5))
 			Audio.play("land", 0.0)
 			wait = 0.8
-		"teleport":
-			var pawn: BoardPawn = pawns.get(int(e["peer"]), null)
-			if pawn != null:
+		"shuttle":
+			# The rocket ride (Sean, 2026-09-24): the rider walks to the rocket and climbs in, it
+			# lifts off with a flame and arcs over the base with the camera riding along, sets down
+			# beside the landing spot, the rider steps out onto it, and the rocket flies itself home
+			# for the next fare.
+			var rider: BoardPawn = pawns.get(int(e["peer"]), null)
+			if rider != null and _shuttle != null:
+				if _shuttle_tween != null and _shuttle_tween.is_valid():
+					_shuttle_tween.kill()
+				_shuttle_flame.visible = false
+				_shuttle.transform = Transform3D.IDENTITY
+				var from := director.space_position(str(e["from"]))
+				var to := director.space_position(str(e["to"]))
+				_float_label(rider.peer_id, "-%d" % int(e["price"]), Palette.hud_colour("danger"))
+				var foot := _shuttle_home + (from - _shuttle_home).normalized() * 1.5
+				foot.y = from.y
+				_cam_fast = true
+				rider.hop_to(foot, 0.5)
+				_focus(_shuttle_home + Vector3(0, 1.0, 0))
+				await get_tree().create_timer(0.55).timeout
+				if not is_inside_tree():
+					_playing = false
+					return
+				await _vanish(rider, true)
+				Audio.play("rocket", -4.0)
+				_shuttle_flame.visible = true
+				_shuttle_follow = true
+				var land := Vector3(to.x, _slab.centre.y + MOON_TOP, to.z)
+				var inward := (Vector3(_slab.centre.x, 0, _slab.centre.z) - Vector3(to.x, 0, to.z)).normalized()
+				land += inward * 2.6
+				var home := _shuttle_home
+				var tw := create_tween()
+				tw.tween_method(func(t: float): _fly(home, land, t), 0.0, 1.0, 3.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+				await tw.finished
+				if not is_inside_tree():
+					_playing = false
+					return
+				_shuttle_follow = false
+				_shuttle_flame.visible = false
+				_cam_fast = false
+				rider.snap_to(to)
+				await _vanish(rider, false)
+				if not is_inside_tree():
+					_playing = false
+					return
 				if not Game.headless:
-					Burst.spawn(self, pawn.global_position + Vector3(0, 0.6, 0), Palette.player_colour(0), 0.8, 0.3, 8)
-				pawn.snap_to(director.space_position(str(e["to"])))
-				_focus(pawn.global_position)
-				Audio.play("respawn", -4.0)
-			wait = 0.8
+					Burst.spawn(self, rider.global_position + Vector3(0, 0.2, 0), rider.colour, 0.45, 0.18, 7)
+				Audio.play("land", -6.0)
+				_focus(to)
+				_shuttle_return(land, home)
+			wait = 0.4
 		"choose":
 			var opts: Array = e["options"]
 			_fork_focus = opts
-			if opts.size() >= 2:
+			if bool(e.get("shuttle", false)) and _shuttle != null and opts.size() >= 2:
+				# The rocket's offer: the pad and the rocket in one look.
+				_fork_focus = []
+				_focus((director.space_position(str(opts[0])) + _shuttle_home) * 0.5 + Vector3(0, 0.6, 0))
+				wait = 0.1
+			elif opts.size() >= 2:
 				# Stand behind the fork looking down the middle of the two paths, so LEFT and
 				# RIGHT are on the left and right of the screen.
 				var pawn: BoardPawn = pawns.get(int(e["peer"]), null)
@@ -2339,7 +2437,8 @@ func _process(delta: float) -> void:
 				_place_beam(pawn.hand_position(), _aim, _aim_len, 0.05, 0.8, Palette.hud_colour("paper"))
 			else:
 				_place_beam(pawn.gun_tip(), _aim, _aim_len, 0.07, 0.9)
-	var desired_pos := _cam_look + Vector3(sin(_cam_yaw) * 6.8, 6.2, cos(_cam_yaw) * 6.8)
+	_cam_zoom = move_toward(_cam_zoom, 2.6 if _shuttle_follow else 1.0, delta * 1.6)
+	var desired_pos := _cam_look + Vector3(sin(_cam_yaw) * 6.8, 6.2, cos(_cam_yaw) * 6.8) * _cam_zoom
 	var look := _cam_look
 	if Game.args.has("board_overview"):
 		# Harness: the whole board from above, for layout screenshots (2.8 × and 2.0 × the
@@ -2422,9 +2521,36 @@ func _process(delta: float) -> void:
 			active_pulse.scale = Vector3(pulse, 1.0, pulse)
 	if goal_ring != null:
 		goal_ring.rotation.y += delta * 0.8
+	# The rocket in flight: the camera rides along and the flame flickers (the markers on the
+	# tiles sit still since 2026-09-24).
 	_marker_t += delta
-	for i in markers.size():
-		var n := markers[i] as Node3D
-		if n != null and is_instance_valid(n):
-			n.rotation.y = _marker_t * 1.1 + float(i)
-			n.position.y = float(n.get_meta("base_y", n.position.y)) + sin(_marker_t * 2.2 + float(i)) * 0.06
+	if _shuttle_follow and _shuttle != null:
+		_cam_look = _shuttle.global_position
+	if _shuttle_flame != null and _shuttle_flame.visible:
+		_shuttle_flame.scale = Vector3(1.0 + 0.15 * sin(_marker_t * 31.0), 1.0 + 0.3 * absf(sin(_marker_t * 23.0)), 1.0 + 0.15 * cos(_marker_t * 27.0))
+
+
+## The rocket's flight: a lob 14 m high between two ground points, the nose leaning into the
+## travel through the middle of the arc, upright at both ends.
+func _fly(from: Vector3, to: Vector3, t: float) -> void:
+	if _shuttle == null:
+		return
+	var pos := from.lerp(to, t) + Vector3.UP * sin(t * PI) * 14.0
+	var d := Vector3(to.x - from.x, 0.0, to.z - from.z)
+	var basis := Basis.IDENTITY
+	if d.length() > 0.01:
+		basis = Basis(Vector3.UP.cross(d.normalized()).normalized(), 0.45 * sin(t * PI))
+	_shuttle.global_transform = Transform3D(basis, pos)
+
+
+## After a ride the rocket flies itself home, empty, in the background.
+func _shuttle_return(from: Vector3, home: Vector3) -> void:
+	if _shuttle == null:
+		return
+	_shuttle_tween = create_tween()
+	_shuttle_tween.tween_interval(1.2)
+	_shuttle_tween.tween_callback(func(): _shuttle_flame.visible = true)
+	_shuttle_tween.tween_method(func(t: float): _fly(from, home, t), 0.0, 1.0, 3.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_shuttle_tween.tween_callback(func():
+		_shuttle_flame.visible = false
+		_shuttle.transform = Transform3D.IDENTITY)

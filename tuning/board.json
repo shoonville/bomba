@@ -4,7 +4,7 @@
   "minigame_round_seconds": 90,
   "toy_price": 10,
   "toys_to_win": 4,
-  "start_coins": 5,
+  "start_tickets": 5,
   "hp": 30,
   "bleed_below_hp": 10,
   "turn_timeout_seconds": 20.0,
@@ -13,11 +13,11 @@
   "hop_seconds": 0.32,
   "land_pause_seconds": 0.9,
   "space_effects": {
-    "coin": 3,
+    "ticket": 3,
     "lose": -3
   },
   "rewards": {
-    "coins_by_rank": [
+    "tickets_by_rank": [
       10,
       6,
       4,
@@ -29,14 +29,14 @@
   },
   "items": {
     "bomb": {
-      "_comment": "Thrown: lands anywhere within range_spaces (mean tile spacings) of the thrower; everyone within blast_spaces of the landing, the thrower included, takes damage_close at the centre falling to damage_far at the edge and is knocked back knockback spaces. At 0 HP the victim respawns and hands death_coin_share of their coins to the thrower.",
+      "_comment": "Thrown: lands anywhere within range_spaces (mean tile spacings) of the thrower; everyone within blast_spaces of the landing, the thrower included, takes damage_close at the centre falling to damage_far at the edge and is knocked back knockback spaces. At 0 HP the victim respawns and hands death_ticket_share of their tickets to the thrower.",
       "display_name": "BOMB",
       "range_spaces": 3.0,
       "blast_spaces": 1.0,
       "damage_close": 20,
       "damage_far": 8,
       "knockback": 3,
-      "death_coin_share": 0.5
+      "death_ticket_share": 0.5
     },
     "portal": {
       "_comment": "A portal to the picked player: you go through, then push them back through it; the two swap spaces.",
@@ -46,21 +46,21 @@
       "display_name": "SHIELD"
     },
     "laser": {
-      "_comment": "Aimed on your turn: a straight beam length_spaces spaces long (spaces = the board's mean tile spacing) and width metres wide hits every other player in it; damage_close within close_spaces, falling to damage_far at the end. At 0 HP the victim respawns at the annex that is not the live machine and hands death_coin_share of their coins to the shooter.",
+      "_comment": "Aimed on your turn: a straight beam length_spaces spaces long (spaces = the board's mean tile spacing) and width metres wide hits every other player in it; damage_close within close_spaces, falling to damage_far at the end. At 0 HP the victim respawns at the annex that is not the live machine and hands death_ticket_share of their tickets to the shooter.",
       "display_name": "LASER",
       "length_spaces": 3.0,
       "width": 1.4,
       "close_spaces": 1.0,
       "damage_close": 30,
       "damage_far": 10,
-      "death_coin_share": 0.5
+      "death_ticket_share": 0.5
     },
     "claw": {
-      "_comment": "The retractable claw, aimed like the laser: it extends range_spaces (mean tile spacings) along its line, width metres wide, and grabs one item at random from the first player in its path, coins_when_empty coins when their bar is empty. A shield eats the grab; nothing in the path and it comes back empty, spent.",
+      "_comment": "The retractable claw, aimed like the laser: it extends range_spaces (mean tile spacings) along its line, width metres wide, and grabs one item at random from the first player in its path, tickets_when_empty tickets when their bar is empty. A shield eats the grab; nothing in the path and it comes back empty, spent.",
       "display_name": "CLAW",
       "range_spaces": 3.0,
       "width": 1.4,
-      "coins_when_empty": 3
+      "tickets_when_empty": 3
     }
   },
   "default_board": "main",

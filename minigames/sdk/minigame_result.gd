@@ -7,7 +7,7 @@ var rankings: Array[Dictionary] = []  # {peer_id, score, rank, display_name[, la
 
 
 ## `label` is what the results screen prints instead of the raw score when it is not a plain
-## number (survival ticks, coins and Bombas); the score still decides the rank.
+## number (survival ticks, tickets and Bombas); the score still decides the rank.
 func add(peer_id: int, score: int, display_name: String = "", label: String = "") -> void:
 	var row := {"peer_id": peer_id, "score": score, "rank": 0, "display_name": display_name}
 	if label != "":

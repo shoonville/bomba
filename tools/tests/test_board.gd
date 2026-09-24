@@ -48,7 +48,7 @@ func test_setup_places_everyone_at_start() -> void:
 	var s := _fresh()
 	for p in s.players:
 		assert_eq(p.space, "0")
-		assert_eq(p.coins, int(cfg["start_coins"]))
+		assert_eq(p.tickets, int(cfg["start_tickets"]))
 	assert_ne(s.goal, "")
 	assert_ne(s.goal, "0")
 	assert_eq(s.phase, BoardState.PHASE_TURNS)
@@ -68,9 +68,7 @@ func test_roll_is_seeded_and_moves() -> void:
 	assert_true(dice_a >= 1 and dice_a <= int(cfg["dice_sides"]), "d%d" % int(cfg["dice_sides"]))
 	assert_eq(int(ea[0]["roll"]), dice_a, "no bonus: roll is the value")
 	var landed := a.players[0].space
-	var teleported := ea.any(func(e): return e["kind"] == "teleport")
-	if not teleported:
-		assert_eq(graph.distance("0", landed), dice_a, "moved dice spaces from start")
+	assert_eq(graph.distance("0", landed), dice_a, "moved dice spaces from start")
 	assert_eq(a.active, 1, "turn passed")
 	assert_eq(a.dice, 0, "dice cleared for the next turn")
 
@@ -98,8 +96,8 @@ func test_landing_effects() -> void:
 	var s := _fresh(5)
 	var p := s.players[0]
 	p.space = "0"
-	p.coins = 5
-	# Force a landing on the coin space "1" by rolling exactly 1: search a seed.
+	p.tickets = 5
+	# Force a landing on the ticket space "1" by rolling exactly 1: search a seed.
 	var got := false
 	for seed_try in 60:
 		var t := _fresh(seed_try)
@@ -107,7 +105,7 @@ func test_landing_effects() -> void:
 		var ev := BoardRules.roll(t, graph, cfg)
 		if int(ev[0]["value"]) == 1:
 			assert_eq(q.space, "1")
-			assert_eq(q.coins, int(cfg["start_coins"]) + int(cfg["space_effects"]["coin"]))
+			assert_eq(q.tickets, int(cfg["start_tickets"]) + int(cfg["space_effects"]["ticket"]))
 			got = true
 			break
 	assert_true(got, "some seed rolls a 1")
@@ -119,14 +117,14 @@ func test_toy_purchase_moves_the_machine() -> void:
 	var goal := s.goal
 	var prev := graph.prev_of(goal)[0]
 	p.space = prev
-	p.coins = int(cfg["toy_price"]) + 2
+	p.tickets = int(cfg["toy_price"]) + 2
 	var claimed := false
 	for seed_try in 60:
 		var t := _fresh(seed_try)
 		var q := t.players[0]
 		var g := t.goal
 		q.space = graph.prev_of(g)[0]
-		q.coins = int(cfg["toy_price"]) + 2
+		q.tickets = int(cfg["toy_price"]) + 2
 		var ev := BoardRules.roll(t, graph, cfg)
 		var goal_event: Dictionary = {}
 		for e in ev:
@@ -134,18 +132,18 @@ func test_toy_purchase_moves_the_machine() -> void:
 				goal_event = e
 		if not goal_event.is_empty():
 			assert_eq(q.toys, 1)
-			assert_eq(int(goal_event["coins"]), 2, "paid the toy price at the moment of buying")
+			assert_eq(int(goal_event["tickets"]), 2, "paid the toy price at the moment of buying")
 			assert_ne(t.goal, g, "the machine moved")
 			claimed = true
 			break
-	assert_true(claimed, "passing the machine with enough coins buys a toy")
+	assert_true(claimed, "passing the machine with enough tickets buys a toy")
 
 
-func test_toy_needs_coins() -> void:
+func test_toy_needs_tickets() -> void:
 	var t := _fresh(9)
 	var q := t.players[0]
 	q.space = graph.prev_of(t.goal)[0]
-	q.coins = 1
+	q.tickets = 1
 	var g := t.goal
 	BoardRules.roll(t, graph, cfg)
 	assert_eq(q.toys, 0)
@@ -189,22 +187,22 @@ func test_items() -> void:
 	var ev2 := BoardRules.use_item(t, graph, cfg, 1, "bomb", 0, {"x": origin.x, "z": origin.z})
 	assert_eq(me.hp, 10, "your own bomb at your feet")
 	assert_true(ev2.any(func(e): return e["kind"] == "bomb"))
-	# A kill: the victim hands over half their coins and respawns at a machine spot, no knockback.
+	# A kill: the victim hands over half their tickets and respawns at a machine spot, no knockback.
 	var u := _fresh(4)
 	var killer := u.players[0]
 	var prey := u.players[1]
 	killer.space = "1"
 	prey.space = "3"
 	prey.hp = 5
-	prey.coins = 10
+	prey.tickets = 10
 	killer.items = ["bomb"]
 	var at := graph.get_space("3").position
 	var ev3 := BoardRules.use_item(u, graph, cfg, 1, "bomb", 0, {"x": at.x, "z": at.z})
 	var hit: Dictionary = (ev3.filter(func(e): return e["kind"] == "bomb")[0]["hits"] as Array)[0]
 	assert_true(bool(hit["dead"]))
-	assert_eq(int(hit["coins"]), 5)
-	assert_eq(prey.coins, 5)
-	assert_eq(killer.coins, 10)
+	assert_eq(int(hit["tickets"]), 5)
+	assert_eq(prey.tickets, 5)
+	assert_eq(killer.tickets, 10)
 	assert_eq(prey.hp, int(cfg["hp"]))
 	assert_true(graph.goal_candidates().has(prey.space) and prey.space != u.goal, "respawned at the other machine spot")
 	assert_true((hit["knock"] as Array).is_empty(), "the dead are not knocked back")
@@ -225,7 +223,7 @@ func test_round_minigame_and_finish() -> void:
 		_play_turn(s)
 	assert_eq(s.phase, BoardState.PHASE_MINIGAME, "after everyone moved")
 	var ev := BoardRules.apply_minigame(s, cfg, [-1, 1, -2])
-	assert_eq(s.player(-1).coins, int(cfg["start_coins"]) + 10 + _coins_from_board(s, -1), "winner +10 (plus board coins)")
+	assert_eq(s.player(-1).tickets, int(cfg["start_tickets"]) + 10 + _tickets_from_board(s, -1), "winner +10 (plus board tickets)")
 	assert_true(s.player(-1).items.size() >= 1, "winner drew an item")
 	assert_true(ev.any(func(e): return e["kind"] == "item" and bool(e.get("reward", false))), "the reward item is flagged")
 	assert_eq(s.round, 2)
@@ -246,11 +244,11 @@ func test_round_minigame_and_finish() -> void:
 	assert_true(order[0].toys >= order[1].toys)
 
 
-func _coins_from_board(s: BoardState, peer: int) -> int:
+func _tickets_from_board(s: BoardState, peer: int) -> int:
 	# The test cannot know landing effects in advance; recompute what the player would have
 	# without the minigame reward by trusting the state before reward: simplest is to accept any
 	# value here and only check the reward delta via events elsewhere.
-	return s.player(peer).coins - int(cfg["start_coins"]) - 10
+	return s.player(peer).tickets - int(cfg["start_tickets"]) - 10
 
 
 func test_state_round_trip() -> void:
@@ -297,8 +295,8 @@ func test_laser_hits_by_distance_and_line() -> void:
 	s.players[2].space = "4"
 	s.players[3].space = "5"
 	s.players[4].space = "8"
-	s.players[1].coins = 9
-	var shooter_coins := shooter.coins
+	s.players[1].tickets = 9
+	var shooter_tickets := shooter.tickets
 	var length := BoardRules.laser_length(graph, cfg)
 	assert_true(length > 9.0 and length < 12.0, "three spaces of the fixture's mean step: %.1f m" % length)
 	var hits := BoardRules.laser_hits(s, graph, cfg, shooter, 0.0)
@@ -313,12 +311,12 @@ func test_laser_hits_by_distance_and_line() -> void:
 	var recs: Array = shots[0]["hits"]
 	assert_eq(recs.size(), 3)
 	# The nearest died: respawned at a machine spot that is not the live one, HP refilled, and
-	# half their coins (rounded down) went to the shooter.
+	# half their tickets (rounded down) went to the shooter.
 	var v1 := s.players[1]
 	assert_true(bool(recs[0]["dead"]))
 	assert_eq(v1.hp, int(cfg["hp"]))
-	assert_eq(v1.coins, 5, "lost half of 9, rounded down")
-	assert_eq(shooter.coins, shooter_coins + 4)
+	assert_eq(v1.tickets, 5, "lost half of 9, rounded down")
+	assert_eq(shooter.tickets, shooter_tickets + 4)
 	assert_true(graph.goal_candidates().has(v1.space) and v1.space != s.goal, "respawned at another machine spot: %s (live %s)" % [v1.space, s.goal])
 	assert_true(s.players[2].hp > 0 and s.players[2].hp < s.players[3].hp, "the nearer one hurts more: %d < %d" % [s.players[2].hp, s.players[3].hp])
 	assert_eq(s.players[4].hp, int(cfg["hp"]), "off the line")
@@ -384,11 +382,11 @@ func test_portal_and_shield() -> void:
 	victim.space = "7"
 	attacker.items = ["bomb"]
 	victim.items = ["shield"]
-	victim.coins = 9
+	victim.tickets = 9
 	var at := graph.get_space("7").position
 	var ev2 := BoardRules.use_item(t, graph, cfg, 1, "bomb", 0, {"x": at.x, "z": at.z})
 	assert_eq(victim.hp, 30, "no damage behind a shield")
-	assert_eq(victim.coins, 9)
+	assert_eq(victim.tickets, 9)
 	assert_eq(victim.space, "7", "no knockback behind a shield")
 	assert_false(victim.items.has("shield"), "shield spent")
 	assert_false(attacker.items.has("bomb"), "bomb spent")
@@ -473,15 +471,15 @@ func test_shield_space_and_damage_space() -> void:
 	BoardRules._land(s, graph, cfg, ev)
 	assert_eq(me.items.count("shield"), 1, "never two from the same spot")
 	me.space = "3"
-	var coins := me.coins
+	var tickets := me.tickets
 	var ev2 := []
 	BoardRules._land(s, graph, cfg, ev2)
-	assert_eq(me.coins, coins, "shield took the damage")
+	assert_eq(me.tickets, tickets, "shield took the damage")
 	assert_false(me.items.has("shield"))
 	assert_true(ev2.any(func(e): return e["kind"] == "shield"))
 	var ev3 := []
 	BoardRules._land(s, graph, cfg, ev3)
-	assert_eq(me.coins, maxi(0, coins - 3), "no shield: damage costs coins")
+	assert_eq(me.tickets, maxi(0, tickets - 3), "no shield: damage costs tickets")
 
 
 func test_d8_faces() -> void:
@@ -507,7 +505,7 @@ func test_first_to_toys_ends_the_match() -> void:
 		BoardRules.setup(t, graph, _players(3), seed_try, cfg1)
 		var q := t.players[0]
 		q.space = graph.prev_of(t.goal)[0]
-		q.coins = int(cfg1["toy_price"]) + 1
+		q.tickets = int(cfg1["toy_price"]) + 1
 		var ev := BoardRules.roll(t, graph, cfg1)
 		var kinds := []
 		for e in ev:
@@ -529,7 +527,7 @@ func test_first_to_toys_ends_the_match() -> void:
 	var p := s.players[0]
 	p.toys = 99
 	p.space = graph.prev_of(s.goal)[0]
-	p.coins = 50
+	p.tickets = 50
 	BoardRules.roll(s, graph, cfg0)
 	assert_ne(s.phase, BoardState.PHASE_FINISHED, "no toy limit")
 
@@ -579,7 +577,7 @@ func test_machine_spot_is_far_from_the_players() -> void:
 
 
 func test_claw() -> void:
-	# The claw extends along its aim and grabs from the first player in its path, coins from an
+	# The claw extends along its aim and grabs from the first player in its path, tickets from an
 	# empty bar; nobody in the path and it comes back empty, spent; a shield eats it.
 	var s := _fresh(4)
 	var me := s.players[0]
@@ -617,17 +615,17 @@ func test_claw() -> void:
 	assert_eq(int(g2["target"]), t.players[1].peer_id, "the first in the path")
 	assert_eq(t.players[0].items, ["bomb"])
 	assert_eq(t.players[2].items, ["laser"], "the one behind keeps theirs")
-	# An empty bar gives coins.
+	# An empty bar gives tickets.
 	var u := _fresh(4)
 	u.players[0].space = "1"
 	u.players[1].space = "3"
-	u.players[1].coins = 5
+	u.players[1].tickets = 5
 	u.players[0].items = ["claw"]
 	var ev3 := BoardRules.use_item(u, graph, cfg, 1, "claw", 0, {"aim": 0.0})
 	var g3: Dictionary = ev3.filter(func(e): return e["kind"] == "claw")[0]
-	assert_eq(int(g3["coins"]), 3)
-	assert_eq(u.players[1].coins, 2)
-	assert_eq(u.players[0].coins, 8)
+	assert_eq(int(g3["tickets"]), 3)
+	assert_eq(u.players[1].tickets, 2)
+	assert_eq(u.players[0].tickets, 8)
 	# A shield eats the grab: nothing stolen, the shield spent.
 	var v := _fresh(4)
 	v.players[0].space = "1"
@@ -651,3 +649,80 @@ func test_claw() -> void:
 	assert_true(absf(float((pick[2] as Dictionary)["aim"])) < 0.15, "aimed along +x at 3")
 	w.players[1].space = "9"
 	assert_eq(BoardRules.bot_item(w, graph, cfg).size(), 0, "nobody in reach: the bot passes")
+
+
+## Forks met on the way are taken the bots' way, so a test can follow a whole move.
+func _settle_forks(s: BoardState, g: BoardGraph) -> Array:
+	var ev := []
+	while s.phase == BoardState.PHASE_CHOOSING and s.pending_kind == "":
+		ev.append_array(BoardRules.choose(s, g, cfg, BoardRules.bot_choose(s, g)))
+	return ev
+
+
+func test_rocket_offer_and_flight() -> void:
+	# The rocket (Sean's drawing, 2026-09-24): entering its pad space with the fare in hand
+	# pauses the move to ask; flying costs the fare, lands on the far spot and spends no steps;
+	# declining walks on; without the fare there is no offer.
+	var g := BoardGraph.load_file("res://tools/tests/fixtures/board_small.json")
+	g.shuttle_from = "1"
+	g.shuttle_to = "12"
+	g.shuttle_price = 10
+	var flew := false
+	var stayed := false
+	var broke := false
+	for seed_try in 120:
+		var t := BoardState.new()
+		BoardRules.setup(t, g, _players(3), seed_try, cfg)
+		var q := t.players[0]
+		q.tickets = 12 if not (flew and stayed) else 5
+		var ev := BoardRules.roll(t, g, cfg)
+		var r := int(ev[0]["value"])
+		if r < 2:
+			continue
+		if q.tickets < 10:
+			# No fare: the move went straight through the pad.
+			_settle_forks(t, g)
+			assert_ne(q.space, "1", "walked past the pad")
+			assert_eq(t.pending_kind, "", "no offer without the fare")
+			broke = true
+			break
+		assert_eq(t.phase, BoardState.PHASE_CHOOSING, "the rocket asks")
+		assert_eq(t.pending_kind, "shuttle")
+		assert_eq(q.space, "1", "paused on the pad")
+		assert_eq(t.pending_options[1], "12")
+		var steps := t.steps_left
+		assert_eq(steps, r - 1, "one step spent reaching the pad")
+		if not flew:
+			var ev2 := BoardRules.choose(t, g, cfg, 1)
+			ev2.append_array(_settle_forks(t, g))
+			var sh: Array = ev2.filter(func(e): return e["kind"] == "shuttle")
+			assert_eq(sh.size(), 1, "one shuttle event")
+			assert_eq(str(sh[0]["to"]), "12")
+			assert_eq(int(sh[0]["price"]), 10)
+			assert_eq(q.tickets, 2, "paid the fare")
+			var walked := 0
+			for e in ev2:
+				if e["kind"] == "move":
+					walked += (e["path"] as Array).size()
+			assert_eq(walked, steps, "the steps left were walked on from the landing spot")
+			assert_ne(q.space, "12", "walked on from the landing spot")
+			assert_eq(t.pending_kind, "")
+			flew = true
+		else:
+			var ev3 := BoardRules.choose(t, g, cfg, 0)
+			ev3.append_array(_settle_forks(t, g))
+			assert_false(ev3.any(func(e): return e["kind"] == "shuttle"), "declined: no flight")
+			assert_eq(q.tickets, 12, "nothing paid")
+			assert_ne(q.space, "1", "walked on from the pad")
+			stayed = true
+	assert_true(flew and stayed and broke, "flew, stayed and went without the fare across the seeds")
+
+
+func test_rocket_state_round_trip() -> void:
+	var s := _fresh(2)
+	s.phase = BoardState.PHASE_CHOOSING
+	s.pending_kind = "shuttle"
+	s.pending_options = PackedStringArray(["1", "12"])
+	var back := BoardState.from_dict(s.to_dict())
+	assert_eq(back.pending_kind, "shuttle")
+	assert_eq(back.pending_options, PackedStringArray(["1", "12"]))

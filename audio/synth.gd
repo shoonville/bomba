@@ -170,8 +170,8 @@ static func to_wav(buf: PackedFloat32Array, loop: bool = false, normalize_to: fl
 static func names() -> PackedStringArray:
 	return PackedStringArray(["sniper_fire", "ar_fire", "hitmarker", "headshot", "kill", "death", "hurt",
 		"bolt", "reload_start", "reload_end", "dry", "swap", "jump", "land", "footstep", "respawn",
-		"ui_hover", "ui_click", "ui_back", "dice", "coin", "shell_in",
-		"ping", "emote", "laser", "splat", "bomb_throw", "bomb_blast", "portal", "claw"])
+		"ui_hover", "ui_click", "ui_back", "dice", "ticket", "shell_in",
+		"ping", "emote", "laser", "splat", "bomb_throw", "bomb_blast", "portal", "claw", "rocket"])
 
 
 ## Build a named sound as float samples. Unknown names return a short click so a typo is audible.
@@ -353,10 +353,22 @@ static func build(name: String) -> PackedFloat32Array:
 			var n := samples(0.12)
 			var out := mul(lowpass(noise(n, 181), 1800.0), env_exp(n, 0.012))
 			return mix(out, mul(tone(n, 620.0, 380.0, "sine"), env_exp(n, 0.04)), 0.7)
-		"coin":
-			var n := samples(0.22)
-			var out := mul(tone(n, 1318.5, 1318.5, "square"), env_exp(n, 0.08))
-			return mix(out, mul(tone(n, 1975.5, 1975.5, "square"), env_exp(n, 0.1)), 0.7, samples(0.05))
+		"ticket":
+			# Arcade tickets feeding out of the machine (Sean: tickets, not coins): eight quick
+			# clicks of the feed wheel, then a bright little blip as the strip tears off.
+			var out := silence(samples(0.5))
+			for k in 8:
+				var cn := samples(0.02)
+				out = mix(out, mul(highpass(noise(cn, 301 + k), 2200.0), env_exp(cn, 0.004)), 0.5, samples(0.036 * k))
+			var bn := samples(0.16)
+			return mix(out, mul(tone(bn, 1318.5, 1760.0, "square"), env_exp(bn, 0.05)), 0.45, samples(0.3))
+		"rocket":
+			# The board's rocket lifting off: a low rumble of noise under a sub tone sliding down.
+			var n := samples(1.6)
+			var out := mul(lowpass(noise(n, 197), 420.0), env_adsr(n, 0.08, 0.3, 0.7, 0.5))
+			out = mix(out, mul(tone(n, 70.0, 42.0, "sine"), env_adsr(n, 0.05, 0.4, 0.6, 0.5)), 0.5)
+			out = mix(out, mul(lowpass(noise(n, 211), 1600.0), env_exp(n, 0.25)), 0.35)
+			return softclip(out, 1.6)
 		"laser":
 			# The board laser gun: a falling saw zap 1600→180 Hz with a square an octave up
 			# riding it, a crackle at the start and a short low thump under the beam.

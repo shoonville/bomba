@@ -6,6 +6,7 @@ extends RefCounted
 
 ## A bot only portals when the target is at least this many steps nearer the goal.
 const BOT_PORTAL_MIN_GAIN := 3
+const BOT_SHUTTLE_MIN_GAIN := 8   # a bot pays the rocket's fare for this many hops saved to the machine
 
 
 static func rng(state: BoardState) -> RandomNumberGenerator:
@@ -24,7 +25,7 @@ static func setup(state: BoardState, graph: BoardGraph, players_data: Array, see
 	for d in players_data:
 		var p := BoardState.PlayerState.from_dict(d)
 		p.space = graph.start_id
-		p.coins = int(cfg.get("start_coins", 5))
+		p.tickets = int(cfg.get("start_tickets", 5))
 		p.toys = 0
 		p.items = []
 		p.hp = int(cfg.get("hp", 30))
@@ -87,14 +88,14 @@ static func use_item(state: BoardState, graph: BoardGraph, cfg: Dictionary, peer
 			events.append({"kind": "item_used", "peer": user.peer_id, "item": item, "target": 0})
 			for h in bomb_hits(state, graph, cfg, at):
 				var victim: BoardState.PlayerState = h["player"]
-				var rec := {"peer": victim.peer_id, "damage": int(h["damage"]), "hp": victim.hp, "dead": false, "coins": 0, "respawn": "", "knock": []}
+				var rec := {"peer": victim.peer_id, "damage": int(h["damage"]), "hp": victim.hp, "dead": false, "tickets": 0, "respawn": "", "knock": []}
 				if victim.items.has("shield"):
 					victim.items.erase("shield")
 					rec["damage"] = 0
 					rec["shielded"] = true
 					shields.append({"kind": "shield", "peer": victim.peer_id, "from": user.peer_id})
 				else:
-					_hurt(state, graph, cfg, user, victim, int(h["damage"]), float(def.get("death_coin_share", 0.5)), rec)
+					_hurt(state, graph, cfg, user, victim, int(h["damage"]), float(def.get("death_ticket_share", 0.5)), rec)
 					if not bool(rec["dead"]):
 						var path := graph.step_back(victim.space, int(def.get("knockback", 3)))
 						if not path.is_empty():
@@ -120,7 +121,7 @@ static func use_item(state: BoardState, graph: BoardGraph, cfg: Dictionary, peer
 			user.items.append(item)
 		"laser":
 			# Aimed: every other player in the beam takes damage by distance; a shield eats the hit;
-			# at 0 HP the victim hands the shooter a share of their coins and respawns at the annex
+			# at 0 HP the victim hands the shooter a share of their tickets and respawns at the annex
 			# that is not the live machine, HP full. Sean: "if they are close enough they lose all
 			# their hp"; the respawn spots are his "original two spots".
 			var aim := float(payload.get("aim", 0.0))
@@ -129,25 +130,25 @@ static func use_item(state: BoardState, graph: BoardGraph, cfg: Dictionary, peer
 			events.append({"kind": "item_used", "peer": user.peer_id, "item": item, "target": 0})
 			for h in laser_hits(state, graph, cfg, user, aim):
 				var victim: BoardState.PlayerState = h["player"]
-				var rec := {"peer": victim.peer_id, "damage": int(h["damage"]), "hp": victim.hp, "dead": false, "coins": 0, "respawn": ""}
+				var rec := {"peer": victim.peer_id, "damage": int(h["damage"]), "hp": victim.hp, "dead": false, "tickets": 0, "respawn": ""}
 				if victim.items.has("shield"):
 					victim.items.erase("shield")
 					rec["damage"] = 0
 					rec["shielded"] = true
 					shields.append({"kind": "shield", "peer": victim.peer_id, "from": user.peer_id})
 				else:
-					_hurt(state, graph, cfg, user, victim, int(h["damage"]), float(def.get("death_coin_share", 0.5)), rec)
+					_hurt(state, graph, cfg, user, victim, int(h["damage"]), float(def.get("death_ticket_share", 0.5)), rec)
 				(shot["hits"] as Array).append(rec)
 			events.append(shot)
 			events.append_array(shields)
 		"claw":
 			# The retractable claw (Sean: it extends along its path and grabs what is in it): aimed
 			# like the laser; the first player in the line within range_spaces loses one item at
-			# random to the user, or coins_when_empty coins when their bar is empty; a shield eats
+			# random to the user, or tickets_when_empty tickets when their bar is empty; a shield eats
 			# the grab and both are spent; nobody in the path and the claw comes back empty.
 			var aim := float(payload.get("aim", 0.0))
 			events.append({"kind": "item_used", "peer": user.peer_id, "item": item, "target": 0})
-			var grab := {"kind": "claw", "peer": user.peer_id, "aim": aim, "length": claw_length(graph, cfg), "target": 0, "item": "", "coins": 0}
+			var grab := {"kind": "claw", "peer": user.peer_id, "aim": aim, "length": claw_length(graph, cfg), "target": 0, "item": "", "tickets": 0}
 			var hits := claw_hits(state, graph, cfg, user, aim)
 			if hits.is_empty():
 				events.append(grab)
@@ -168,10 +169,10 @@ static func use_item(state: BoardState, graph: BoardGraph, cfg: Dictionary, peer
 				grab["item"] = stolen
 				events.append(grab)
 			else:
-				var taken := mini(target.coins, int(def.get("coins_when_empty", 3)))
-				target.coins -= taken
-				user.coins += taken
-				grab["coins"] = taken
+				var taken := mini(target.tickets, int(def.get("tickets_when_empty", 3)))
+				target.tickets -= taken
+				user.tickets += taken
+				grab["tickets"] = taken
 				events.append(grab)
 		_:
 			user.items.append(item)
@@ -179,7 +180,7 @@ static func use_item(state: BoardState, graph: BoardGraph, cfg: Dictionary, peer
 
 
 ## HP damage from `attacker` to `victim`, written into the hit record: blood on the victim's
-## tile, and at 0 HP the victim hands the attacker `share` of their coins and respawns at the
+## tile, and at 0 HP the victim hands the attacker `share` of their tickets and respawns at the
 ## machine spot that is not the live machine, HP full. The laser's rule, shared by the bomb.
 static func _hurt(state: BoardState, graph: BoardGraph, cfg: Dictionary, attacker: BoardState.PlayerState,
 		victim: BoardState.PlayerState, damage: int, share: float, rec: Dictionary) -> void:
@@ -188,10 +189,10 @@ static func _hurt(state: BoardState, graph: BoardGraph, cfg: Dictionary, attacke
 	rec["blood"] = _add_blood(state, victim.space)
 	if victim.hp <= 0:
 		rec["dead"] = true
-		var taken := int(floor(victim.coins * share))
-		victim.coins -= taken
-		attacker.coins += taken
-		rec["coins"] = taken
+		var taken := int(floor(victim.tickets * share))
+		victim.tickets -= taken
+		attacker.tickets += taken
+		rec["tickets"] = taken
 		victim.hp = int(cfg.get("hp", 30))
 		victim.space = _respawn_spot(state, graph)
 		rec["respawn"] = victim.space
@@ -366,6 +367,20 @@ static func choose(state: BoardState, graph: BoardGraph, cfg: Dictionary, option
 		return events
 	var idx := clampi(option_index, 0, state.pending_options.size() - 1)
 	var ap := state.active_player()
+	if state.pending_kind == "shuttle":
+		# The rocket's offer: stay (the move goes on from the pad) or pay the fare and fly to the
+		# landing spot, no steps spent on the flight (Sean, 2026-09-24).
+		var to := state.pending_options[1]
+		state.pending_options.clear()
+		state.pending_kind = ""
+		state.phase = BoardState.PHASE_TURNS
+		if idx == 1 and ap.tickets >= graph.shuttle_price:
+			ap.tickets -= graph.shuttle_price
+			ap.space = to
+			events.append({"kind": "shuttle", "peer": ap.peer_id, "from": graph.shuttle_from, "to": to,
+				"price": graph.shuttle_price, "total": ap.tickets})
+		_move_continue(state, graph, cfg, events)
+		return events
 	var dest := state.pending_options[idx]
 	state.pending_options.clear()
 	state.phase = BoardState.PHASE_TURNS
@@ -373,25 +388,27 @@ static func choose(state: BoardState, graph: BoardGraph, cfg: Dictionary, option
 	if state.phase == BoardState.PHASE_FINISHED:
 		return events
 	state.steps_left -= 1
+	if _offer_shuttle(state, graph, events):
+		return events
 	_move_continue(state, graph, cfg, events)
 	return events
 
 
 ## The vending machine (state.goal is the space it stands beside): passing it or landing on it
-## with at least `toy_price` coins pays, hands out a toy, and moves the machine to the spot
+## with at least `toy_price` tickets pays, hands out a toy, and moves the machine to the spot
 ## farthest from where everyone is. The first player to `toys_to_win` toys ends the match there
 ## and then (0 means never: only the round cap ends it).
 static func _enter(state: BoardState, graph: BoardGraph, cfg: Dictionary, p: BoardState.PlayerState, space_id: String, events: Array) -> void:
 	p.space = space_id
 	_append_move(events, p.peer_id, space_id)
-	if space_id == state.goal and p.coins >= int(cfg.get("toy_price", 10)):
-		p.coins -= int(cfg.get("toy_price", 10))
+	if space_id == state.goal and p.tickets >= int(cfg.get("toy_price", 10)):
+		p.tickets -= int(cfg.get("toy_price", 10))
 		p.toys += 1
 		var occupied := []
 		for q in state.players:
 			occupied.append(q.space)
 		state.goal = graph.machine_spot(occupied, rng(state), space_id)
-		events.append({"kind": "toy", "peer": p.peer_id, "toys": p.toys, "coins": p.coins, "spot": space_id, "new_spot": state.goal})
+		events.append({"kind": "toy", "peer": p.peer_id, "toys": p.toys, "tickets": p.tickets, "spot": space_id, "new_spot": state.goal})
 		var to_win := int(cfg.get("toys_to_win", 4))
 		if to_win > 0 and p.toys >= to_win:
 			_finish(state, events)
@@ -401,6 +418,7 @@ static func _finish(state: BoardState, events: Array) -> void:
 	state.phase = BoardState.PHASE_FINISHED
 	state.steps_left = 0
 	state.pending_options.clear()
+	state.pending_kind = ""
 	var order := []
 	for q in state.standings():
 		order.append(q.peer_id)
@@ -432,8 +450,25 @@ static func _move_continue(state: BoardState, graph: BoardGraph, cfg: Dictionary
 		if state.phase == BoardState.PHASE_FINISHED:
 			return   # the winning toy ends the match where it was bought
 		state.steps_left -= 1
+		if _offer_shuttle(state, graph, events):
+			return
 	_land(state, graph, cfg, events)
 	_end_turn(state, events)
+
+
+## The rocket (BOARDPLAN.md §1, Sean's drawing): reaching its pad space, landing there or passing
+## through, with the fare in hand pauses the move to ask: stay, or fly to the landing spot on
+## the far side. The offer is a choice like a fork's, `pending_kind` "shuttle", its options the
+## pad (stay) and the landing spot (fly).
+static func _offer_shuttle(state: BoardState, graph: BoardGraph, events: Array) -> bool:
+	var ap := state.active_player()
+	if graph.shuttle_from == "" or ap.space != graph.shuttle_from or ap.tickets < graph.shuttle_price:
+		return false
+	state.phase = BoardState.PHASE_CHOOSING
+	state.pending_kind = "shuttle"
+	state.pending_options = PackedStringArray([ap.space, graph.shuttle_to])
+	events.append({"kind": "choose", "peer": ap.peer_id, "options": [ap.space, graph.shuttle_to], "shuttle": true, "price": graph.shuttle_price})
+	return true
 
 
 static func _land(state: BoardState, graph: BoardGraph, cfg: Dictionary, events: Array) -> void:
@@ -443,21 +478,21 @@ static func _land(state: BoardState, graph: BoardGraph, cfg: Dictionary, events:
 		return
 	var effects: Dictionary = cfg.get("space_effects", {})
 	match space.type:
-		"coin":
-			var delta := int(effects.get("coin", 3))
-			var before := ap.coins
-			ap.coins = maxi(0, ap.coins + delta)
-			events.append({"kind": "coins", "peer": ap.peer_id, "delta": ap.coins - before, "total": ap.coins})
+		"ticket":
+			var delta := int(effects.get("ticket", 3))
+			var before := ap.tickets
+			ap.tickets = maxi(0, ap.tickets + delta)
+			events.append({"kind": "tickets", "peer": ap.peer_id, "delta": ap.tickets - before, "total": ap.tickets})
 		"lose":
-			# Damage. A shield (the shield space, or the item) takes it instead of the coins.
+			# Damage. A shield (the shield space, or the item) takes it instead of the tickets.
 			if ap.items.has("shield"):
 				ap.items.erase("shield")
 				events.append({"kind": "shield", "peer": ap.peer_id, "from": 0})
 			else:
 				var delta := int(effects.get("lose", -3))
-				var before := ap.coins
-				ap.coins = maxi(0, ap.coins + delta)
-				events.append({"kind": "coins", "peer": ap.peer_id, "delta": ap.coins - before, "total": ap.coins})
+				var before := ap.tickets
+				ap.tickets = maxi(0, ap.tickets + delta)
+				events.append({"kind": "tickets", "peer": ap.peer_id, "delta": ap.tickets - before, "total": ap.tickets})
 		"shield":
 			# The one safe spot: you leave it invulnerable to the next hit (bomb or damage space).
 			if not ap.items.has("shield"):
@@ -470,16 +505,6 @@ static func _land(state: BoardState, graph: BoardGraph, cfg: Dictionary, events:
 				var item: String = names[rng(state).randi_range(0, names.size() - 1)]
 				ap.items.append(item)
 				events.append({"kind": "item", "peer": ap.peer_id, "item": item})
-		"event":
-			var pool := []
-			for sid in graph.ids():
-				var s := graph.get_space(sid)
-				if s.type != "goal" and sid != graph.start_id and sid != state.goal and sid != ap.space:
-					pool.append(sid)
-			if not pool.is_empty():
-				var dest: String = pool[rng(state).randi_range(0, pool.size() - 1)]
-				ap.space = dest
-				events.append({"kind": "teleport", "peer": ap.peer_id, "to": dest})
 
 
 static func _end_turn(state: BoardState, events: Array) -> void:
@@ -495,21 +520,21 @@ static func _end_turn(state: BoardState, events: Array) -> void:
 	_begin_turn(state, events)
 
 
-## ranked_peer_ids: winner first. Pays coins, gives the winner an item, advances the round.
+## ranked_peer_ids: winner first. Pays tickets, gives the winner an item, advances the round.
 static func apply_minigame(state: BoardState, cfg: Dictionary, ranked_peer_ids: Array) -> Array:
 	var events := []
 	if state.phase != BoardState.PHASE_MINIGAME:
 		return events
 	var rewards: Dictionary = cfg.get("rewards", {})
-	var by_rank: Array = rewards.get("coins_by_rank", [10, 6, 4, 2, 2, 2])
+	var by_rank: Array = rewards.get("tickets_by_rank", [10, 6, 4, 2, 2, 2])
 	state.last_ranking = ranked_peer_ids.duplicate()
 	for i in ranked_peer_ids.size():
 		var p := state.player(int(ranked_peer_ids[i]))
 		if p == null:
 			continue
 		var delta := int(by_rank[mini(i, by_rank.size() - 1)]) if not by_rank.is_empty() else 0
-		p.coins += delta
-		events.append({"kind": "coins", "peer": p.peer_id, "delta": delta, "total": p.coins, "rank": i + 1})
+		p.tickets += delta
+		events.append({"kind": "tickets", "peer": p.peer_id, "delta": delta, "total": p.tickets, "rank": i + 1})
 		if i == 0 and bool(rewards.get("winner_item", true)):
 			var names := (cfg.get("items", {}) as Dictionary).keys()
 			if not names.is_empty():
@@ -540,6 +565,11 @@ static func apply_minigame(state: BoardState, cfg: Dictionary, ranked_peer_ids: 
 
 
 static func bot_choose(state: BoardState, graph: BoardGraph) -> int:
+	if state.pending_kind == "shuttle":
+		# The rocket: worth the fare when it brings the machine BOT_SHUTTLE_MIN_GAIN hops nearer.
+		var d_stay := graph.distance(state.pending_options[0], state.goal)
+		var d_fly := graph.distance(state.pending_options[1], state.goal)
+		return 1 if d_fly >= 0 and d_stay - d_fly >= BOT_SHUTTLE_MIN_GAIN else 0
 	var best := 0
 	var best_d := 1 << 30
 	for i in state.pending_options.size():
@@ -607,7 +637,7 @@ static func bot_item(state: BoardState, graph: BoardGraph = null, cfg: Dictionar
 			return ["bomb", 0, {"x": snappedf(best_at.x, 0.01), "z": snappedf(best_at.z, 0.01)}]
 	if me.items.has("claw") and graph != null and not cfg.is_empty():
 		# Aim at each other player in turn and grab from whoever comes first in that line with the
-		# most to lose: a laser first, then the fullest bar, then coins; never a shield, which
+		# most to lose: a laser first, then the fullest bar, then tickets; never a shield, which
 		# would only eat the claw.
 		var origin := graph.get_space(me.space)
 		var best_score := 0
@@ -630,7 +660,7 @@ static func bot_item(state: BoardState, graph: BoardGraph = null, cfg: Dictionar
 				elif not first.items.is_empty():
 					score = first.items.size() * 10 + (100 if first.items.has("laser") else 0)
 				else:
-					score = mini(first.coins, 3)
+					score = mini(first.tickets, 3)
 				if score > best_score:
 					best_score = score
 					best_aim = aim

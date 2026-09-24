@@ -33,6 +33,7 @@ var _annex_r: float = 8.0
 
 # Alive things
 var _blinkers: Array = []        # [{node, period, phase}]
+var _bobbers: Array = []         # [{node, base_y, period}]: the balloon, the pilot, gently up and down
 var _drone: Node3D
 var _drone_path: Array = []      # Vector3 waypoints above the loop
 var _drone_t: float = 0.0
@@ -554,7 +555,7 @@ func _ground_details() -> void:
 # --- the annex: a second, smaller chunk off the rim, joined by a bridge ------------------------------
 
 ## The vending machine on an annex, facing the bridge (a node's -Z looks down the bridge when
-## `dir` is the annex's outward direction): a coin slot, a knob, a tray, a glass globe of capsules,
+## `dir` is the annex's outward direction): a ticket slot, a knob, a tray, a glass globe of capsules,
 ## a TOYS marquee and a light beam that only the live one shows.
 func _machine(sid: String, at: Vector3, dir: Vector2) -> void:
 	var yaw := atan2(dir.x, dir.y)
@@ -565,7 +566,7 @@ func _machine(sid: String, at: Vector3, dir: Vector2) -> void:
 	for sx: float in [-0.67, 0.67]:
 		_box(m, Vector3(0.04, 1.6, 0.8), Vector3(sx, 1.05, 0), "accent_lit")
 	_box(m, Vector3(1.1, 0.9, 0.04), Vector3(0, 1.45, -0.51), "ink")   # the front panel
-	_box(m, Vector3(0.16, 0.05, 0.06), Vector3(0.38, 1.7, -0.53), "glow_yellow")   # coin slot
+	_box(m, Vector3(0.16, 0.05, 0.06), Vector3(0.38, 1.7, -0.53), "glow_yellow")   # ticket slot
 	_label(m, "¥", Vector3(0.38, 1.85, -0.54), 40, Palette.hud_colour("paper"), PI, 0)
 	var knob := Node3D.new()
 	knob.position = Vector3(-0.28, 1.3, -0.52)
@@ -946,6 +947,11 @@ func _blocks(craters: Array, landmarks: Array) -> void:
 			"crater": _block_crater(c, r, yaw)
 			"power": _block_power(c, r, yaw)
 			"plaza": _block_plaza(c, r, yaw)
+			"rocket": _block_rocket(c, r, yaw)
+			"solar": _block_solar(c, r, yaw)
+			"lander": _block_lander(c, r, yaw)
+			"ufo": _block_ufo(c, r, yaw)
+			"balloon": _block_balloon(c, r, yaw)
 		_occupied.append(Vector3(c.x, c.z, r + 0.8))
 		_count("block")
 
@@ -957,8 +963,7 @@ func _block_hab(c: Vector3, r: float, yaw: float) -> void:
 	_oxygen(_node(_at(c, yaw, 5.6, 4.2), yaw + 0.5), 1)
 
 
-## The landing pad's block, inside the apron: landing lights round the rocket's pad and the fuel
-## bowser with its hose run out to it (the buggy parks on the other side, the view's).
+## The rover's pad: landing lights round it (the rover is the view's), drums and a toolbox.
 func _block_pad(c: Vector3, r: float, yaw: float) -> void:
 	var lit := 0
 	for i in 12:
@@ -970,7 +975,18 @@ func _block_pad(c: Vector3, r: float, yaw: float) -> void:
 			lit += 1
 	if lit > 0:
 		_count("landing lights")
-	var bw := _node(_at(c, yaw, -7.4, -0.4), yaw + 0.2)
+	var dn := _node(_at(c, yaw, -4.2, 1.6), yaw + 0.3)
+	for k in 2:
+		_cyl(dn, 0.32, 0.32, 0.9, Vector3(k * 0.75 - 0.37, 0.45, 0), "accent_lit" if k == 0 else "paper", Vector3.ZERO, 10)
+		_torus(dn, 0.3, 0.34, Vector3(k * 0.75 - 0.37, 0.7, 0), "counter_dark", Vector3.ZERO, Vector3(1, 0.5, 1))
+	_box(dn, Vector3(0.7, 0.35, 0.4), Vector3(0.2, 0.18, 0.8), "counter_dark")
+	_box(dn, Vector3(0.74, 0.06, 0.44), Vector3(0.2, 0.37, 0.8), "metal")
+	_count("drums")
+
+
+## The fuel bowser: a tank on a cart with a hose run out.
+func _bowser(at: Vector3, yaw: float) -> void:
+	var bw := _node(at, yaw)
 	_box(bw, Vector3(1.8, 0.3, 1.0), Vector3(0, 0.45, 0), "counter_dark")
 	_cyl(bw, 0.5, 0.5, 2.0, Vector3(0, 1.0, 0), "paper", Vector3(0, 0, PI * 0.5), 12)
 	_torus(bw, 0.5, 0.58, Vector3(0.6, 1.0, 0), "accent_lit", Vector3(0, 0, PI * 0.5))
@@ -1066,10 +1082,22 @@ func _block_tanks(c: Vector3, r: float, yaw: float) -> void:
 	_count("tank farm")
 
 
-## The park's upper lawn: rock clusters and dust round the probe (the view's).
+## The crater park: the drill rig over the crater in the middle of the block (the view digs it,
+## at 0.55 of the block's radius), boulders on its rim, rock clusters and dust round it and the
+## half-buried probe (the view's) at the block's edge.
 func _block_park(c: Vector3, r: float, yaw: float) -> void:
-	for k in 5:
-		var sp := _spot_near(c.x, c.z, 2.0, r - 1.2, 2.3, 1.6, 200)
+	var cr := r * 0.55
+	_drill_rig(c, cr, yaw)
+	_occupied.append(Vector3(c.x, c.z, cr + 1.2))
+	for k in 4:
+		var a := yaw + k * 1.3 + 0.4
+		var bp := c + Vector3(cos(a) * (cr + 1.5), 0, sin(a) * (cr + 1.5))
+		if _tile_clear(bp.x, bp.z, 2.0):
+			var rk := _sphere(self, _rng.randf_range(0.5, 0.95), bp + Vector3(0, 0.3, 0), "rock" if k % 2 == 0 else "moon_dark",
+				Vector3(_rng.randf_range(0.9, 1.3), _rng.randf_range(0.6, 0.9), _rng.randf_range(0.9, 1.3)), false, 7)
+			rk.rotation.y = _rng.randf_range(0.0, TAU)
+	for k in 4:
+		var sp := _spot_near(c.x, c.z, cr + 2.4, r - 1.0, 2.3, 1.4, 200)
 		if sp == Vector2.INF:
 			break
 		_rock_cluster(Vector3(sp.x, _top, sp.y))
@@ -1103,7 +1131,7 @@ func _block_crater(c: Vector3, r: float, yaw: float) -> void:
 ## The power plant: a solar field, the reactor with its cooling towers, a substation; the dish
 ## (the view's) at the block's corner.
 func _block_power(c: Vector3, r: float, yaw: float) -> void:
-	_solar_array(_at(c, yaw, -3.4, -3.0), yaw, 3)
+	_solar_array(_at(c, yaw, -3.4, -3.0), yaw, 3 if r >= 7.5 else 2)
 	var rn := _node(_at(c, yaw, 4.2, -2.4), yaw)
 	_cyl(rn, 2.2, 2.4, 3.2, Vector3(0, 1.6, 0), "metal", Vector3.ZERO, 16)
 	_cyl(rn, 2.3, 2.3, 0.3, Vector3(0, 3.3, 0), "counter_dark", Vector3.ZERO, 16)
@@ -1444,6 +1472,9 @@ func _process(delta: float) -> void:
 		var n: Node3D = bl["node"]
 		var period: float = bl["period"]
 		n.visible = fmod(_anim_t + float(bl["phase"]) * period, period) < period * 0.18
+	for bb in _bobbers:
+		var bn: Node3D = bb["node"]
+		bn.position.y = float(bb["base_y"]) + sin(_anim_t * TAU / float(bb["period"])) * 0.12
 	if _drone != null and _drone_path.size() >= 2:
 		_drone_t += delta * 3.4
 		var n := _drone_path.size()
@@ -1519,3 +1550,115 @@ func _process(delta: float) -> void:
 			_star_next = _rng.randf_range(14.0, 26.0)
 		else:
 			_star.position = _star_from.lerp(_star_to, _star_t)
+
+
+## The rocket's pad (the rocket is the view's, on its own node so it can fly): landing lights
+## round it, the fuel bowser, and a launch gantry with its swing arm out to the rocket.
+func _block_rocket(c: Vector3, r: float, yaw: float) -> void:
+	var lit := 0
+	for i in 12:
+		var a := i * TAU / 12.0
+		var lp := Vector2(c.x, c.z) + Vector2(cos(a), sin(a)) * 3.9
+		if _tile_clear(lp.x, lp.y, 1.6) and _inside(lp.x, lp.y, 0.97):
+			_cyl(self, 0.1, 0.12, 0.26, Vector3(lp.x, _top + 0.13, lp.y), "counter_dark")
+			_sphere(self, 0.1, Vector3(lp.x, _top + 0.3, lp.y), "glow_yellow" if i % 2 == 0 else "glow_red", Vector3.ONE, false, 8)
+			lit += 1
+	if lit > 0:
+		_count("landing lights")
+	_bowser(_at(c, yaw, -4.4, 1.4), yaw + 0.4)
+	var gt := _node(_at(c, yaw, 3.0, -2.4), yaw)
+	for i in 4:
+		var a := i * TAU / 4.0 + PI * 0.25
+		_cyl(gt, 0.05, 0.07, 7.0, Vector3(cos(a) * 0.5, 3.5, sin(a) * 0.5), "counter_dark")
+	for lvl in 5:
+		_box(gt, Vector3(1.1, 0.06, 1.1), Vector3(0, 1.2 + lvl * 1.4, 0), "metal")
+	_box(gt, Vector3(3.2, 0.12, 0.5), Vector3(-1.25, 5.4, 1.0), "accent_lit", Vector3(0, atan2(-2.4, -3.0), 0))
+	_box(gt, Vector3(0.6, 0.9, 0.6), Vector3(0, 7.3, 0), "counter_dark")
+	var b := _sphere(gt, 0.14, Vector3(0, 7.95, 0), "glow_red", Vector3.ONE, false, 8)
+	_blinkers.append({"node": b, "period": 1.3, "phase": 0.2})
+	_count("gantry")
+
+
+## A single row of solar panels, for the slivers between streets.
+func _block_solar(c: Vector3, r: float, yaw: float) -> void:
+	_solar_array(c, yaw, 1)
+
+
+## A lunar lander parked in the margin: a gold descent stage on four splayed legs with round
+## pads, a silver cabin with a hatch and windows, a little dish, a planted flag.
+func _block_lander(c: Vector3, r: float, yaw: float) -> void:
+	var ln := _node(c, yaw)
+	_cyl(ln, 1.3, 1.3, 0.9, Vector3(0, 1.1, 0), "accent_lit", Vector3.ZERO, 8)
+	_cyl(ln, 0.55, 0.8, 0.5, Vector3(0, 0.45, 0), "counter_dark", Vector3.ZERO, 10)   # the engine bell
+	for k in 4:
+		var a := k * TAU / 4.0 + PI * 0.25
+		var foot := Vector3(cos(a) * 2.0, 0.0, sin(a) * 2.0)
+		_strut(ln, Vector3(cos(a) * 1.1, 0.9, sin(a) * 1.1), foot + Vector3(0, 0.1, 0), 0.06, "metal", 6)
+		_strut(ln, Vector3(cos(a) * 1.1, 1.45, sin(a) * 1.1), foot + Vector3(0, 0.1, 0), 0.04, "counter_dark", 5)
+		_cyl(ln, 0.4, 0.4, 0.1, foot + Vector3(0, 0.05, 0), "metal", Vector3.ZERO, 10)
+	_box(ln, Vector3(1.5, 1.1, 1.4), Vector3(0, 2.1, 0), "metal")
+	_box(ln, Vector3(0.5, 0.6, 0.06), Vector3(0, 2.0, 0.72), "ink")
+	for wx: float in [-0.45, 0.45]:
+		_box(ln, Vector3(0.3, 0.3, 0.06), Vector3(wx, 2.45, 0.72), "glass")
+	_cyl(ln, 0.03, 0.03, 1.4, Vector3(0.5, 3.35, -0.3), "ink")
+	_cyl(ln, 0.35, 0.08, 0.2, Vector3(0.5, 4.05, -0.3), "paper", Vector3(-0.5, 0, 0), 10)
+	_cyl(ln, 0.03, 0.03, 1.6, Vector3(2.7, 0.8, 0.6), "ink")
+	_box(ln, Vector3(0.6, 0.4, 0.03), Vector3(3.0, 1.4, 0.6), "accent_lit")
+	_count("lander")
+
+
+## A saucer parked in the margin on three legs, its ramp down and its pilot beside it: a green
+## blob with big eyes and two antennae, bobbing.
+func _block_ufo(c: Vector3, r: float, yaw: float) -> void:
+	var un := _node(c, yaw)
+	_cyl(un, 1.5, 2.3, 0.5, Vector3(0, 1.45, 0), "metal", Vector3.ZERO, 18)
+	_cyl(un, 2.3, 1.0, 0.5, Vector3(0, 0.95, 0), "ink", Vector3.ZERO, 18)
+	_sphere(un, 1.0, Vector3(0, 1.7, 0), "glass", Vector3(1, 0.75, 1), true, 16)
+	for k in 8:
+		var a := k * TAU / 8.0
+		var lt := _sphere(un, 0.14, Vector3(cos(a) * 2.05, 1.22, sin(a) * 2.05), "glow_yellow" if k % 2 == 0 else "glow_cyan", Vector3.ONE, false, 8)
+		if k % 4 == 1:
+			_blinkers.append({"node": lt, "period": 1.7, "phase": 0.25 * k})
+	for k in 3:
+		var a := k * TAU / 3.0 + PI * 0.5
+		_strut(un, Vector3(cos(a) * 1.6, 1.0, sin(a) * 1.6), Vector3(cos(a) * 2.2, 0.1, sin(a) * 2.2), 0.06, "counter_dark", 6)
+		_cyl(un, 0.3, 0.3, 0.1, Vector3(cos(a) * 2.2, 0.05, sin(a) * 2.2), "metal", Vector3.ZERO, 8)
+	_box(un, Vector3(0.9, 0.06, 2.6), Vector3(0, 0.5, 2.3), "metal", Vector3(0.38, 0, 0))
+	_alien(un, Vector3(1.5, 0, 2.7))
+	_count("saucer")
+
+
+func _alien(parent: Node3D, at: Vector3) -> void:
+	var al := Node3D.new()
+	al.position = at
+	al.rotation.y = 0.5
+	parent.add_child(al)
+	_sphere(al, 0.34, Vector3(0, 0.52, 0), "glow_green", Vector3(1.0, 1.15, 1.0), false, 12)
+	for ex: float in [-0.14, 0.14]:
+		_sphere(al, 0.1, Vector3(ex, 0.66, 0.26), "paper", Vector3.ONE, false, 8)
+		_sphere(al, 0.045, Vector3(ex, 0.67, 0.34), "ink", Vector3.ONE, false, 6)
+		_strut(al, Vector3(ex * 1.2, 0.8, 0), Vector3(ex * 2.4, 1.2, 0.05), 0.02, "ink", 4)
+		_sphere(al, 0.05, Vector3(ex * 2.4, 1.22, 0.05), "glow_green", Vector3.ONE, false, 6)
+		_cyl(al, 0.11, 0.11, 0.06, Vector3(ex * 1.1, 0.03, 0.08), "ink", Vector3.ZERO, 8)
+	_bobbers.append({"node": al, "base_y": at.y, "period": 2.6})
+	_count("pilot")
+
+
+## A tethered science balloon in the margin: an anchor block and winch, the tether up to a fat
+## balloon with a paper band and an instrument box under it, bobbing on its line.
+func _block_balloon(c: Vector3, r: float, yaw: float) -> void:
+	var bn := _node(c, yaw)
+	_box(bn, Vector3(1.0, 0.3, 1.0), Vector3(0, 0.15, 0), "counter_dark")
+	_cyl(bn, 0.4, 0.5, 0.5, Vector3(0, 0.5, 0), "metal", Vector3.ZERO, 10)
+	_strut(bn, Vector3(0, 0.7, 0), Vector3(0, 5.6, 0), 0.02, "ink", 4)
+	var balloon := Node3D.new()
+	balloon.position = Vector3(0, 7.5, 0)
+	bn.add_child(balloon)
+	_sphere(balloon, 1.4, Vector3.ZERO, "accent_lit", Vector3(1, 1.15, 1), false, 16)
+	_torus(balloon, 1.38, 1.46, Vector3(0, -0.2, 0), "paper", Vector3.ZERO, Vector3(1, 0.4, 1))
+	_strut(balloon, Vector3(0, -1.55, 0), Vector3(0, -1.9, 0), 0.02, "ink", 4)
+	_box(balloon, Vector3(0.5, 0.4, 0.5), Vector3(0, -2.1, 0), "metal")
+	var b := _sphere(balloon, 0.1, Vector3(0, -2.38, 0), "glow_red", Vector3.ONE, false, 8)
+	_blinkers.append({"node": b, "period": 2.2, "phase": 0.6})
+	_bobbers.append({"node": balloon, "base_y": 7.5, "period": 4.2})
+	_count("balloon")

@@ -1,5 +1,5 @@
 extends Control
-## Board HUD in the menu language: turn strip (coins, Bombas, items; clickable as item targets),
+## Board HUD in the menu language: turn strip (tickets, Bombas, items; clickable as item targets),
 ## dice slam, prompts, intro and reward cards, and on-screen ROLL / fork / item buttons so a
 ## mouse works as well as the keys.
 
@@ -8,6 +8,8 @@ var _font: Font
 var _dice_value: int = 0
 var _dice_t: float = 0.0
 var _fork_options: PackedStringArray = []
+var _shuttle_offer: bool = false     # the choice on offer is the rocket (stay or fly), not a fork
+var _shuttle_price: int = 10
 var _item_target_mode: String = ""
 var _aim_item: String = "laser"   # what the aim mode is for: the laser's beam or the bomb's throw
 var _hint: String = ""             # a short line under the bar (NOBODY IN RANGE)
@@ -100,6 +102,8 @@ func _on_events(events: Array) -> void:
 				_fork_options.clear()
 				for o in e["options"]:
 					_fork_options.append(str(o))
+				_shuttle_offer = bool(e.get("shuttle", false))
+				_shuttle_price = int(e.get("price", 10))
 			"turn":
 				_fork_options.clear()
 				_item_target_mode = ""
@@ -127,7 +131,7 @@ func _on_events(events: Array) -> void:
 			"claw":
 				if int(e.get("target", 0)) != 0:
 					_row_flash[int(e["target"])] = 1.0
-			"coins":
+			"tickets":
 				_row_flash[int(e["peer"])] = 1.0
 				if e.has("rank"):
 					rewards.append(e)
@@ -237,6 +241,9 @@ func _layout_buttons() -> void:
 	if forking and Game.args.has("hover_fork"):
 		_hover_side(str(Game.args["hover_fork"]) == "left")
 	if forking:
+		# The rocket's offer wears its own labels; a fork keeps LEFT and RIGHT.
+		_fork_left.text = "NO THANKS" if _shuttle_offer else "◀  LEFT"
+		_fork_right.text = ("TAKE THE ROCKET  ·  %d TICKETS  ▶" % _shuttle_price) if _shuttle_offer else "RIGHT  ▶"
 		# Out to the sides, near the path each one leads down; the pawn sits bottom-centre now
 		# that the camera stands behind it at a fork.
 		_fork_left.position = Vector2(size.x * 0.24 - _fork_left.size.x * 0.5, size.y * 0.56)
@@ -347,6 +354,8 @@ func _fire() -> void:
 func _side_index(left: bool) -> int:
 	if _fork_options.size() < 2:
 		return 0
+	if _shuttle_offer:
+		return 0 if left else 1   # stay on the left, fly on the right
 	var cam := get_viewport().get_camera_3d()
 	if cam == null:
 		return 0 if left else 1
@@ -602,7 +611,9 @@ func _draw() -> void:
 		if active or targeted:
 			draw_polyline(PackedVector2Array([Vector2(x + skew, y), Vector2(x + w, y), Vector2(x + w - skew, y + h), Vector2(x, y + h), Vector2(x + skew, y)]), Palette.hud_colour("danger") if targeted else accent, 3.0)
 		_text(Vector2(x + 48, y + 29), p.display_name.to_upper(), 20, paper if p != lp else accent)
-		_text(Vector2(x + 220, y + 29), "%d" % p.coins, 20, Palette.player_colour(3))
+		# Tickets (Sean: arcade tickets, not coins): a stub before the count.
+		_ticket_icon(Vector2(x + 200, y + 21), 1.0, ink)
+		_text(Vector2(x + 220, y + 29), "%d" % p.tickets, 20, Palette.player_colour(3))
 		_text(Vector2(x + 268, y + 29), "● %d" % p.toys, 20, Palette.hud_colour("score"))
 		# Steps to the vending machine, so everyone can plan; the leader's distance is what matters.
 		if st.goal != "" and director.graph != null:
@@ -683,7 +694,10 @@ func _draw() -> void:
 		elif ap != null:
 			prompt = "%s IS ROLLING" % ap.display_name.to_upper()
 	elif st.phase == BoardState.PHASE_CHOOSING:
-		prompt = "PICK A PATH" if director.is_local_turn() else "%s IS CHOOSING" % (ap.display_name.to_upper() if ap != null else "")
+		if _shuttle_offer:
+			prompt = ("TAKE THE ROCKET FOR %d TICKETS?" % _shuttle_price) if director.is_local_turn() else "%s IS AT THE ROCKET" % (ap.display_name.to_upper() if ap != null else "")
+		else:
+			prompt = "PICK A PATH" if director.is_local_turn() else "%s IS CHOOSING" % (ap.display_name.to_upper() if ap != null else "")
 	elif st.phase == BoardState.PHASE_MINIGAME:
 		prompt = "MINIGAME!"
 	elif st.phase == BoardState.PHASE_FINISHED:
@@ -924,3 +938,15 @@ func _text(pos: Vector2, text: String, size: int, col: Color, outline: float = 5
 	draw_string_outline(_font, Vector2.ZERO, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, int(outline), ink)
 	draw_string(_font, Vector2.ZERO, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, col)
 	draw_set_transform_matrix(Transform2D())
+
+
+## A ticket stub: a warm rectangle with a notch punched in each short end and a perforation line.
+func _ticket_icon(at: Vector2, scale: float, ink: Color) -> void:
+	var w := 16.0 * scale
+	var h := 10.0 * scale
+	var col := Palette.player_colour(2)   # TANGERINE, like an arcade ticket
+	draw_rect(Rect2(at.x - w * 0.5, at.y - h * 0.5, w, h), col)
+	draw_circle(Vector2(at.x - w * 0.5, at.y), 2.4 * scale, ink)
+	draw_circle(Vector2(at.x + w * 0.5, at.y), 2.4 * scale, ink)
+	for k in 3:
+		draw_rect(Rect2(at.x - w * 0.5 + 4.0 * scale + k * 3.2 * scale, at.y - 0.6 * scale, 1.6 * scale, 1.2 * scale), Color(ink, 0.7))

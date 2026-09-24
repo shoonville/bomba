@@ -873,3 +873,40 @@ board match on the new board.
 1. Sean: the district (the layout, the paved bands, the chevrons), and whether the short
    south-east loop (36 steps, 8 turns) wants closing or is the fun part.
 2. Unchanged: the display and driver settings (session 11), the 10–17 ms ticks (session 12).
+
+## 2026-09-24 — session 14: Sean's drawn board, the rocket, tickets
+
+Sean drew the board he wants (`reference/board_drawing.png`) and gave four notes with it. Remote
+Control on for the session. `tools/check_all.sh` green: 81 tests, 102 scripts, determinism
+identical, the headless four-seat board match on the new board.
+
+- **The board is his drawing** (`tools/gen_board.gd` traces the blue lines in the drawing's pixels,
+  the arrows as directions): 127 spaces, 4 forks, every space reaching every other; the slab a
+  rounded hull of the spaces; the annexes at the two domes. The district of the morning is gone.
+- **One rocket**, on its pad by the pad space: landing on or passing that space with 10 tickets
+  offers a flight to the landing spot on the far side, its own prompt (NO THANKS / TAKE THE ROCKET),
+  the rocket flying over with the rider in it and home again empty. Rules, bots, HUD, view, sound,
+  a harness flag (`--rocket_test`) and tests.
+- **Tickets, not coins**, everywhere (state, events, tuning, HUD, lobby, results, the sound).
+- **Emblems part of the tile**: ticket stubs, a mystery bag with a "?", a spiked disc, the dome,
+  the flag, all still; no floating markers. **No teleport space.** The rover and more cute things:
+  the lander, the parked saucer and its pilot, the balloon.
+
+  | BOMBA BAY | district (morning) | drawn (evening) |
+  |---|---|---|
+  | spaces / forks | 186 / 7 | 127 / 4 |
+  | routes from the start back to it | 36–116 steps | 27–93 steps, mean 60 (13.3 turns) |
+  | machine spots | R30, R74 | L31 (left dome), P18 (right dome) |
+  | rocket | — | P4 → L5 for 10 tickets |
+  | GPU ms mean / p95, 1080p on the 5090 | 0.72 / 0.74 | 0.67 / 0.97 |
+  | render CPU ms | 1.26 | 0.76 |
+  | first build under the wipe, longest chunk | 42 ms (craters) | 31 ms (the tile emblems) |
+
+  Frames: `board_map.png`, `board_overview.png`, `board_turn.png`, `board_fork.png`,
+  `board_machine.png` (retaken), `board_rocket_offer.png`, `board_rocket_flight.png` (new). His
+  verdict pending.
+
+### Next
+1. Sean: the drawn board in play, the rocket (its fare, the offer on every pass through the pad,
+   the ride), the tickets, the emblems on the tiles, the cute things.
+2. Unchanged: the display and driver settings (session 11), the 10–17 ms ticks (session 12).

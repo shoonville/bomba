@@ -1,61 +1,72 @@
 extends SceneTree
-## Generates board/boards/main.json (BOMBA BAY). Sean (2026-09-24, with an overhead shot of a
-## street-grid party board): "make the layout like this... right now it's just a big circle and
-## doesn't feel as engaging... you can put decorative stuff about the map in the open spaces where
-## there's no place to land on... make the entire map cohesive". The board is a district now:
-## one-way walkways laid out like streets round blocks, the blocks holding the base's set-pieces
-## (board_dressing.gd builds them from the "zones" written here):
-##   the RING ROAD, a rounded plot round everything (a superellipse, clockwise seen from the
-##     north: east along the north edge), about 86 spaces so a lap of it is still Sean's 20
-##     turns of the d8 (2026-09-23);
-##   MAIN STREET across the middle (eastbound) and two AVENUES (the west one southbound, the
-##     east one northbound), so every junction offers "straight on or turn" and the six blocks
-##     between them (HAB 2, the LANDING PAD and the DEPOT, the FARM, the TANK FARM, the CRATER
-##     PARK, the POWER PLANT) have a walkway on every side;
-##   the PAD APRON, a rectangular detour off the north edge round the landing pad, and the
-##     BOARDWALK, a curve off the south edge round the big crater (item-rich, like the loop
-##     board's outside detour).
-## Every street is one-way; a fork is a junction with two ways on (never three), and every
-## space reaches every other (checked, so the machine and the start are always reachable).
-## 3.7 m between spaces, the tile mix, 0.15 m elevation steps and the one safe spot opposite
-## the start are the loop board's. Deterministic (seed 11). The machine spots are flagged
-## afterwards by tools/mark_spots.gd: the two annexes stand off the east and west rims, the two
-## ends of main street ("annexes", the rim angles; the file's "slab" is the rounded plot the view
-## builds, so the tool and the view agree).
+## Generates board/boards/main.json (BOMBA BAY) from Sean's drawing (2026-09-24, the second
+## board of the day: "I drew where I want the board spaces to be in blue... in black I did an
+## arrow pointing to how I want the direction to be. when there's a fork in the road I did two
+## arrows... a magenta circle... that's where I want the start to be. the yellow things are the
+## spawn points... a rocket and a red circle next to the rocket and a dotted line leading to
+## another red circle"). The blue lines are traced here as polylines in the drawing's own pixels
+## (a 1500 × 1000 image, 0.115 m per pixel, north up), sampled every 3.7 m, and every junction
+## is a shared space. The streets and their one-way directions, from the arrows:
+##   TOP: from the start east along the top and down the right side into the rectangle's top edge;
+##   START DOWN: from the start south into the westward MID street (a fork at the start);
+##   MID: from the F3 junction north up the middle, then west to the F2 fork;
+##   F2 LOOP: south-west past the rocket's landing spot and round the big left loop up to M1;
+##   F2 CURVE: the short inner curve up to M1 (the fork at F2: loop or curve);
+##   M1 to F4, then the LENS: two arcs from F4 to the start (a fork at F4);
+##   the RECTANGLE: from F3 south past the rocket pad, east, north and west back to F3 (the fork
+##   at F3: up the middle or round the rectangle; the right column merges into its top edge).
+## The rocket ("shuttle"): landing on or passing the pad space offers a flight to the landing
+## spot on the far side for `price` tickets (board_rules.gd). The yellow domes are the annexes
+## (the respawn points, the vending machine's two spots), written as rim angles. The slab is
+## the rounded hull of the spaces with a margin (`MoonSlab.from_hull`); the blocks between the
+## streets and a few spots in the margin are "zones" the dressing fills. No event spaces (Sean:
+## "remove the spot that randomly teleports you"). Deterministic (seed 11). Then run
+## tools/mark_spots.gd to flag the machine spots.
 ##   GODOT --headless --path . --script tools/gen_board.gd -- [out]
 
-const SPACING := 3.7          # metres between spaces along a street
+const SPACING := 3.7
 const MAX_HOP := 5.6
 const MIN_PAIR := 3.0
-const A := 54.0               # the ring road's half-width (x)
-const B := 43.0               # and half-depth (z)
-const N := 3.2                # the superellipse exponent: 2 is an ellipse, higher is squarer
-const AVE := 22.0             # the avenues run at x = ±AVE
-const APRON_X := 14.0         # the pad apron's legs at x = ±APRON_X, its bottom at z = APRON_Z
-const APRON_Z := -26.0
-const WALK_X := 13.0          # the boardwalk leaves and rejoins the south edge at x = ±WALK_X
-const WALK_C := B - 4.0       # ... on a circle centred (0, WALK_C) of radius WALK_R
-const WALK_R := 13.5
-const MARGIN_X := 10.0        # the slab past the ring road, sides
-const MARGIN_Z := 7.0         # ... and top / bottom (the annexes go where the margin is widest)
-const START_X := 30.0         # the start on the south edge (the ring leaves it westward)
-const SHIELD_X := -30.0       # the one safe spot on the north edge, opposite
+const SCALE := 0.115          # metres per drawing pixel
+const ORIGIN := Vector2(701.0, 561.0)   # the drawing pixel that becomes (0, 0)
+const MARGIN := 9.0           # the slab past the hull of the spaces
+const SHUTTLE_PRICE := 10
+
+# Junctions, in drawing pixels (x right, y down = south).
+const START := Vector2(840, 310)
+const F4 := Vector2(612, 332)
+const M1 := Vector2(490, 392)
+const F2 := Vector2(606, 496)
+const M2 := Vector2(832, 420)
+const RED_L := Vector2(515, 665)   # the rocket's landing spot
+const F3 := Vector2(862, 682)
+const M3 := Vector2(1130, 666)
+const PAD := Vector2(862, 830)     # the rocket pad
+const BR := Vector2(1200, 828)
+const TR := Vector2(1222, 692)
+const SHIELD_AT := Vector2(280, 806)   # the safe spot: the bottom of the big loop, opposite the start
+const ANNEX_L := Vector2(375, 335)     # the yellow domes
+const ANNEX_R := Vector2(1300, 740)
 
 var _rng := RandomNumberGenerator.new()
-var _nodes: Array = []        # {id, p: Vector2, next: [ids], kind, type}
-var _by_id: Dictionary = {}   # id → index in _nodes
-var _index: Dictionary = {}   # position key → id (junctions are shared by position)
-var _count: Dictionary = {}   # street letter → spaces made
+var _nodes: Array = []
+var _by_id: Dictionary = {}
+var _index: Dictionary = {}
+var _count: Dictionary = {}
 var _start_id := ""
+var _slab: MoonSlab
 
 
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	var out_path: String = args[0] if args.size() > 0 else "res://board/boards/main.json"
 	_rng.seed = 11
-	_build_ring()
 	_build_streets()
 	_assign_types()
+	var pts: Array = []
+	for nd in _nodes:
+		pts.append(nd["p"])
+	_slab = MoonSlab.from_hull(pts, MARGIN)
 	var problems := _check()
 	for p in problems:
 		printerr(p)
@@ -67,12 +78,11 @@ func _initialize() -> void:
 		var p: Vector2 = nd["p"]
 		spaces.append({"id": nd["id"], "position": [snappedf(p.x, 0.01), snappedf(_elev(p), 0.01), snappedf(p.y, 0.01)],
 			"type": nd["type"], "next": nd["next"], "goal": false})
-	var slab := MoonSlab.new()
-	slab.rx = A + MARGIN_X
-	slab.rz = B + MARGIN_Z
-	slab.n = N
 	var board := {"id": "main", "display_name": "BOMBA BAY", "start": _start_id,
-		"slab": slab.to_dict(), "annexes": [0.0, snappedf(PI, 0.0001)], "zones": _zones(), "spaces": spaces}
+		"slab": _slab.to_dict(),
+		"annexes": [snappedf(_angle(ANNEX_L), 0.0001), snappedf(_angle(ANNEX_R), 0.0001)],
+		"shuttle": {"from": _index[_key(_m(PAD))], "to": _index[_key(_m(RED_L))], "price": SHUTTLE_PRICE},
+		"zones": _zones(), "spaces": spaces}
 	var f := FileAccess.open(out_path, FileAccess.WRITE)
 	f.store_string(JSON.stringify(board, "  ") + "\n")
 	f.close()
@@ -81,102 +91,62 @@ func _initialize() -> void:
 	quit(0)
 
 
-# --- the ring road -------------------------------------------------------------------------------------
-
-## The superellipse's parametric point; t runs clockwise seen from the north (east at 0, the
-## south edge at a quarter turn).
-func _ring_pt(t: float) -> Vector2:
-	var c := cos(t)
-	var s := sin(t)
-	return Vector2(A * signf(c) * pow(absf(c), 2.0 / N), B * signf(s) * pow(absf(s), 2.0 / N))
+## Drawing pixels to metres.
+func _m(px: Vector2) -> Vector2:
+	return (px - ORIGIN) * SCALE
 
 
-## The north edge's z at x, and the south edge's.
-func _zn(x: float) -> float:
-	return -B * pow(1.0 - pow(absf(x) / A, N), 1.0 / N)
+func _angle(px: Vector2) -> float:
+	var p := _m(px)
+	return atan2(p.y - _slab_centre().y, p.x - _slab_centre().x)
 
 
-func _zs(x: float) -> float:
-	return -_zn(x)
+func _slab_centre() -> Vector2:
+	return Vector2(_slab.centre.x, _slab.centre.z) if _slab != null else Vector2.ZERO
 
 
-func _build_ring() -> void:
-	var start := Vector2(START_X, _zs(START_X))
-	var junctions: Array = [start,
-		Vector2(A, 0.0), Vector2(-A, 0.0),
-		Vector2(-AVE, _zn(-AVE)), Vector2(AVE, _zn(AVE)), Vector2(-AVE, _zs(-AVE)), Vector2(AVE, _zs(AVE)),
-		Vector2(-APRON_X, _zn(-APRON_X)), Vector2(APRON_X, _zn(APRON_X)),
-		Vector2(WALK_X, _zs(WALK_X)), Vector2(-WALK_X, _zs(-WALK_X)),
-		Vector2(SHIELD_X, _zn(SHIELD_X))]
-	# A dense outline with the junctions dropped in at their exact spots, then one arc per
-	# stretch between junctions, clockwise from the start, so the ring's ids count round from it.
-	var dense: Array = []
-	var m := 3600
-	for i in m:
-		dense.append(_ring_pt(TAU * i / m))
-	var jidx: Array = []
-	for j in junctions:
-		var best := 0
-		for i in m:
-			if (dense[i] as Vector2).distance_to(j) < (dense[best] as Vector2).distance_to(j):
-				best = i
-		dense[best] = j
-		jidx.append(best)
-	var t0: int = jidx[0]
-	var order := jidx.duplicate()
-	order.sort_custom(func(a, b): return (a - t0 + m) % m < (b - t0 + m) % m)
-	for k in order.size():
-		var i0: int = order[k]
-		var i1: int = order[(k + 1) % order.size()]
-		var pts: Array = []
-		var i := i0
-		while true:
-			pts.append(dense[i])
-			if i == i1:
-				break
-			i = (i + 1) % m
-		_arc(pts, "R", "ring")
-	_start_id = _index[_key(start)]
-
-
-# --- the streets -----------------------------------------------------------------------------------------
+# --- the streets, traced from the drawing ----------------------------------------------------------
 
 func _build_streets() -> void:
-	# Main street, eastbound: it leaves the west edge (a fork there) and joins the east edge.
-	_leg(Vector2(-A, 0.0), Vector2(-AVE, 0.0), "M", "main")
-	_leg(Vector2(-AVE, 0.0), Vector2(AVE, 0.0), "M", "main")
-	_leg(Vector2(AVE, 0.0), Vector2(A, 0.0), "M", "main")
-	# The west avenue southbound, the east avenue northbound: with the ring clockwise every
-	# junction is a "straight on or turn", and the four small loops round the middle blocks
-	# all run clockwise too.
-	_leg(Vector2(-AVE, _zn(-AVE)), Vector2(-AVE, 0.0), "W", "avenue")
-	_leg(Vector2(-AVE, 0.0), Vector2(-AVE, _zs(-AVE)), "W", "avenue")
-	_leg(Vector2(AVE, _zs(AVE)), Vector2(AVE, 0.0), "E", "avenue")
-	_leg(Vector2(AVE, 0.0), Vector2(AVE, _zn(AVE)), "E", "avenue")
-	# The pad apron: a rectangular detour south of the north edge round the landing pad.
-	_leg(Vector2(-APRON_X, _zn(-APRON_X)), Vector2(-APRON_X, APRON_Z), "P", "apron")
-	_leg(Vector2(-APRON_X, APRON_Z), Vector2(APRON_X, APRON_Z), "P", "apron")
-	_leg(Vector2(APRON_X, APRON_Z), Vector2(APRON_X, _zn(APRON_X)), "P", "apron")
-	# The boardwalk: an arc north of the south edge round the big crater, east end to west end
-	# (the south edge runs west).
+	# The start first, so the first space is S0 and the lens arcs end on it.
+	_node_at(_m(START), "S", "main")
+	_start_id = _index[_key(_m(START))]
+	# TOP: east along the top, down the right column, into the rectangle's top edge at M3.
+	_poly([START, Vector2(900, 292), Vector2(1000, 283), Vector2(1060, 290), Vector2(1100, 312), Vector2(1113, 345),
+		Vector2(1118, 450), Vector2(1124, 560), M3], "T", "main")
+	# START DOWN: south from the start into MID at M2.
+	_poly([START, Vector2(846, 350), Vector2(840, 392), M2], "D", "main")
+	# MID: from F3 north up the middle, then west through M2 to F2.
+	_poly([F3, Vector2(860, 640), Vector2(868, 600), Vector2(885, 578), Vector2(915, 566), Vector2(940, 545),
+		Vector2(951, 505), Vector2(950, 462), Vector2(940, 432), Vector2(900, 426), M2], "M", "main")
+	_poly([M2, Vector2(760, 424), Vector2(700, 432), Vector2(660, 454), Vector2(630, 478), F2], "M", "main")
+	# F2 LOOP: south-west past the rocket's landing spot, round the big loop, up to M1.
+	_poly([F2, Vector2(582, 538), Vector2(552, 598), RED_L], "L", "main")
+	_poly([RED_L, Vector2(470, 705), Vector2(400, 760), Vector2(330, 800), SHIELD_AT, Vector2(215, 786), Vector2(185, 740),
+		Vector2(180, 690), Vector2(200, 620), Vector2(250, 560), Vector2(330, 490), Vector2(420, 430), M1], "L", "main")
+	# F2 CURVE: the inner curve up to M1 (item-rich, the short way).
+	_poly([F2, Vector2(572, 480), Vector2(532, 452), Vector2(506, 422), M1], "C", "rich")
+	# M1 to F4.
+	_poly([M1, Vector2(540, 360), Vector2(590, 340), F4], "K", "main")
+	# The LENS: two arcs from F4 to the start.
+	_poly([F4, Vector2(660, 308), Vector2(720, 296), Vector2(790, 298), START], "A", "rich")
+	_poly([F4, Vector2(640, 356), Vector2(700, 362), Vector2(770, 350), Vector2(820, 326), START], "B", "branch")
+	# The RECTANGLE: south from F3 to the pad, east along the bottom, north, then west along the
+	# top edge through M3 back to F3.
+	_poly([F3, Vector2(860, 760), PAD], "P", "branch")
+	_poly([PAD, Vector2(950, 838), Vector2(1050, 840), Vector2(1150, 834), BR, Vector2(1218, 780), Vector2(1222, 730), TR], "P", "branch")
+	_poly([TR, Vector2(1180, 676), M3], "P", "branch")
+	_poly([M3, Vector2(1050, 672), Vector2(960, 677), F3], "P", "branch")
+
+
+## A polyline in drawing pixels: spaces every ~SPACING along it, both ends exact.
+func _poly(px: Array, street: String, kind: String) -> void:
 	var pts: Array = []
-	var a0 := atan2(_zs(WALK_X) - WALK_C, WALK_X)
-	var a1 := PI - a0 - TAU
-	var steps := 400
-	for i in steps + 1:
-		var t := lerpf(a0, a1, float(i) / steps)
-		pts.append(Vector2(WALK_R * cos(t), WALK_C + WALK_R * sin(t)))
-	pts[0] = Vector2(WALK_X, _zs(WALK_X))
-	pts[-1] = Vector2(-WALK_X, _zs(-WALK_X))
-	_arc(pts, "B", "walk")
+	for p in px:
+		pts.append(_m(p))
+	_arc(pts, street, kind)
 
 
-func _leg(a: Vector2, b: Vector2, street: String, kind: String) -> void:
-	_arc([a, b], street, kind)
-
-
-## Spaces every ~SPACING along a polyline, its two ends exact (shared with whatever else ends
-## there), linked in order.
 func _arc(pts: Array, street: String, kind: String) -> void:
 	var length := 0.0
 	for i in range(1, pts.size()):
@@ -235,6 +205,18 @@ func _pos(id: String) -> Vector2:
 	return _node(id)["p"]
 
 
+func _nearest(px: Vector2) -> String:
+	var target := _m(px)
+	var best := ""
+	var best_d := 1e9
+	for nd in _nodes:
+		var d := (nd["p"] as Vector2).distance_to(target)
+		if d < best_d:
+			best_d = d
+			best = nd["id"]
+	return best
+
+
 # --- types and heights --------------------------------------------------------------------------------
 
 func _assign_types() -> void:
@@ -242,69 +224,81 @@ func _assign_types() -> void:
 		nd["type"] = _pick_type(str(nd["kind"]))
 	var start := _node(_start_id)
 	start["type"] = "start"
-	# No damage on the first two spaces out of the start.
-	var s1: String = start["next"][0]
-	var s2: String = _node(s1)["next"][0]
-	for id in [s1, s2]:
-		if _node(id)["type"] == "lose":
-			_node(id)["type"] = "coin"
-	# The safe spot: the ring space at the far side.
-	_node(_index[_key(Vector2(SHIELD_X, _zn(SHIELD_X)))])["type"] = "shield"
-	# The ring spaces either side of the two main-street junctions stay blank: the machine spots
-	# (tools/mark_spots.gd wants a blank space with a clear corridor out to the rim, and the
-	# annexes stand off the middle of the west and east rims).
-	for jx in [-A, A]:
+	# No damage on the first two spaces out of the start, either way.
+	for first in start["next"]:
+		var s2: String = _node(first)["next"][0]
+		for id in [first, s2]:
+			if _node(id)["type"] == "lose":
+				_node(id)["type"] = "ticket"
+	# The one safe spot, at the bottom of the big loop.
+	_node(_nearest(SHIELD_AT))["type"] = "shield"
+	# The rocket pad and its landing spot are plain spaces (the flight is the effect).
+	_node(_index[_key(_m(PAD))])["type"] = "blank"
+	_node(_index[_key(_m(RED_L))])["type"] = "blank"
+	# Blanks near each annex so the machine spots have candidates (tools/mark_spots.gd wants
+	# a blank, non-junction space with a clear corridor out to the rim).
+	for dome in [ANNEX_L, ANNEX_R]:
+		var near: Array = []
 		for nd in _nodes:
-			if str(nd["kind"]) == "ring" and (nd["p"] as Vector2).distance_to(Vector2(jx, 0.0)) < SPACING * 1.4 \
-					and (nd["p"] as Vector2).distance_to(Vector2(jx, 0.0)) > 0.1:
+			near.append([(nd["p"] as Vector2).distance_to(_m(dome)), nd["id"]])
+		near.sort_custom(func(a, b): return a[0] < b[0])
+		for k in 4:
+			var nd := _node(near[k][1])
+			if str(nd["type"]) != "start" and str(nd["type"]) != "shield":
 				nd["type"] = "blank"
 
 
 func _pick_type(kind: String) -> String:
 	var r := _rng.randf()
 	match kind:
-		"walk":   # the item-rich detour
-			return "item" if r < 0.5 else ("coin" if r < 0.8 else "event")
-		"avenue", "apron":
-			return "lose" if r < 0.28 else ("coin" if r < 0.6 else ("item" if r < 0.8 else "blank"))
-	if r < 0.40:
-		return "coin"
-	if r < 0.64:
+		"rich":
+			return "item" if r < 0.45 else ("ticket" if r < 0.8 else "blank")
+		"branch":
+			return "lose" if r < 0.28 else ("ticket" if r < 0.6 else ("item" if r < 0.8 else "blank"))
+	if r < 0.44:
+		return "ticket"
+	if r < 0.7:
 		return "blank"
-	if r < 0.76:
+	if r < 0.84:
 		return "item"
-	if r < 0.88:
-		return "lose"
-	return "event"
+	return "lose"
 
 
-## Gentle ground swell across the district in 0.15 m steps, 0 to 0.9 m, so the streets rise and
-## dip (the loop board had two waves round its loop).
+## Gentle ground swell in 0.15 m steps, 0 to 0.9 m, so the streets rise and dip.
 func _elev(p: Vector2) -> float:
 	return snappedf(0.45 * (1.0 + sin(p.x / 19.0 + 0.8) * cos(p.y / 15.0 + 0.3)), 0.15)
 
 
-# --- the blocks: what the dressing builds in the open spaces --------------------------------------
+# --- the blocks and the margin spots: what the dressing builds -------------------------------------
 
-func _zone(kind: String, x: float, z: float, r: float, yaw: float) -> Dictionary:
-	return {"kind": kind, "centre": [snappedf(x, 0.01), snappedf(z, 0.01)], "r": r, "yaw": snappedf(yaw, 0.01)}
+func _zone(kind: String, px: Vector2, r: float, yaw: float) -> Dictionary:
+	var p := _m(px)
+	return {"kind": kind, "centre": [snappedf(p.x, 0.01), snappedf(p.y, 0.01)], "r": r, "yaw": snappedf(yaw, 0.01)}
 
 
-## One set-piece per block, as a disc the walkways keep clear of (centre, radius, a yaw): the
-## dressing places the block's structures inside it and the random ground fillers outside.
+func _margin_zone(kind: String, deg: float, f: float, r: float, yaw: float) -> Dictionary:
+	var p := _slab.point(deg_to_rad(deg), f)
+	return {"kind": kind, "centre": [snappedf(p.x, 0.01), snappedf(p.y, 0.01)], "r": r, "yaw": snappedf(yaw, 0.01)}
+
+
+## One set-piece per open space (a disc the walkways keep clear of: centre, radius, a yaw), and a
+## few cute things out in the margin between the streets and the rim.
 func _zones() -> Array:
-	var z_start := _zs(START_X)
-	var rim_z := (B + MARGIN_Z) * pow(1.0 - pow(START_X / (A + MARGIN_X), N), 1.0 / N)
+	var start_m := _m(START)
+	var plaza := Vector2(start_m.x, start_m.y - 7.6)
 	return [
-		_zone("hab", -35.0, -16.0, 8.0, 0.35),                       # HAB 2: domes, the comms mast
-		_zone("pad", 0.0, (APRON_Z + _zn(0.0)) * 0.5, 4.5, 0.0),      # the landing pad inside the apron
-		_zone("depot", 0.0, (APRON_Z + 0.0) * 0.5, 8.0, 0.2),         # hangar, cargo, the crane
-		_zone("farm", 35.0, -16.0, 8.0, 0.0),                        # greenhouses in rows, the water tank
-		_zone("tanks", -35.0, 16.0, 8.0, -0.4),                      # the tank farm
-		_zone("park", 0.0, 12.0, 7.0, 0.0),                          # the upper lawn: the probe, rocks
-		_zone("crater", 0.0, (WALK_C - WALK_R + z_start) * 0.5 + 0.8, 4.0, 0.6),   # the big crater, the rig
-		_zone("power", 35.0, 16.0, 8.0, 0.15),                       # solar field, the reactor, the dish
-		_zone("plaza", START_X, (z_start + rim_z) * 0.5 + 0.3, 1.6, 0.0),   # the crew by the flag, off the start
+		_zone("hab", Vector2(330, 640), 8.0, 0.4),          # inside the big loop: HAB 2, the comms tower
+		_zone("farm", Vector2(690, 555), 8.0, -0.2),        # the bay: greenhouses in rows
+		_zone("park", Vector2(640, 700), 6.0, 0.6),         # the bay's crater with the rig
+		_zone("rocket", Vector2(768, 768), 4.6, 0.0),       # the rocket on its pad, by the pad space
+		_zone("pad", Vector2(1000, 400), 6.0, 0.3),         # inside the top loop: the rover's pad and lights
+		_zone("depot", Vector2(1040, 585), 7.0, 0.2),       # ... and the hangar, cargo, the crane
+		_zone("power", Vector2(1040, 758), 6.5, 0.0),       # inside the rectangle: the reactor, solar
+		_zone("solar", Vector2(690, 396), 2.4, 0.15),       # the sliver under the lens: a solar row
+		{"kind": "plaza", "centre": [snappedf(plaza.x, 0.01), snappedf(plaza.y, 0.01)], "r": 1.6, "yaw": 0.0},
+		_margin_zone("lander", -28.0, 0.93, 2.4, 0.5),      # north-east margin: the lander
+		_margin_zone("ufo", 138.0, 0.93, 3.0, 0.0),         # south-west margin: a parked saucer and its pilot
+		_margin_zone("balloon", -112.0, 0.93, 1.6, 0.0),    # north margin: the tethered balloon
 	]
 
 
@@ -318,7 +312,6 @@ func _check() -> PackedStringArray:
 			out.append("%s has no way on" % nd["id"])
 		if nxt.size() > 2:
 			out.append("%s has %d ways on (a fork offers two)" % [nd["id"], nxt.size()])
-	# Strongly connected: everything from the start, the start from everything.
 	var fwd := _reach(_start_id, false)
 	var back := _reach(_start_id, true)
 	for nd in _nodes:
@@ -342,6 +335,16 @@ func _check() -> PackedStringArray:
 		out.append("spaces %s only %.2f m apart" % [worst, min_pair])
 	if max_hop > MAX_HOP:
 		out.append("a hop of %.2f m" % max_hop)
+	for z in _zones():
+		var c: Array = z["centre"]
+		var r := float(z["r"])
+		for nd in _nodes:
+			var d := (nd["p"] as Vector2).distance_to(Vector2(float(c[0]), float(c[1])))
+			if d < r + 1.6:
+				out.append("zone %s (r %.1f) is %.1f m from space %s" % [z["kind"], r, d, nd["id"]])
+				break
+		if not _slab.inside(float(c[0]), float(c[1]), 0.97):
+			out.append("zone %s is off the slab" % z["kind"])
 	return out
 
 
@@ -367,11 +370,9 @@ func _reach(from: String, backwards: bool) -> Dictionary:
 
 func _report() -> void:
 	var counts := {}
-	var kinds := {}
 	var forks := []
 	for nd in _nodes:
 		counts[nd["type"]] = int(counts.get(nd["type"], 0)) + 1
-		kinds[nd["kind"]] = int(kinds.get(nd["kind"], 0)) + 1
 		if (nd["next"] as Array).size() > 1:
 			forks.append(nd["id"])
 	var min_pair := 1e9
@@ -382,9 +383,11 @@ func _report() -> void:
 	for nd in _nodes:
 		for n in nd["next"]:
 			max_hop = maxf(max_hop, (nd["p"] as Vector2).distance_to(_pos(n)))
-	print("spaces %d by street %s, forks %d %s" % [_nodes.size(), str(kinds), forks.size(), str(forks)])
+	print("spaces %d by street %s, forks %d %s" % [_nodes.size(), str(_count), forks.size(), str(forks)])
 	print("min pair %.2f m, hop max %.2f m, types %s" % [min_pair, max_hop, str(counts)])
-	# Laps: every simple route from the start back to the start, in steps.
+	print("slab centre (%.1f, %.1f), extent ±%.1f × ±%.1f m; shuttle %s → %s; annexes at %d° and %d°" % [
+		_slab.centre.x, _slab.centre.z, _slab.rx, _slab.rz, _index[_key(_m(PAD))], _index[_key(_m(RED_L))],
+		roundi(rad_to_deg(_angle(ANNEX_L))), roundi(rad_to_deg(_angle(ANNEX_R)))])
 	var laps: Array = []
 	_walk(_start_id, 0, {}, laps)
 	laps.sort()
@@ -392,8 +395,8 @@ func _report() -> void:
 	for l in laps:
 		mean += float(l)
 	mean /= maxf(1.0, laps.size())
-	print("laps from the start back to it: %d routes, %d–%d steps, mean %.1f (%.1f–%.1f turns of the d8, mean %.1f); the ring road %d" % [
-		laps.size(), laps[0], laps[-1], mean, laps[0] / 4.5, laps[-1] / 4.5, mean / 4.5, int(_count.get("R", 0))])
+	print("laps from the start back to it: %d routes, %d–%d steps, mean %.1f (%.1f–%.1f turns of the d8, mean %.1f)" % [
+		laps.size(), laps[0], laps[-1], mean, laps[0] / 4.5, laps[-1] / 4.5, mean / 4.5])
 
 
 func _walk(at: String, depth: int, seen: Dictionary, laps: Array) -> void:

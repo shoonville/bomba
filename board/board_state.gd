@@ -15,14 +15,14 @@ class PlayerState:
 	var colour_index: int = 0
 	var is_bot: bool = false
 	var space: String = ""
-	var coins: int = 0
+	var tickets: int = 0
 	var toys: int = 0
 	var items: Array = []
 	var hp: int = 30
 
 	func to_dict() -> Dictionary:
 		return {"peer_id": peer_id, "display_name": display_name, "colour_index": colour_index,
-			"is_bot": is_bot, "space": space, "coins": coins, "toys": toys,
+			"is_bot": is_bot, "space": space, "tickets": tickets, "toys": toys,
 			"items": items.duplicate(), "hp": hp}
 
 	static func from_dict(d: Dictionary) -> PlayerState:
@@ -32,7 +32,7 @@ class PlayerState:
 		p.colour_index = int(d.get("colour_index", 0))
 		p.is_bot = bool(d.get("is_bot", false))
 		p.space = str(d.get("space", ""))
-		p.coins = int(d.get("coins", 0))
+		p.tickets = int(d.get("tickets", 0))
 		p.toys = int(d.get("toys", 0))
 		p.items = Array(d.get("items", []))
 		p.hp = int(d.get("hp", 30))
@@ -48,6 +48,7 @@ var active: int = 0
 var dice: int = 0
 var steps_left: int = 0
 var pending_options: PackedStringArray = []
+var pending_kind: String = ""   # "" for a fork (pick a path), "shuttle" for the rocket's offer (stay or fly)
 var goal: String = ""
 var seed_value: int = 0
 var rng_counter: int = 0
@@ -79,14 +80,14 @@ func index_of(peer_id: int) -> int:
 	return -1
 
 
-## Toys first, coins second, then name so ties are stable on every peer.
+## Toys first, tickets second, then name so ties are stable on every peer.
 func standings() -> Array[PlayerState]:
 	var out := players.duplicate()
 	out.sort_custom(func(a: PlayerState, b: PlayerState):
 		if a.toys != b.toys:
 			return a.toys > b.toys
-		if a.coins != b.coins:
-			return a.coins > b.coins
+		if a.tickets != b.tickets:
+			return a.tickets > b.tickets
 		return a.display_name < b.display_name)
 	return out
 
@@ -96,7 +97,7 @@ func to_dict() -> Dictionary:
 	for p in players:
 		ps.append(p.to_dict())
 	return {"board_id": board_id, "players": ps, "round": round, "rounds": rounds, "phase": phase,
-		"active": active, "dice": dice, "steps_left": steps_left, "pending_options": Array(pending_options),
+		"active": active, "dice": dice, "steps_left": steps_left, "pending_options": Array(pending_options), "pending_kind": pending_kind,
 		"goal": goal, "seed": seed_value, "rng_counter": rng_counter, "turn_serial": turn_serial,
 		"last_ranking": last_ranking.duplicate(), "blood": blood.duplicate(true), "blood_serial": blood_serial}
 
@@ -114,6 +115,7 @@ static func from_dict(d: Dictionary) -> BoardState:
 	s.steps_left = int(d.get("steps_left", 0))
 	for o in d.get("pending_options", []):
 		s.pending_options.append(str(o))
+	s.pending_kind = str(d.get("pending_kind", ""))
 	s.goal = str(d.get("goal", ""))
 	s.seed_value = int(d.get("seed", 0))
 	s.rng_counter = int(d.get("rng_counter", 0))
