@@ -58,7 +58,7 @@ machine spot, and a bridge runs from the space to the annex); pass or land on th
 10 tickets and a toy pops out, then the machine moves to the other annex. First to 4 toys wins
 on the spot (the host sets FIRST TO, TURN TIME, ROUND CAP and TOY PRICE in the lobby's MATCH
 SETTINGS; `--toys_to_win=N`, `--toy_price=N`, `--machine_at=ID` and `--rocket_test` in the
-harness). Spots, their emblems painted on the tile: tickets (+3, two stubs), item (a star: bomb,
+harness). Spots, their emblems painted on the tile: tickets (+3, one pink ticket with a golden maple leaf), item (a star: bomb,
 portal, shield, the laser gun or the claw), damage (−3 tickets, a mine), health (+6 HP, a med
 bag on a green tile), and one safe spot
 (cyan dome) that hands out a SHIELD, a glowing aura that eats the next bomb, damage spot, laser

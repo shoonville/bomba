@@ -958,6 +958,9 @@ func _blocks(craters: Array, landmarks: Array) -> void:
 			"satellite": _block_satellite(c, r, yaw)
 			"arch": _block_arch(c, r, yaw)
 			"telescope": _block_telescope(c, r, yaw)
+			"control": _block_control(c, r, yaw)
+			"rocket_pad": _block_rocket_pad(c, r, yaw)
+			"rocket_cradle": _block_rocket_cradle(c, r, yaw)
 		_occupied.append(Vector3(c.x, c.z, r + 0.8))
 		_count("block")
 
@@ -1890,3 +1893,122 @@ func _block_telescope(c: Vector3, r: float, yaw: float) -> void:
 	_box(ib, Vector3(0.8, 0.6, 0.6), Vector3(0, 0.3, 0), "metal")
 	_cyl(ib, 0.03, 0.03, 1.4, Vector3(0.2, 1.3, 0), "ink")
 	_box(ib, Vector3(0.2, 0.14, 0.06), Vector3(0, 0.45, 0.31), "glow_green")
+
+
+## Mission control, near the centre (Sean, 2026-09-24: "add another structure near the center,
+## like a space themed building, add detail"): two storeys on a plinth, a window band round the
+## ground floor, the upper floor set back with a wide front window and a railed roof, stairs up
+## the side, an airlock with a CONTROL sign, a big dish on a mount, two masts with lights, a radar
+## bar turning, floodlight masts at the front corners and a flag.
+func _block_control(c: Vector3, r: float, yaw: float) -> void:
+	var b := _node(c, yaw)
+	_box(b, Vector3(6.6, 0.3, 4.6), Vector3(0, 0.15, 0), "counter_dark")
+	_box(b, Vector3(6.0, 2.6, 4.0), Vector3(0, 1.6, 0), "metal")
+	for k in 2:
+		var z := (k * 2 - 1) * 2.01
+		_box(b, Vector3(4.4, 0.7, 0.06), Vector3(-0.4, 1.9, z), "glass")
+		var x := (k * 2 - 1) * 3.01
+		_box(b, Vector3(0.06, 0.7, 3.0), Vector3(x, 1.9, 0), "glass")
+	_box(b, Vector3(6.2, 0.16, 4.2), Vector3(0, 2.98, 0), "counter_dark")
+	_box(b, Vector3(4.0, 2.2, 2.8), Vector3(-0.6, 4.1, -0.3), "paper")
+	_box(b, Vector3(3.4, 1.1, 0.08), Vector3(-0.6, 4.3, 1.11), "glass")
+	_box(b, Vector3(4.2, 0.14, 3.0), Vector3(-0.6, 5.28, -0.3), "counter_dark")
+	for s: float in [-1.0, 1.0]:
+		_box(b, Vector3(4.2, 0.05, 0.05), Vector3(-0.6, 5.78, -0.3 + s * 1.5), "ink")
+		for k in 5:
+			_box(b, Vector3(0.05, 0.45, 0.05), Vector3(-2.6 + k * 1.0, 5.57, -0.3 + s * 1.5), "ink")
+	for k in 7:
+		_box(b, Vector3(0.9, 0.08, 0.4), Vector3(2.55, 0.5 + k * 0.4, 1.5 - k * 0.42), "metal")
+	_box(b, Vector3(0.06, 1.0, 3.0), Vector3(3.02, 2.6, 0.2), "ink")   # the stair rail
+	_box(b, Vector3(1.2, 2.0, 0.5), Vector3(1.9, 1.15, 2.2), "counter_dark")
+	_box(b, Vector3(0.7, 1.4, 0.1), Vector3(1.9, 1.0, 2.5), "metal")
+	_box(b, Vector3(0.2, 0.2, 0.1), Vector3(1.9, 2.0, 2.5), "glow_yellow")
+	_label(b, "CONTROL", Vector3(1.9, 2.5, 2.47), 40, Palette.hud_colour("paper"), 0.0)
+	_cyl(b, 0.14, 0.18, 0.9, Vector3(1.9, 3.5, -0.9), "counter_dark")
+	var dish := _cyl(b, 1.3, 0.2, 0.4, Vector3(1.9, 4.25, -0.9), "paper", Vector3(-0.9, 0.3, 0), 14)
+	dish.rotation.y = 0.3
+	_cyl(b, 0.04, 0.04, 1.2, Vector3(1.9, 4.7, -0.45), "ink", Vector3(-0.9, 0, 0))
+	for s: float in [-1.0, 1.0]:
+		_cyl(b, 0.04, 0.05, 2.6, Vector3(-0.6 + s * 1.7, 6.6, -0.3 + s * 0.8), "ink")
+		var lt := _sphere(b, 0.12, Vector3(-0.6 + s * 1.7, 7.95, -0.3 + s * 0.8), "glow_red" if s < 0 else "glow_cyan", Vector3.ONE, false, 8)
+		_blinkers.append({"node": lt, "period": 1.5 if s < 0 else 2.3, "phase": 0.3})
+	var radar := Node3D.new()
+	radar.position = Vector3(-0.6, 5.35, -0.3)
+	b.add_child(radar)
+	_cyl(radar, 0.08, 0.1, 0.5, Vector3(0, 0.25, 0), "metal")
+	_box(radar, Vector3(1.6, 0.35, 0.06), Vector3(0, 0.6, 0), "paper")
+	_spinners.append({"node": radar, "rate": 1.2})
+	for s: float in [-1.0, 1.0]:
+		var mast := _node(_at(c, yaw, s * 3.7, 2.7), yaw)
+		_cyl(mast, 0.05, 0.07, 3.4, Vector3(0, 1.7, 0), "counter_dark")
+		_box(mast, Vector3(0.4, 0.25, 0.3), Vector3(0, 3.45, -0.1), "ink", Vector3(-0.6, 0, 0))
+		_box(mast, Vector3(0.3, 0.1, 0.05), Vector3(0, 3.42, 0.08), "glow_yellow", Vector3(-0.6, 0, 0))
+	_cyl(b, 0.03, 0.03, 3.2, Vector3(-3.5, 1.6, 2.6), "ink")
+	_box(b, Vector3(0.6, 0.4, 0.03), Vector3(-3.2, 2.9, 2.6), "accent_lit")
+	_count("mission control")
+
+
+## The rocket as decoration (Sean: "a couple more rockets around the map, they will just be
+## decoration"), the taxi's shape at a scale: a cream body with a band and a skirt, an engine bell
+## and throat, three fins, a nose, a porthole. `lying` lays it on its side along the node's x.
+func _rocket_prop(parent: Node3D, at: Vector3, yaw: float, s: float, lying: bool) -> Node3D:
+	var rk := Node3D.new()
+	rk.position = at
+	rk.rotation.y = yaw
+	parent.add_child(rk)
+	var body := Node3D.new()
+	body.scale = Vector3.ONE * s
+	if lying:
+		body.rotation.z = -PI * 0.5
+		body.position = Vector3(-2.0 * s, 0.98 * s, 0)
+	rk.add_child(body)
+	_cyl(body, 0.72, 0.72, 3.6, Vector3(0, 2.5, 0), "paper", Vector3.ZERO, 14)
+	_cyl(body, 0.74, 0.74, 0.5, Vector3(0, 2.0, 0), "accent_lit", Vector3.ZERO, 14)
+	_cyl(body, 0.8, 0.8, 0.36, Vector3(0, 0.88, 0), "accent_lit", Vector3.ZERO, 14)
+	_cyl(body, 0.34, 0.58, 0.46, Vector3(0, 0.47, 0), "ink", Vector3.ZERO, 14)
+	_cyl(body, 0.3, 0.3, 0.06, Vector3(0, 0.3, 0), "metal", Vector3.ZERO, 8)
+	for fk in 3:
+		var fa := fk * TAU / 3.0 + 0.5
+		var fin := MeshInstance3D.new()
+		var fm := PrismMesh.new()
+		fm.size = Vector3(1.0, 1.5, 0.1)
+		fm.left_to_right = 0.0
+		fin.mesh = fm
+		fin.position = Vector3(cos(fa) * 1.2, 0.99, sin(fa) * 1.2)
+		fin.rotation.y = -fa
+		fin.material_override = _mat("accent_lit")
+		body.add_child(fin)
+	_cyl(body, 0.0, 0.72, 1.5, Vector3(0, 5.05, 0), "accent_lit", Vector3.ZERO, 14)
+	_cyl(body, 0.26, 0.26, 0.08, Vector3(0, 3.2, -0.72), "glass", Vector3(PI * 0.5, 0, 0), 10)
+	return rk
+
+
+## A rocket standing on a small pad in the margin, lights round it.
+func _block_rocket_pad(c: Vector3, r: float, yaw: float) -> void:
+	var pn := _node(c, yaw)
+	_cyl(pn, 2.1, 2.1, 0.14, Vector3(0, 0.07, 0), "metal", Vector3.ZERO, 16)
+	_torus(pn, 1.7, 1.95, Vector3(0, 0.15, 0), "accent_lit", Vector3.ZERO, Vector3(1, 0.3, 1))
+	_rocket_prop(pn, Vector3.ZERO, 0.0, 0.8, false)
+	for i in 6:
+		var a := i * TAU / 6.0
+		_cyl(pn, 0.1, 0.12, 0.26, Vector3(cos(a) * 2.5, 0.13, sin(a) * 2.5), "counter_dark")
+		_sphere(pn, 0.1, Vector3(cos(a) * 2.5, 0.3, sin(a) * 2.5), "glow_yellow" if i % 2 == 0 else "glow_red", Vector3.ONE, false, 8)
+	_count("rocket, standing")
+
+
+## A rocket on its side on a service cradle, a ladder against it, a toolbox and a hose.
+func _block_rocket_cradle(c: Vector3, r: float, yaw: float) -> void:
+	var cn := _node(c, yaw)
+	for x: float in [-1.2, 1.6]:
+		_box(cn, Vector3(0.5, 0.9, 1.9), Vector3(x, 0.45, 0), "counter_dark")
+		_box(cn, Vector3(0.6, 0.12, 2.1), Vector3(x, 0.06, 0), "metal")
+	_rocket_prop(cn, Vector3(0.0, 0.0, 0.0), 0.0, 0.75, true)
+	for k in 4:
+		_box(cn, Vector3(0.6, 0.04, 0.04), Vector3(0.3, 0.35 + k * 0.35, 0.95 + k * 0.12), "ink")
+	for s: float in [-0.3, 0.3]:
+		_cyl(cn, 0.03, 0.03, 1.8, Vector3(0.3 + s, 0.9, 1.15), "ink", Vector3(0.45, 0, 0))
+	_box(cn, Vector3(0.7, 0.35, 0.4), Vector3(-2.6, 0.18, 1.2), "counter_dark")
+	_box(cn, Vector3(0.74, 0.06, 0.44), Vector3(-2.6, 0.37, 1.2), "metal")
+	var hose := _strut(cn, Vector3(-2.3, 0.4, 1.0), Vector3(-1.4, 0.75, 0.1), 0.05, "ink", 6)
+	hose.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_count("rocket, on a cradle")

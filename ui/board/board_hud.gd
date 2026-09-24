@@ -941,9 +941,8 @@ func _text(pos: Vector2, text: String, size: int, col: Color, outline: float = 5
 func _ticket_icon(at: Vector2, scale: float, ink: Color) -> void:
 	var w := 16.0 * scale
 	var h := 10.0 * scale
-	var col := Palette.player_colour(2)   # TANGERINE, like an arcade ticket
+	var col := Palette.map_colour("board", "sky_bottom")   # pink like the sky, as on the tiles
 	draw_rect(Rect2(at.x - w * 0.5, at.y - h * 0.5, w, h), col)
 	draw_circle(Vector2(at.x - w * 0.5, at.y), 2.4 * scale, ink)
 	draw_circle(Vector2(at.x + w * 0.5, at.y), 2.4 * scale, ink)
-	for k in 3:
-		draw_rect(Rect2(at.x - w * 0.5 + 4.0 * scale + k * 3.2 * scale, at.y - 0.6 * scale, 1.6 * scale, 1.2 * scale), Color(ink, 0.7))
+	draw_circle(at, 2.2 * scale, Color.from_hsv(44.0 / 360.0, 0.8, 0.88))   # the golden leaf, a dot at this size

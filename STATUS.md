@@ -895,6 +895,10 @@ identical, the headless four-seat board match on the new board.
   and the **space station** at the bottom middle on its own bulge of slab (hub, ring corridor, four
   modules, solar wings, a turning radar dish, a fuel tank, landing lights). The status rows are
   500 px, no steps-to-machine count.
+- **Three more notes**: mission control near the centre (two storeys, a dish, masts, a radar bar,
+  a CONTROL sign), two decorative rockets (one standing on a pad in the west margin, one lying on
+  a cradle in the rectangle), and the ticket repainted as one pink stub with a small golden maple
+  leaf (the HUD stub to match).
 
   | BOMBA BAY | district (morning) | drawn (evening) |
   |---|---|---|

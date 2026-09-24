@@ -303,6 +303,8 @@ func _zones() -> Array:
 		_zone("depot", Vector2(1040, 585), 7.0, 0.2),       # ... and the hangar, cargo, the crane
 		_zone("power", Vector2(1040, 758), 6.5, 0.0),       # inside the rectangle: the reactor, solar
 		_zone("solar", Vector2(690, 396), 2.4, 0.15),       # the sliver under the lens: a solar row
+		_zone("control", Vector2(815, 565), 4.2, -0.35),     # mission control, east of the greenhouses, near the centre
+		_zone("rocket_cradle", Vector2(1150, 758), 3.0, 0.3), # a rocket on a cradle inside the rectangle
 		{"kind": "plaza", "centre": [snappedf(plaza.x, 0.01), snappedf(plaza.y, 0.01)], "r": 1.6, "yaw": 0.0},
 		{"kind": "station", "centre": [-8.0, 34.0], "r": 6.5, "yaw": 0.0},   # the space station, bottom middle
 		_margin_zone("lander", -28.0, 0.93, 2.4, 0.5),      # north-east margin: the lander
@@ -313,6 +315,7 @@ func _zones() -> Array:
 		_margin_zone("satellite", -5.0, 0.93, 2.6, 0.8),    # a crashed satellite, east margin
 		_margin_zone("arch", 172.0, 0.945, 2.2, 1.71),      # a rock arch, west margin, spanning along the rim
 		_margin_zone("telescope", 86.0, 0.93, 2.4, 0.0),    # a telescope dome, south margin
+		_margin_zone("rocket_pad", 160.0, 0.945, 3.0, 0.0), # a rocket on a small pad, west margin (the cradle one is east)
 	]
 
 

@@ -294,21 +294,21 @@ func _build_marker(space: BoardGraph.Space, shadow: Color) -> void:
 	var y := 0.052                        # the paint, over the dressing's inset hex
 	match space.type:
 		"ticket":
-			var tone := CelMaterial.for_colour(Palette.player_colour(2), shadow, 0.25)   # TANGERINE, like an arcade ticket
+			# One arcade ticket, pink like the sky, a small golden maple leaf on it (Sean, 2026-09-24:
+			# "just 1 ticket and make it pink, same color as the sky... a maple leaf, a small golden one").
+			var pink := CelMaterial.for_colour(Palette.map_colour("board", "sky_bottom"), shadow, 0.2)
+			var gold := CelMaterial.for_colour(Color.from_hsv(44.0 / 360.0, 0.8, 0.88), shadow, 0.3)
 			var hole := CelMaterial.for_colour(Color(_tone_for("ticket")).lightened(0.16), shadow)   # the inset's tone: punched
-			for k in 2:
-				var stub := Node3D.new()
-				stub.position = Vector3(k * 0.08 - 0.04, y + k * 0.014, k * 0.05 - 0.025)
-				stub.rotation.y = -0.3 + k * 0.6
-				root.add_child(stub)
-				_prop_box(stub, Vector3(0.92, 0.012, 0.5), Vector3.ZERO, tone)
-				for ex: float in [-0.46, 0.46]:
-					_prop_cyl(stub, 0.085, 0.02, Vector3(ex, 0.004, 0.0), hole)
-				for d in 5:
-					_prop_box(stub, Vector3(0.028, 0.02, 0.05), Vector3(0.3, 0.004, d * 0.1 - 0.2), paper_mat)
-				_prop_box(stub, Vector3(0.36, 0.02, 0.3), Vector3(-0.08, 0.004, 0), paper_mat)
-				_prop_box(stub, Vector3(0.26, 0.02, 0.05), Vector3(-0.08, 0.01, 0.06), tone)
-				_prop_box(stub, Vector3(0.18, 0.02, 0.05), Vector3(-0.08, 0.01, -0.06), tone)
+			var stub := Node3D.new()
+			stub.position = Vector3(0, y, 0)
+			stub.rotation.y = -0.22
+			root.add_child(stub)
+			_prop_box(stub, Vector3(0.96, 0.012, 0.52), Vector3.ZERO, pink)
+			for ex: float in [-0.48, 0.48]:
+				_prop_cyl(stub, 0.085, 0.02, Vector3(ex, 0.004, 0.0), hole)
+			for d in 5:
+				_prop_box(stub, Vector3(0.026, 0.02, 0.05), Vector3(0.32, 0.004, d * 0.1 - 0.2), paper_mat)
+			_flat_polygon(stub, MAPLE_LEAF, Vector3(-0.06, 0.012, 0.0), 0.16, gold)
 		"item":
 			_flat_ngon(root, 0.2, 5, Vector3(0, y, 0), paper_mat, -PI * 0.5)
 			for k in 5:
@@ -2537,3 +2537,37 @@ func _shuttle_return(from: Vector3, home: Vector3) -> void:
 	_shuttle_tween.tween_callback(func():
 		_shuttle_flame.visible = false
 		_shuttle.transform = Transform3D.IDENTITY)
+
+
+## A maple leaf, y up, a unit tall: three big lobes, two small ones and a stem.
+const MAPLE_LEAF := [Vector2(0.0, 1.0), Vector2(0.12, 0.7), Vector2(0.35, 0.78), Vector2(0.28, 0.5),
+	Vector2(0.6, 0.62), Vector2(0.5, 0.35), Vector2(0.92, 0.45), Vector2(0.8, 0.2), Vector2(0.95, -0.05),
+	Vector2(0.55, -0.02), Vector2(0.62, -0.32), Vector2(0.35, -0.2), Vector2(0.1, -0.45), Vector2(0.06, -0.45),
+	Vector2(0.06, -0.95), Vector2(-0.06, -0.95), Vector2(-0.06, -0.45), Vector2(-0.1, -0.45), Vector2(-0.35, -0.2),
+	Vector2(-0.62, -0.32), Vector2(-0.55, -0.02), Vector2(-0.95, -0.05), Vector2(-0.8, 0.2), Vector2(-0.92, 0.45),
+	Vector2(-0.5, 0.35), Vector2(-0.6, 0.62), Vector2(-0.28, 0.5), Vector2(-0.35, 0.78), Vector2(-0.12, 0.7)]
+
+
+## A flat polygon lying on the face (y up in `pts` becomes north, -z), triangulated, both windings
+## so it shows whichever way the triangulation turns.
+func _flat_polygon(parent: Node3D, points: Array, pos: Vector3, s: float, mat: Material) -> void:
+	var pts := PackedVector2Array(points)
+	var idx := Geometry2D.triangulate_polygon(pts)
+	if idx.is_empty():
+		return
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st.set_smooth_group(-1)
+	st.set_normal(Vector3.UP)
+	for t in range(0, idx.size(), 3):
+		var a := pts[idx[t]]
+		var b := pts[idx[t + 1]]
+		var c := pts[idx[t + 2]]
+		for tri in [[a, b, c], [a, c, b]]:
+			for p in tri:
+				st.add_vertex(Vector3((p as Vector2).x * s, 0.0, -(p as Vector2).y * s))
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	mi.position = pos
+	mi.material_override = mat
+	parent.add_child(mi)
