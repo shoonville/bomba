@@ -560,6 +560,12 @@ func _unhandled_input(event: InputEvent) -> void:
 				_confirm_target()
 				get_viewport().set_input_as_handled()
 				return
+	var free_ok := st.phase == BoardState.PHASE_TURNS and _item_target_mode == "" and director.view != null and director.view.has_method("toggle_free_cam")
+	if free_ok and event.is_action_pressed("reload"):
+		# R (the reload key, idle on the board) toggles the free camera on your turn (Sean, 2026-09-24).
+		director.view.toggle_free_cam()
+		get_viewport().set_input_as_handled()
+		return
 	if st.phase == BoardState.PHASE_TURNS:
 		if event.is_action_pressed("jump"):
 			if _item_target_mode != "":
@@ -646,7 +652,7 @@ func _draw() -> void:
 	_text(Vector2(size.x - 250, 52), "ROUND %d / %d" % [mini(st.round, st.rounds), st.rounds], 26, paper)
 	var to_win := int(director.cfg.get("toys_to_win", 4))
 	_text(Vector2(size.x - 250, 84), "TOY COSTS %d%s" % [int(director.cfg.get("toy_price", 10)), ("  ·  FIRST TO %d" % to_win) if to_win > 0 else ""], 18, Palette.hud_colour("score"))
-	_text(Vector2(size.x - 250, 112), "HOLD TAB · MAP", 14, Color(paper, 0.7))
+	_text(Vector2(size.x - 250, 112), "HOLD TAB · MAP    R · FREE CAM", 14, Color(paper, 0.7))
 	_text(Vector2(size.x - 250, 134), "Q · ITEMS    E · PING    F1-F4 · EMOTE", 14, Color(paper, 0.7))
 	_draw_hotbar(lp, size)
 	_draw_item_pops()
@@ -688,6 +694,8 @@ func _draw() -> void:
 				var left := director.turn_seconds_left()
 				if left >= 0.0 and left <= 10.0:
 					prompt = "YOUR TURN   ·   AUTO-ROLL IN %d" % ceili(left)
+				if director.view != null and director.view.has_method("free_cam") and bool(director.view.free_cam()):
+					prompt = "FREE CAM   ·   WASD MOVE   ·   R BACK   ·   SPACE ROLLS"
 		elif ap != null:
 			prompt = "%s IS ROLLING" % ap.display_name.to_upper()
 	elif st.phase == BoardState.PHASE_CHOOSING:
@@ -937,12 +945,17 @@ func _text(pos: Vector2, text: String, size: int, col: Color, outline: float = 5
 	draw_set_transform_matrix(Transform2D())
 
 
-## A ticket stub: a warm rectangle with a notch punched in each short end and a perforation line.
+## The currency's icon: a little mecha head (paper helmet, gold V-fin, green eyes, red chin), as on
+## the tiles.
 func _ticket_icon(at: Vector2, scale: float, ink: Color) -> void:
-	var w := 16.0 * scale
-	var h := 10.0 * scale
-	var col := Palette.map_colour("board", "sky_bottom")   # pink like the sky, as on the tiles
-	draw_rect(Rect2(at.x - w * 0.5, at.y - h * 0.5, w, h), col)
-	draw_circle(Vector2(at.x - w * 0.5, at.y), 2.4 * scale, ink)
-	draw_circle(Vector2(at.x + w * 0.5, at.y), 2.4 * scale, ink)
-	draw_circle(at, 2.2 * scale, Color.from_hsv(44.0 / 360.0, 0.8, 0.88))   # the golden leaf, a dot at this size
+	var paper := UiStyle.paper()
+	var gold := Color.from_hsv(46.0 / 360.0, 0.8, 0.9)
+	var w := 11.0 * scale
+	var h := 13.0 * scale
+	draw_rect(Rect2(at.x - w * 0.5, at.y - h * 0.4, w, h), paper)
+	draw_rect(Rect2(at.x - w * 0.5, at.y - h * 0.1, w, 3.0 * scale), ink)
+	draw_rect(Rect2(at.x - 3.5 * scale, at.y - h * 0.05, 2.0 * scale, 2.0 * scale), Palette.map_colour("board", "alien"))
+	draw_rect(Rect2(at.x + 1.5 * scale, at.y - h * 0.05, 2.0 * scale, 2.0 * scale), Palette.map_colour("board", "alien"))
+	draw_rect(Rect2(at.x - 1.5 * scale, at.y + h * 0.42, 3.0 * scale, 2.5 * scale), Palette.hud_colour("danger"))
+	draw_line(Vector2(at.x, at.y - h * 0.4), Vector2(at.x - 6.0 * scale, at.y - h * 0.4 - 6.0 * scale), gold, 1.6 * scale)
+	draw_line(Vector2(at.x, at.y - h * 0.4), Vector2(at.x + 6.0 * scale, at.y - h * 0.4 - 6.0 * scale), gold, 1.6 * scale)

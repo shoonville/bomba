@@ -899,6 +899,9 @@ identical, the headless four-seat board match on the new board.
   a CONTROL sign), two decorative rockets (one standing on a pad in the west margin, one lying on
   a cradle in the rectangle), and the ticket repainted as one pink stub with a small golden maple
   leaf (the HUD stub to match).
+- **Two more**: a free camera on your turn (R toggles, WASD slides it over the map, the roll brings
+  it back; `--free_cam_test`), and the emblems again: a Gundam-style head on the currency spot and a
+  wrapped present on the item spot (the pink ticket and the star did not last the hour).
 
   | BOMBA BAY | district (morning) | drawn (evening) |
   |---|---|---|

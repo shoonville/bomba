@@ -37,7 +37,8 @@ fork buttons at a fork; Q opens the item hotbar on your turn, 1–9 or the wheel
 laser and the claw aim with the mouse and fire or grab on a click, the bomb shows a ring of range and
 throws where you click (right click puts any of them away). Hover LEFT or
 RIGHT at a fork to see where the move lands; hold Tab for the whole board, and in a minigame
-for the scoreboard.
+for the scoreboard. On your turn, before rolling, R toggles a free camera that WASD slides over
+the map (R again, or the roll, brings it back).
 E (or middle-click) pings the tile under the cursor for everyone; F1–F4 send an emote. Sound is synthesised at startup;
 nothing is loaded from disk.
 
@@ -58,7 +59,7 @@ machine spot, and a bridge runs from the space to the annex); pass or land on th
 10 tickets and a toy pops out, then the machine moves to the other annex. First to 4 toys wins
 on the spot (the host sets FIRST TO, TURN TIME, ROUND CAP and TOY PRICE in the lobby's MATCH
 SETTINGS; `--toys_to_win=N`, `--toy_price=N`, `--machine_at=ID` and `--rocket_test` in the
-harness). Spots, their emblems painted on the tile: tickets (+3, one pink ticket with a golden maple leaf), item (a star: bomb,
+harness). Spots, their emblems painted on the tile: tickets (+3, a Gundam-style head), item (a wrapped present: bomb,
 portal, shield, the laser gun or the claw), damage (−3 tickets, a mine), health (+6 HP, a med
 bag on a green tile), and one safe spot
 (cyan dome) that hands out a SHIELD, a glowing aura that eats the next bomb, damage spot, laser

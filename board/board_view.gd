@@ -36,6 +36,9 @@ var _shuttle_home: Vector3 = Vector3.ZERO
 var _shuttle_flame: MeshInstance3D
 var _shuttle_follow: bool = false  # the camera rides along during a flight
 var _cam_zoom: float = 1.0         # the camera's distance, scaled: pulled back while the rocket flies
+var _free: bool = false            # the free camera (Sean, 2026-09-24: R on your turn, WASD moves it)
+var _free_look: Vector3 = Vector3.ZERO
+var _free_test_t: float = 0.0      # --free_cam_test: on at 1.5 s, panning north-east from 2 s
 var _shuttle_tween: Tween
 var _cam_target: Vector3 = Vector3.ZERO
 var _cam_look: Vector3 = Vector3.ZERO
@@ -294,28 +297,49 @@ func _build_marker(space: BoardGraph.Space, shadow: Color) -> void:
 	var y := 0.052                        # the paint, over the dressing's inset hex
 	match space.type:
 		"ticket":
-			# One arcade ticket, pink like the sky, a small golden maple leaf on it (Sean, 2026-09-24:
-			# "just 1 ticket and make it pink, same color as the sky... a maple leaf, a small golden one").
-			var pink := CelMaterial.for_colour(Palette.map_colour("board", "sky_bottom"), shadow, 0.2)
-			var gold := CelMaterial.for_colour(Color.from_hsv(44.0 / 360.0, 0.8, 0.88), shadow, 0.3)
-			var hole := CelMaterial.for_colour(Color(_tone_for("ticket")).lightened(0.16), shadow)   # the inset's tone: punched
-			var stub := Node3D.new()
-			stub.position = Vector3(0, y, 0)
-			stub.rotation.y = -0.22
-			root.add_child(stub)
-			_prop_box(stub, Vector3(0.96, 0.012, 0.52), Vector3.ZERO, pink)
-			for ex: float in [-0.48, 0.48]:
-				_prop_cyl(stub, 0.085, 0.02, Vector3(ex, 0.004, 0.0), hole)
-			for d in 5:
-				_prop_box(stub, Vector3(0.026, 0.02, 0.05), Vector3(0.32, 0.004, d * 0.1 - 0.2), paper_mat)
-			_flat_polygon(stub, MAPLE_LEAF, Vector3(-0.06, 0.012, 0.0), 0.16, gold)
+			# A Gundam-style head painted on the currency spot (Sean, 2026-09-24: "i dont like the pink
+			# ticket. lets scrap tickets, can you do a gundam style character"): a paper helmet with side
+			# vents, a gold V-fin with a red jewel, an ink face band with two green eyes, a red chin.
+			var gold := CelMaterial.for_colour(Color.from_hsv(46.0 / 360.0, 0.8, 0.9), shadow, 0.3)
+			var red := CelMaterial.for_colour(Palette.hud_colour("danger"), shadow, 0.2)
+			var eyes := CelMaterial.for_colour(Palette.map_colour("board", "alien"), shadow, 1.0)
+			var grey := CelMaterial.for_colour(Palette.map_colour("board", "metal"), shadow)
+			var head := Node3D.new()
+			head.position = Vector3(0, y, 0.08)
+			root.add_child(head)
+			_flat_polygon(head, GUNDAM_HELMET, Vector3.ZERO, 0.4, paper_mat)
+			_flat_polygon(head, GUNDAM_FIN, Vector3(0, 0.006, 0), 0.4, gold)
+			_prop_cyl(head, 0.035, 0.014, Vector3(0, 0.012, -0.2), red)
+			_prop_box(head, Vector3(0.34, 0.012, 0.13), Vector3(0, 0.006, 0.0), ink_mat)
+			for ex: float in [-0.09, 0.09]:
+				_prop_box(head, Vector3(0.08, 0.012, 0.05), Vector3(ex, 0.012, -0.01), eyes)
+				_prop_box(head, Vector3(0.07, 0.012, 0.1), Vector3(ex * 2.6, 0.006, 0.08), grey)
+			_flat_point(head, 0.16, 0.13, Vector3(0, 0.012, 0.25), PI * 0.5, red)
 		"item":
-			_flat_ngon(root, 0.2, 5, Vector3(0, y, 0), paper_mat, -PI * 0.5)
-			for k in 5:
-				var a := k * TAU / 5.0 - PI * 0.5
-				_flat_point(root, 0.24, 0.36, Vector3(cos(a) * 0.32, y, sin(a) * 0.32), a, paper_mat)
-			for sp: Vector2 in [Vector2(0.58, 0.3), Vector2(-0.52, -0.36), Vector2(0.44, -0.52)]:
-				_prop_cyl(root, 0.045, 0.012, Vector3(sp.x, y, sp.y), paper_mat)
+			# A wrapped present painted from above (Sean: not the star): a paper box, an accent ribbon
+			# crossing it, a bow of two loops and a knot in the middle.
+			var ribbon := CelMaterial.for_colour(Palette.map_colour("board", "accent"), shadow, 0.3)
+			var gift := Node3D.new()
+			gift.position = Vector3(0, y, 0)
+			gift.rotation.y = 0.35
+			root.add_child(gift)
+			_prop_box(gift, Vector3(0.62, 0.012, 0.62), Vector3.ZERO, paper_mat)
+			_prop_box(gift, Vector3(0.64, 0.014, 0.13), Vector3(0, 0.004, 0), ribbon)
+			_prop_box(gift, Vector3(0.13, 0.014, 0.64), Vector3(0, 0.004, 0), ribbon)
+			for s: float in [-1.0, 1.0]:
+				var loop := MeshInstance3D.new()
+				var lm := TorusMesh.new()
+				lm.inner_radius = 0.05
+				lm.outer_radius = 0.11
+				lm.rings = 12
+				lm.ring_segments = 4
+				loop.mesh = lm
+				loop.position = Vector3(s * 0.11, 0.012, -0.06)
+				loop.rotation.y = s * 0.6
+				loop.scale = Vector3(1.4, 0.12, 0.9)
+				loop.material_override = ribbon
+				gift.add_child(loop)
+			_prop_cyl(gift, 0.045, 0.016, Vector3(0, 0.014, -0.02), ribbon)
 		"lose":
 			_flat_ngon(root, 0.5, 16, Vector3(0, y, 0), paper_mat, 0.0)
 			_flat_ngon(root, 0.23, 12, Vector3(0, y + 0.006, 0), ink_mat, 0.0)
@@ -1772,6 +1796,7 @@ func _play_next() -> void:
 			Events.board_turn_shown.emit(int(e["peer"]))
 			wait = 0.3
 		"roll":
+			set_free_cam(false)   # the roll brings the camera home
 			var pawn: BoardPawn = pawns.get(int(e["peer"]), null)
 			var v := int(e["value"])
 			var raw := int(e.get("roll", v))
@@ -2420,7 +2445,25 @@ func _process(delta: float) -> void:
 				_place_beam(pawn.hand_position(), _aim, _aim_len, 0.05, 0.8, Palette.hud_colour("paper"))
 			else:
 				_place_beam(pawn.gun_tip(), _aim, _aim_len, 0.07, 0.9)
-	_cam_zoom = move_toward(_cam_zoom, 2.6 if _shuttle_follow else 1.0, delta * 1.6)
+	# The free camera: only on the local player's turn before the roll; WASD slides the look point
+	# over the map at 16 m/s, never off the slab; the camera sits a little further back.
+	if _free and not (director.state != null and director.is_local_turn() and director.state.phase == BoardState.PHASE_TURNS):
+		_free = false
+	if Game.args.has("free_cam_test") and director.state != null and director.is_local_turn():
+		_free_test_t += delta
+		if _free_test_t >= 1.5 and not _free:
+			set_free_cam(true)
+		if _free_test_t >= 2.0:
+			Input.action_press("move_back")
+			Input.action_press("move_left")
+	if _free:
+		var dir := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
+		if dir.length() > 0.0 and not Game.is_paused():
+			var next := _free_look + Vector3(dir.x, 0.0, dir.y) * 16.0 * delta
+			if _slab == null or _slab.inside(next.x, next.z, 0.95):
+				_free_look = next
+		_cam_look = _free_look
+	_cam_zoom = move_toward(_cam_zoom, 2.6 if _shuttle_follow else (1.6 if _free else 1.0), delta * 1.6)
 	var desired_pos := _cam_look + Vector3(sin(_cam_yaw) * 6.8, 6.2, cos(_cam_yaw) * 6.8) * _cam_zoom
 	var look := _cam_look
 	if Game.args.has("board_overview"):
@@ -2447,7 +2490,7 @@ func _process(delta: float) -> void:
 		var map_pos := _bounds_centre + Vector3(0.0, _bounds_radius * 1.5 + 10.0, _bounds_radius * 0.95)
 		desired_pos = desired_pos.lerp(map_pos, e)
 		look = look.lerp(_bounds_centre, e)
-	var k := 1.0 - pow(0.004 if (_cam_fast or _map_blend > 0.0) else 0.02, delta)
+	var k := 1.0 - pow(0.004 if (_cam_fast or _map_blend > 0.0 or _free) else 0.02, delta)
 	camera.global_position = camera.global_position.lerp(desired_pos, k)
 	_cam_target = _cam_target.lerp(look, k)
 	camera.look_at(_cam_target + Vector3(0, 1.0, 0), Vector3.UP)
@@ -2571,3 +2614,31 @@ func _flat_polygon(parent: Node3D, points: Array, pos: Vector3, s: float, mat: M
 	mi.position = pos
 	mi.material_override = mat
 	parent.add_child(mi)
+
+
+## A mecha helmet, y up, from the brow to the chin: a domed top, side flares, ear vents, a chin.
+const GUNDAM_HELMET := [Vector2(0.0, 0.75), Vector2(0.32, 0.7), Vector2(0.5, 0.45), Vector2(0.55, 0.1), Vector2(0.45, -0.1),
+	Vector2(0.62, -0.25), Vector2(0.5, -0.55), Vector2(0.25, -0.75), Vector2(0.1, -0.9), Vector2(-0.1, -0.9),
+	Vector2(-0.25, -0.75), Vector2(-0.5, -0.55), Vector2(-0.62, -0.25), Vector2(-0.45, -0.1), Vector2(-0.55, 0.1),
+	Vector2(-0.5, 0.45), Vector2(-0.32, 0.7)]
+
+## The V-fin over the brow.
+const GUNDAM_FIN := [Vector2(-0.68, 1.2), Vector2(-0.54, 1.26), Vector2(-0.06, 0.66), Vector2(0.06, 0.66), Vector2(0.54, 1.26),
+	Vector2(0.68, 1.2), Vector2(0.1, 0.5), Vector2(-0.1, 0.5)]
+
+
+## The free camera (Sean, 2026-09-24: "when it's our turn, we can press R to toggle free cam
+## mode, and use WASD to move the camera around the map"): the look point leaves the pawn and
+## slides under the keys; off again with R, with the roll, or when the turn is no longer yours.
+func free_cam() -> bool:
+	return _free
+
+
+func set_free_cam(on: bool) -> void:
+	if on and not _free:
+		_free_look = _cam_look
+	_free = on
+
+
+func toggle_free_cam() -> void:
+	set_free_cam(not _free)

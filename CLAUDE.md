@@ -51,14 +51,16 @@ that travels with the repo.
   on the map, on its pad by the pad space (his: "there's only gonna be 1 rocket"): reaching that space with
   10 tickets offers a flight to the landing spot (its own prompt, not a fork). The currency is TICKETS, like
   an arcade's (not coins). No teleport ("event") space. The spaces' emblems are PAINTED ON THE TILE, still
-  (his notes: nothing hovering, then "painted on the tile"): ONE PINK TICKET (the sky's pink) with a small GOLDEN
-  MAPLE LEAF on it (his ask), a star for an item (the "?" bag was ugly, his word), a mine for damage, a med bag for the HEALTH spot (+6 HP, a green tile, his ask). ONE
+  (his notes: nothing hovering, then "painted on the tile"): a GUNDAM-STYLE HEAD on the ticket spot (his ask,
+  after the pink ticket with a maple leaf was disliked the same hour), a WRAPPED PRESENT for an item (the "?" bag
+  and then the star were disliked), a mine for damage, a med bag for the HEALTH spot (+6 HP, a green tile, his ask). ONE
   rover design (the driving buggy's), parked on its pad and driving the rim. The SPACE STATION at the bottom
   middle is his ask ("to take up space... detailed"): keep it. Cute space things stay (the crew, the saucer
   and its pilot, the lander, the balloon, the radio towers, the crashed satellite, the rock arch, the
   telescope, the two decorative rockets, mission control near the centre, the drone, the orbiting station,
   the freighter). The status rows are 500 px with no steps-to-
-  machine count (his: "you don't need to put '41 to'"). Pink sky kept, moon-base theme under it, close Pummel-Party camera on ONE fixed heading (south of the pawn looking north, whichever way it
+  machine count (his: "you don't need to put '41 to'"). R on your turn (before the roll) toggles a FREE CAMERA
+  that WASD slides over the map (his ask). Pink sky kept, moon-base theme under it, close Pummel-Party camera on ONE fixed heading (south of the pawn looking north, whichever way it
   travels; 2026-09-23), eight-sided die, no water.
   The vending machine lives on the two annexes only (his "original two spots", the bridges to the
   egg domes; the district names their rim angles, the two ends of main street); never add machine pads or more spots.

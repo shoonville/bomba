@@ -93,12 +93,13 @@ right click puts any of them away; the portal picks a player.
 - Spaces are six-sided floating tiles (cel material by type: blank in the field colour, ticket
   in LEMON, lose in the danger red, item in LAGOON, goal in paper with a ring), ink outlines
   from the post pass, the swirl sky. Each special space's emblem is painted on the tile
-  (2026-09-24): one pink ticket with a small golden maple leaf, a star for an item, a mine for
+  (2026-09-24): a Gundam-style head on the ticket spot, a wrapped present for an item, a mine for
   damage, a med bag for the health spot; the safe spot keeps its dome, the start its flag. The board palette is its own map entry.
 - Pawns are the same capsule-and-head silhouette as the arena, in identity colours, hopping
   space to space (`board.hop_seconds` per step) with a small burst on landing.
 - Camera: third person behind and above the active pawn, easing between pawns on turn change,
-  pulling back at forks so both branches are visible.
+  pulling back at forks so both branches are visible. On your turn, before the roll, R toggles a
+  free camera that WASD slides over the map (`BoardView.set_free_cam`), clamped to the slab.
 - HUD in the menu language: a turn strip of player cards (tickets, Bombas, items), the dice as a
   slammed numeral, the ROLL prompt, fork arrows (A/D or click), item buttons (1/2), round
   counter. Board music is the menu loop for now.
