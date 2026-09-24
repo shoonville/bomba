@@ -74,7 +74,7 @@ Useful flags after `--`: `--autoplay` (a bot drives your seat), `--seed=N`, `--s
 (quit and write `reports/<label>_summary.json` + `_traj.csv`), `--report=LABEL`, `--expect=N`
 (host waits for N humans before `--start`), `--round_seconds=N`, `--log=0..4`,
 `--screenshot=path.png --screenshot_at=5 --screenshot_quit` (add
-`--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results|laser` to start the
+`--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results|laser|hit` to start the
 timer on an event, `--screenshot_event_index=N` on its Nth occurrence; `--spawn_index=N` puts you at
 a chosen spawn for a frame; `--give_item=laser`,
 `--give_bots_item=laser` (`--give_item` takes a comma list), `--hotbar_test` (the bar open), `--target_test`
@@ -89,7 +89,8 @@ steps the scale down and back up on its own to keep the GPU under a 60 Hz budget
 `--spectate` (fixed showcase camera,
 no local player), `--rounds=N` (host rematches N times), `--scripted` (seeded per-tick inputs for
 every seat this peer owns; the determinism harness uses it), `--no_warmup` (skip the boot
-preload and pipeline warm-up, for A/B runs of the start-of-scene hitch), `--perf` (with `--soak`:
+preload and pipeline warm-up, for A/B runs of the start-of-scene hitch), `--max_fps=N` (cap the frame rate: a 60 Hz
+player's view of the tick interpolation), `--perf` (with `--soak`:
 GPU, render-CPU and frame milliseconds, mean and p95, printed at the end), `--vsync=0|1|mailbox|adaptive` (the present mode; a driver that forces vertical sync, Sean's NVIDIA panel does, overrides it) and
 `--window=fullscreen|windowed` (override the settings for a run; Godot's own `--resolution WxH`
 sets the window size). Frames over 150 ms are logged as `Frame hitch` with what the frame did;

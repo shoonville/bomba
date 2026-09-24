@@ -781,3 +781,45 @@ determinism identical, the headless four-seat board match over two rounds PASS.
 2. The start RPC's frame (57–71 ms under the cover): the director's 16 ms and the transition
    frame's own work, if it ever shows.
 3. Unchanged from session 10: his notes on the die, the hands, the round's end and the briefing.
+
+## 2026-09-23 — session 12: Sean's eight notes, the 60 Hz beat
+
+On his desktop (2560×1440, the game at 60 fps there until his display and driver settings change;
+the friends' 1080p stays the yardstick). `tools/check_all.sh` green: 79 tests, 99 scripts,
+determinism identical, the headless board match.
+
+- **The briefing's text on a solid panel** (note 1), the map frame's style and size, the pair
+  centred at any aspect. `briefing.png` retaken; checked at 2000×1080.
+- **Full ammo on respawn** (note 2): `WeaponSlots.refill` inside `respawn_at`.
+- **No barrel through a wall** (note 3): a shoulder ray per visible figure per frame; the gun lifts
+  by the angle that clears the wall, eased. Engaged 4 times in 45 s of bot play.
+- **One board camera heading** (note 4): south of the pawn, looking north, whichever way it travels.
+  `board_turn.png`, `board_hop.png` retaken.
+- **Red hitmarkers** (note 5), the headshot's a size bigger. `arena_hitmarker.png`. The impact stars
+  and the missing muzzle flash keep their 2026-09-22 verdicts.
+- **The kill cam scopes when the killer did** (note 6): the replay ring carries the scope-in, the
+  camera zooms, the ghost weapon takes the ADS pose, the HUD draws the iris.
+- **The floating weapon in the kill cam** (note 7): it was this peer's own first-person hands and
+  gun at the live eye position, drawn because the kill camera draws every layer; hidden for the
+  replay. `killcam.png` retaken.
+- **Smoothness while strafing and aiming** (note 8), measured: the beat between the 60 Hz tick and
+  a 60 Hz display. `physics/common/physics_jitter_fix` 0.5 → 0, the CameraRig after every
+  TickInterpolator, `--max_fps=N` in the harness for the 60 Hz view.
+
+  | arena, host + 3 bots, 15 s | jitter fix 0.5 | jitter fix 0 (three runs) |
+  |---|---|---|
+  | at 60 fps: stalled frames | 5 (0.76 %) | 0–2 (0–0.29 %) |
+  | at 60 fps: double steps | 3 (0.46 %) | 1–2 (0.18–0.29 %) |
+  | at 60 fps: step variation mean / p95 | 1.6 % / 2.7 % | 0.8–1.4 % / 1.7–2.8 % |
+  | at 60 fps: physics step max | 16.3 ms | 5–13 ms |
+  | at 165 fps: median / over 1.5× / stalls | 6.00 ms / 0.6 % / 0 | 6.00 ms / 0.7 % / 0 |
+
+  Left: single ticks of 10–17 ms now and then (the WORST PER SECOND physics step; at 60 Hz each is
+  a dropped frame), source not yet named; and his display at 60 Hz, which turns every late
+  millisecond into a 33 ms frame.
+
+### Next
+1. Sean: the display's refresh-rate setting and the NVIDIA vertical sync for BOMBA (session 11),
+   then a match: the eight notes, and whether strafing while scoped is smooth now.
+2. The 10–17 ms ticks: name the source (bot pathing, a resimulation burst, the replay ring) with
+   the hitch line's netfox and physics fields, then spread or cut it.

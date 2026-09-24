@@ -187,6 +187,21 @@ func set_weapon_slot(slot: int) -> void:
 		_gun_short.visible = slot != 0
 
 
+## How far the held gun's muzzle reaches from the shoulder along the aim, for the wall check.
+func gun_reach() -> float:
+	return 1.45 if (_gun_long != null and _gun_long.visible) else 1.05
+
+
+## The angle the gun is lifted so its barrel stays out of a wall (PlayerVisual measures it with a
+## ray every frame; Sean, 2026-09-23: "the sniper barrel peeking from the other side of the
+## wall"), eased so it never pops.
+var _gun_raise: float = 0.0
+
+
+func set_gun_raise(target: float, delta: float) -> void:
+	_gun_raise = move_toward(_gun_raise, target, delta * 8.0)
+
+
 ## A hit: the torso and head jerk back for a quarter second.
 func flinch() -> void:
 	_flinch = 1.0
@@ -263,8 +278,9 @@ func animate(speed: float, on_floor: bool, pitch: float, alive: bool, delta: flo
 		_l_leg.rotation.x = lerpf(_l_leg.rotation.x, 0.6, delta * 8.0)
 		_r_leg.rotation.x = lerpf(_r_leg.rotation.x, -0.3, delta * 8.0)
 	if _has_gun:
-		# Both arms up on the gun, following the look pitch; the gun points where the head looks.
-		var aim := PI * 0.5 + pitch
+		# Both arms up on the gun, following the look pitch; the gun points where the head looks,
+		# lifted by whatever keeps the barrel out of a wall.
+		var aim := PI * 0.5 + pitch + _gun_raise
 		_r_arm.rotation.x = aim
 		_l_arm.rotation.x = aim
 		_l_arm.rotation.y = -0.55   # the left hand reaches in to the gun

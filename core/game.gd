@@ -84,6 +84,7 @@ func _ready() -> void:
 	if args.has("screenshot_event"):
 		Events.kill.connect(_arm_screenshot_on_kill)
 		Events.round_ended.connect(_arm_screenshot_on_round_end)
+		Events.local_hit_predicted.connect(_arm_screenshot_on_hit)
 	headless = DisplayServer.get_name() == "headless"
 	if args.has("log"):
 		Log.level = int(args["log"])
@@ -94,6 +95,8 @@ func _ready() -> void:
 		Rng.set_match_seed(int(args["seed"]))
 	apply_render_scale()
 	apply_window_settings()
+	if args.has("max_fps"):
+		Engine.max_fps = int(args["max_fps"])   # harness: a 60 Hz player's frame rate on a faster display
 	if not headless:
 		# Per-frame render times for --perf and the hitch log (two GPU timestamps a frame).
 		RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
@@ -770,6 +773,11 @@ func _arm_screenshot_on_kill(_killer: int, victim: int, _weapon: String, _headsh
 	if victim == multiplayer.get_unique_id():
 		_shot_armed = true
 		_shot_timer = 0.0
+
+
+## --screenshot_event=hit: the frame after the local player's next hit (the hitmarker).
+func _arm_screenshot_on_hit(_kind: int, _victim: int) -> void:
+	_arm_screenshot_on([{"kind": "hit"}])
 
 
 func _arm_screenshot_on_round_end() -> void:

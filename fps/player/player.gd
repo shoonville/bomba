@@ -154,7 +154,7 @@ static var sim_node_ticks_this_loop: int = 0
 ## loop (a loop that ran several ticks records only its last; replay_sample steps back to the
 ## nearest recorded tick).
 const REPLAY_TICKS := 300
-const REPLAY_STRIDE := 8
+const REPLAY_STRIDE := 9   # ... and the scope-in progress (the kill cam scopes when the killer did)
 var _replay := PackedFloat32Array()
 
 
@@ -171,6 +171,7 @@ func _record_replay(tick: int) -> void:
 	_replay[i + 5] = float(health)
 	_replay[i + 6] = float(weapons.slot)
 	_replay[i + 7] = float(tick)
+	_replay[i + 8] = weapons.ads_progress(tick)
 
 
 func _replay_at(tick: int) -> Dictionary:
@@ -181,7 +182,8 @@ func _replay_at(tick: int) -> Dictionary:
 		var i := posmod(tk, REPLAY_TICKS) * REPLAY_STRIDE
 		if int(_replay[i + 7]) == tk:
 			return {"pos": Vector3(_replay[i], _replay[i + 1], _replay[i + 2]), "yaw": _replay[i + 3],
-				"pitch": _replay[i + 4], "health": int(_replay[i + 5]), "slot": int(_replay[i + 6])}
+				"pitch": _replay[i + 4], "health": int(_replay[i + 5]), "slot": int(_replay[i + 6]),
+				"ads": _replay[i + 8]}
 	return {}
 
 
@@ -197,7 +199,8 @@ func replay_sample(t: float) -> Dictionary:
 		return a
 	var f := t - float(t0)
 	return {"pos": (a["pos"] as Vector3).lerp(b["pos"], f), "yaw": lerp_angle(a["yaw"], b["yaw"], f),
-		"pitch": lerpf(a["pitch"], b["pitch"], f), "health": a["health"], "slot": a["slot"]}
+		"pitch": lerpf(a["pitch"], b["pitch"], f), "health": a["health"], "slot": a["slot"],
+		"ads": lerpf(a["ads"], b["ads"], f)}
 
 
 func _rollback_tick(delta: float, tick: int, is_fresh: bool) -> void:
@@ -350,6 +353,7 @@ func respawn_at(spawn_position: Vector3, spawn_yaw: float, tick: int, protection
 	last_hit_info = 0
 	jump_buffer = 0
 	coyote = 0
+	weapons.refill()   # full magazines on a fresh life (Sean, 2026-09-23)
 	if input.is_multiplayer_authority():
 		input.set_look(spawn_yaw, 0.0)
 

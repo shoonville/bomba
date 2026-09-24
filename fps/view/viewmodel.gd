@@ -33,7 +33,8 @@ var _swap_dip: float = 0.0
 var _last_slot: int = -1
 var _sniper_fired_at: int = -1
 var _bob_t: float = 0.0
-var ghost_slot: int = -1   # the final-kill cam: show this slot at the hip, no scope-in, no bob
+var ghost_slot: int = -1   # the final-kill cam: show this slot, no bob
+var ghost_ads: float = 0.0   # ... at this scope-in (the killer's, replayed; Sean, 2026-09-23)
 
 
 ## The recoil kick and, for the sniper, the bolt dip: the local shot, or the kill cam's replayed one.
@@ -364,7 +365,7 @@ func _process(delta: float) -> void:
 	if slot != _last_slot:
 		_last_slot = slot
 		_swap_dip = 0.0 if ghost else 1.0
-	var progress := 0.0 if ghost else Game.ads_progress_override(player.weapons.ads_progress(tick))
+	var progress := ghost_ads if ghost else Game.ads_progress_override(player.weapons.ads_progress(tick))
 	for i in models.size():
 		# The sniper leaves the frame once its eyepiece fills the view and the iris takes over.
 		models[i].visible = (i == slot) and not (i == 0 and progress >= 0.64)

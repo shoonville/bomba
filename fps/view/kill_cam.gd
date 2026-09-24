@@ -23,6 +23,10 @@ var _viewmodel: Viewmodel
 var _shot_done: bool = false
 var _others: Array = []      # PlayerVisual of everyone but the killer
 var _killer_visual: Node3D
+var _local_viewmodel: Node3D   # this peer's own first-person weapon, hidden for the replay
+var _def: WeaponDef           # the weapon the kill was made with: its scope-in zoom
+var _base_fov: float = 62.0
+var ads_progress: float = 0.0   # the killer's replayed scope-in, for the HUD's scope overlay
 
 
 func setup(arena: Node, killer: Player, victim: Player, kill_tick: int, weapon: String, headshot: bool, eye_height: float) -> void:
@@ -55,6 +59,13 @@ func setup(arena: Node, killer: Player, victim: Player, kill_tick: int, weapon: 
 		if killer.weapons.defs[i].id == weapon:
 			slot = i
 	_viewmodel.ghost_slot = slot
+	_def = killer.weapons.def_for_slot(slot)
+	_base_fov = _camera.fov
+	# This peer's own hands and gun sit at its live eye position; every layer is in view here, so
+	# they would show as a floating weapon where that player ended the round (Sean, 2026-09-23).
+	_local_viewmodel = arena.local_viewmodel() if arena.has_method("local_viewmodel") else null
+	if _local_viewmodel != null:
+		_local_viewmodel.visible = false
 	for p in arena.all_player_nodes():
 		var pl := p as Player
 		for child in pl.visual.get_children():
@@ -88,6 +99,13 @@ func _place(pt: float) -> void:
 	if not k.is_empty():
 		_camera.global_position = k["pos"] + Vector3.UP * _eye
 		_camera.rotation = Vector3(k["pitch"], k["yaw"], 0.0)
+		# The scope-in as the killer had it (Sean, 2026-09-23): the rifle comes up, then the zoom
+		# behind the iris, the CameraRig's own curve; the HUD draws the iris from ads_progress.
+		ads_progress = float(k.get("ads", 0.0))
+		_viewmodel.ghost_ads = ads_progress
+		if _def != null:
+			var zoom := smoothstep(0.55, 1.0, ads_progress) if _def.is_sniper() else 1.0 - pow(1.0 - ads_progress, 2.0)
+			_camera.fov = lerpf(_base_fov, _def.ads_fov_vertical, zoom)
 	for v in _others:
 		var vis := v as PlayerVisual
 		if vis.player == null or not is_instance_valid(vis.player):
@@ -119,5 +137,11 @@ func end() -> void:
 			(v as PlayerVisual).end_replay()
 	if _killer_visual != null and is_instance_valid(_killer_visual):
 		_killer_visual.visible = true
+	if _local_viewmodel != null and is_instance_valid(_local_viewmodel):
+		_local_viewmodel.visible = true
 	if _camera != null:
 		_camera.current = false
+
+
+func is_sniper() -> bool:
+	return _def != null and _def.is_sniper()

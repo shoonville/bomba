@@ -90,6 +90,18 @@ func _draw() -> void:
 	# banner and the feed on screen.
 	var overlay: Dictionary = _arena.overlay_state() if (_arena != null and _arena.has_method("overlay_state")) else {}
 	if str(overlay.get("phase", "")) == "killcam":
+		# The killer's scope, as they had it (Sean, 2026-09-23): the same iris and reticle as
+		# the live one, driven by the replayed scope-in.
+		var kads := float(overlay.get("ads", 0.0))
+		if bool(overlay.get("sniper", false)) and kads > 0.5:
+			var lens := size.y * 0.42
+			var open_r := size.length() * 0.55
+			var k := smoothstep(0.5, 0.9, kads)
+			var r := lerpf(open_r, lens, k)
+			_draw_scope(size, kads > 0.97, r, kads > 0.9)
+			var dark := 1.0 - smoothstep(0.6, 0.9, kads)
+			if dark > 0.0:
+				draw_circle(size * 0.5, r, Color(_ink, dark))
 		_draw_feed()
 		_draw_banner(size, overlay)
 		return
@@ -199,16 +211,17 @@ func _draw_hitmarker(size: Vector2) -> void:
 	if _hit_flash <= 0.0:
 		return
 	var c := size * 0.5
-	var col := _score_col if _hit_kind == HitscanResolver.HEAD else _paper   # no red on a shot (Sean)
+	var head := _hit_kind == HitscanResolver.HEAD
+	var col := _danger_col   # red (Sean, 2026-09-23: "red instead of yellow"); a headshot's is bigger
 	col.a = _hit_flash
 	var ink := _ink
 	ink.a = _hit_flash
-	var s := 14.0 + (1.0 - _hit_flash) * 6.0
+	var s := (19.0 if head else 14.0) + (1.0 - _hit_flash) * 6.0
 	for d in [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)]:
 		var a: Vector2 = c + d * 6.0
 		var b: Vector2 = c + d * s
-		draw_line(a, b, ink, 6.0)
-		draw_line(a, b, col, 3.0)
+		draw_line(a, b, ink, 7.0 if head else 6.0)
+		draw_line(a, b, col, 4.0 if head else 3.0)
 
 
 func _draw_health(size: Vector2) -> void:

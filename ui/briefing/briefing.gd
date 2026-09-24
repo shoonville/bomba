@@ -18,6 +18,7 @@ var _orbit_radius: float = 26.0
 var _orbit_height: float = 11.0
 var _orbit_t: float = 0.0
 var _leaving: bool = false
+const PREVIEW_SIZE := Vector2(720, 405)   # the map viewport; the text panel matches its frame
 
 
 func setup(match_node: Node) -> void:
@@ -52,27 +53,40 @@ func setup(match_node: Node) -> void:
 	# The map in a viewport on the left, the rules and controls on the right.
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 40)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(row)
 	row.add_child(_build_preview())
+	# The rules and controls on a solid panel in the map frame's own style and size, so the two
+	# sit as a pair (Sean, 2026-09-23: the text was hard to read over the swirl).
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", UiStyle.skewed_box(UiStyle.ink(), UiStyle.paper(), 0.0, 6))
+	panel.custom_minimum_size = PREVIEW_SIZE + Vector2(12, 12)
+	panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	row.add_child(panel)
+	var pad := MarginContainer.new()
+	for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		pad.add_theme_constant_override(side, 16)
+	panel.add_child(pad)
 	var text := VBoxContainer.new()
 	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	text.add_theme_constant_override("separation", 6)
-	row.add_child(text)
+	text.add_theme_constant_override("separation", 4)
+	pad.add_child(text)
 	text.add_child(UiStyle.label("HOW IT PLAYS", 24, UiStyle.accent()))
-	var desc := UiStyle.label(str(manifest.description) if manifest != null else "", 22)
+	var desc := UiStyle.label(str(manifest.description) if manifest != null else "", 21)
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc.custom_minimum_size = Vector2(0, 0)
 	desc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text.add_child(desc)
 	var spacer := Control.new()
-	spacer.custom_minimum_size = Vector2(0, 10)
+	spacer.custom_minimum_size = Vector2(0, 8)
 	text.add_child(spacer)
 	text.add_child(UiStyle.label("CONTROLS", 24, UiStyle.accent()))
 	if manifest != null:
 		for c in manifest.controls:
 			var line := UiStyle.label(str(c), 20)
-			line.custom_minimum_size = Vector2(0, 30)
+			line.custom_minimum_size = Vector2(0, 26)
 			text.add_child(line)
 
 	# The seats and their READY state, then the buttons.
@@ -124,12 +138,12 @@ func _build_preview() -> Control:
 	frame.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	var holder := SubViewportContainer.new()
 	holder.stretch = true
-	holder.custom_minimum_size = Vector2(720, 405)
+	holder.custom_minimum_size = PREVIEW_SIZE
 	holder.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	holder.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	frame.add_child(holder)
 	_preview = SubViewport.new()
-	_preview.size = Vector2i(720, 405)
+	_preview.size = Vector2i(PREVIEW_SIZE)
 	_preview.world_3d = get_viewport().world_3d if is_inside_tree() else null
 	_preview.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	_preview.msaa_3d = Viewport.MSAA_2X

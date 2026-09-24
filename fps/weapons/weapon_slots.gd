@@ -60,6 +60,15 @@ func setup(p_defs: Array[WeaponDef], p_swap_ticks: int) -> void:
 		set("w%d_last_shot_tick" % i, -1000)
 
 
+## A fresh life: every slot full, nothing reloading or cooling down (Sean, 2026-09-23: respawn
+## with full ammo). Authority-side, inside the tick, with the rest of the respawn.
+func refill() -> void:
+	for i in defs.size():
+		set("w%d_ammo" % i, defs[i].magazine)
+		set("w%d_reload_until_tick" % i, 0)
+		set("w%d_next_fire_tick" % i, 0)
+
+
 func current_def() -> WeaponDef:
 	if defs.is_empty():
 		return null

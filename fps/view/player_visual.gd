@@ -85,6 +85,7 @@ func _process(delta: float) -> void:
 			_speed = lerpf(_speed, minf(Vector2(d.x, d.z).length() / delta, 12.0), 0.3)
 		_last_pos = global_position
 		if figure != null:
+			_wall_check(_rp_pitch, _rp_alive, delta)
 			figure.animate(_speed, true, _rp_pitch, _rp_alive, delta)
 		if name_label != null:
 			name_label.visible = _rp_alive
@@ -120,6 +121,28 @@ func _process(delta: float) -> void:
 			figure.flinch()
 		_last_health = player.health
 		figure.set_weapon_slot(player.weapons.slot)
+		_wall_check(pitch, player.health > 0, delta)
 		figure.animate(_speed, on_floor, pitch, player.health > 0, delta)
 	if name_label != null:
 		name_label.visible = player.health > 0 and not hide_tag
+
+
+## A barrel never pokes through a wall (Sean, 2026-09-23): a ray from the shoulder along the aim,
+## as far as the held gun reaches (world geometry only, layer 1); where a wall is nearer, the gun
+## comes up by the angle that clears it (reach · cos(raise) ≤ distance). Only for figures on
+## screen; the figure eases the lift so it never pops.
+func _wall_check(pitch: float, alive: bool, delta: float) -> void:
+	if figure == null:
+		return
+	var raise := 0.0
+	if alive and is_visible_in_tree():
+		var reach := figure.gun_reach()
+		var from := global_position + Vector3.UP * Figure.SHOULDER_Y
+		var dir := -global_transform.basis.z * cos(pitch) + Vector3.UP * sin(pitch)
+		var query := PhysicsRayQueryParameters3D.create(from, from + dir * reach, 1)
+		var hit := get_world_3d().direct_space_state.intersect_ray(query)
+		if not hit.is_empty():
+			raise = acos(clampf(from.distance_to(hit["position"]) / reach, 0.0, 1.0))
+			if raise > 0.25 and figure._gun_raise <= 0.05:
+				Log.info("figure", "DBG gun lifts %.2f rad off a wall %.2f m away (%s)" % [raise, from.distance_to(hit["position"]), player.display_name])
+	figure.set_gun_raise(raise, delta)

@@ -532,6 +532,7 @@ func _attach_camera() -> void:
 		return
 	_camera_rig = CameraRig.new()
 	_camera_rig.name = "CameraRig"
+	_camera_rig.process_priority = 10   # after every TickInterpolator: the frame's fresh body position, never last frame's
 	add_child(_camera_rig)
 	_camera_rig.attach(local)
 
@@ -799,14 +800,23 @@ func _is_frozen(tick: int) -> bool:
 	return _briefing_active or (_over_tick >= 0 and tick >= _over_tick)
 
 
-## The HUD's centre during the end: {phase: "over"|"killcam", title, subtitle}; {} in play.
+## The local player's first-person weapon, if this peer has one (the kill cam hides it: its
+## camera draws every layer, and the hands would float at the live eye position).
+func local_viewmodel() -> Node3D:
+	if _camera_rig == null or not is_instance_valid(_camera_rig) or not ("viewmodel" in _camera_rig):
+		return null
+	return _camera_rig.viewmodel
+
+
+## The HUD's centre during the end: {phase: "over"|"killcam", title, subtitle, ads, sniper}; {} in play.
 func overlay_state() -> Dictionary:
 	if _over_since < 0.0:
 		return {}
 	if _killcam != null and is_instance_valid(_killcam):
 		var k := _final_kill
 		return {"phase": "killcam", "title": "FINAL KILL",
-			"subtitle": "%s  ▸  %s%s" % [_name_of(int(k["killer"])), _name_of(int(k["victim"])), "   ·   HEADSHOT" if bool(k["headshot"]) else ""]}
+			"subtitle": "%s  ▸  %s%s" % [_name_of(int(k["killer"])), _name_of(int(k["victim"])), "   ·   HEADSHOT" if bool(k["headshot"]) else ""],
+			"ads": _killcam.ads_progress, "sniper": _killcam.is_sniper()}
 	var winner := ""
 	var rankings: Array = _result_dict.get("rankings", [])
 	if not rankings.is_empty():

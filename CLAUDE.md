@@ -38,12 +38,14 @@ that travels with the repo.
   (30 % lower than it was), red dot ON its screen (a translucent pane at ADS; the dot is 30 % smaller
   twice over, radius 0.001715), crisp snap sound, the purple body untouched.
 - Board: one board (BOMBA BAY, `tools/gen_board.py`), pink sky kept, moon-base theme under it, floating
-  spinning markers (flat stamps were "ugly"), close Pummel-Party camera, eight-sided die, no water.
+  spinning markers (flat stamps were "ugly"), close Pummel-Party camera on ONE fixed heading (south of the pawn looking north, whichever way it
+  travels; 2026-09-23), eight-sided die, no water.
   The vending machine lives on the two annexes only (his "original two spots", the bridges to the
   egg domes); never add machine pads or more spots.
 - Hitmarker: a dice tick, "similar to the sound the dice makes" (two takes before it were too
-  high-pitched). Muzzle flash: NONE (the red-orange puff was "distracting"; before it the cyan star
-  was "tacky"); impact stars small and never red; nothing red on screen when shooting.
+  high-pitched), drawn RED, bigger for a headshot (2026-09-23, his note; it had been yellow/paper).
+  Muzzle flash: NONE (the red-orange puff was "distracting"; before it the cyan star was "tacky");
+  impact stars small and never red.
   Sniper sound: the ORIGINAL crack-boom-tail (the Halo-shaped take "sounds like a bazooka"; do not
   redo it). No match start or end sound (2026-09-22). Board pawns rollerskate (no hopping), facing
   their travel; no BOMBA BAY sign. Music: off (`Audio.MUSIC_ENABLED`).
@@ -71,7 +73,7 @@ that travels with the repo.
   file LF; if a script dies on `\r`, strip them: `git ls-files --eol | grep w/crlf`, `sed -i 's/\r$//'`.
 - `tools/test.sh` re-imports first; REQUIRED after adding any `class_name` script.
 - Screenshots: `-- --screenshot=out.png --screenshot_at=N --screenshot_quit`, with
-  `--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results|shield|roll|move|laser` to arm
+  `--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results|shield|roll|move|laser|hit` to arm
   on an event (`--screenshot_event_index=N` for its Nth occurrence; a `myturn` frame needs
   `--screenshot_at=5` or more, the view is still playing the previous turn's hops before that).
   Handy flags: `--board_overview`, `--board_map`, `--spawn_index=N`, `--board_cam=x,y,z:tx,ty,tz`, `--hover_fork=left`,
@@ -79,7 +81,8 @@ that travels with the repo.
   `--force_ads`, `--give_item=ID`, `--give_bots_item=ID`, `--hotbar_test`, `--target_test`, `--pop_test=ITEM`, `--aim_test=DEG`,
   `--machine_at=ID`, `--minigame=ID`, `--render_scale=N`, `--port=N`, `--no_warmup`,
   `--briefing` (show the pre-minigame briefing in a harness run; `--no_briefing` never; `--auto_ready=N`
-  readies the seat N s in), `--round_seconds=N` (a short round to reach ROUND OVER and the kill cam;
+  readies the seat N s in), `--max_fps=N` (a 60 Hz player's frame rate; the arena at 60 fps is
+  where tick-frame beats show, judge them by the MOTION line's stalls and double steps), `--round_seconds=N` (a short round to reach ROUND OVER and the kill cam;
   `--screenshot_event=results --screenshot_at=0.8` is the hold, `3.6` the kill cam),
   `--perf` (GPU/CPU ms summary at soak end plus a PACING line: median frame, frames over 1.5× and 2×
   the median, pipelines compiled while playing), `--hitch_ms=N` (log every frame over N ms with what

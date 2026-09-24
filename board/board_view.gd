@@ -32,7 +32,7 @@ var markers: Array = []
 var _marker_t: float = 0.0
 var _cam_target: Vector3 = Vector3.ZERO
 var _cam_look: Vector3 = Vector3.ZERO
-var _cam_yaw: float = 0.0          # camera sits behind the pawn along this heading
+var _cam_yaw: float = 0.0          # one heading for the whole board: south of the pawn, looking north (Sean, 2026-09-23)
 var _cam_yaw_target: float = 0.0
 var _cam_fast: bool = false        # tighter follow while a pawn is moving
 var _queue: Array = []
@@ -1649,7 +1649,6 @@ func _play_next() -> void:
 						_playing = false
 						return
 					var to := director.space_position(str(sid))
-					_heading_from(pawn.global_position, to)
 					pawn.hop_to(to, _hop)
 					_focus(to)
 					await get_tree().create_timer(_hop).timeout
@@ -1958,8 +1957,6 @@ func _play_next() -> void:
 				# RIGHT are on the left and right of the screen.
 				var pawn: BoardPawn = pawns.get(int(e["peer"]), null)
 				var mid := (director.space_position(str(opts[0])) + director.space_position(str(opts[1]))) * 0.5
-				if pawn != null:
-					_heading_from(pawn.global_position, mid)
 				_focus(mid)
 			wait = 0.2
 		"minigame":
@@ -2177,14 +2174,6 @@ func focus_peer(peer_id: int) -> void:
 	var pawn: BoardPawn = pawns.get(peer_id, null)
 	if pawn != null:
 		_focus(pawn.global_position)
-
-
-## Put the camera behind a pawn travelling from `from` to `to` (flat), so it looks along the path.
-func _heading_from(from: Vector3, to: Vector3) -> void:
-	var travel := to - from
-	travel.y = 0.0
-	if travel.length() > 0.2:
-		_cam_yaw_target = atan2(-travel.x, -travel.z)
 
 
 static func _rotate_toward_angle(from: float, to: float, max_step: float) -> float:
