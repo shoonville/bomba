@@ -1504,7 +1504,22 @@ func _ensure_pawn(p: BoardState.PlayerState) -> BoardPawn:
 	pawn.setup(p.peer_id, Palette.player_colour(p.colour_index), p.display_name)
 	pawns[p.peer_id] = pawn
 	pawn.snap_to(_slot_position(p.space, p.peer_id))
+	_face_travel(pawn, p.space)
 	return pawn
+
+
+## Face the way the walkway runs from `space_id` (its first next space). A fresh pawn stood
+## facing north whatever its walkway did (Sean, 2026-09-23: "when the game starts they are
+## facing the wrong way"); the hops turn it the same way once it moves.
+func _face_travel(pawn: BoardPawn, space_id: String) -> void:
+	if director == null or director.graph == null:
+		return
+	var nx := director.graph.next_of(space_id)
+	if nx.is_empty():
+		return
+	var d := director.space_position(str(nx[0])) - pawn.global_position
+	if Vector2(d.x, d.z).length() > 0.2:
+		pawn.face_angle(atan2(d.z, d.x))
 
 
 ## World point just over a pawn's cap, where the HUD hangs its name tag; INF when unknown.

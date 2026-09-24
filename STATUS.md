@@ -587,6 +587,12 @@ measured at 1920×1080 unless noted, on the 5090, and extrapolated.
   the last minigame's ranking (tested); the pawns rollerskate across the board (a level glide,
   a push-glide walk, wheels under the boots). Frames: `arena_hip_ar.png`, `arena_burst.png`,
   `board_turn.png`, `board_hop.png`, `board_reward_card.png`. His verdict pending.
+- **Guns aim at the reticle; pawns face the walkway at the start** (Sean, 2026-09-23): the hip
+  angles are derived from each gun's position so the barrel converges on the camera axis 20 m out
+  (sniper yaw +0.67° / pitch +0.55°, AR +0.73° / +0.58°, no cant; they were −11° / −19° yaw with a
+  cant, muzzles swung right). Measured on the 1080p frame: the sniper barrel's line hits the
+  reticle; the scope passes 6 px over it. A new board pawn faces its first step (they stood
+  facing north, backs to the walkway). His verdict pending.
 
 ## 2026-09-22 — session 8: the lost kill, the export preset, KING OF THE HILL
 

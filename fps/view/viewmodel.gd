@@ -14,13 +14,23 @@ var models: Array[Node3D] = []
 # barrel runs toward the crosshair (Sean: lower, whole scope visible).
 # Positive yaw turns the muzzle left and swings the stock away to the right, so the scope is
 # seen along its side from the rear-left-top instead of straight into the eyepiece.
-# The original session-1 pose, restored on Sean's word after the Intervention experiments:
-# lower-right quarter, a small yaw so the length reads, barely canted.
+# The original session-1 positions (lower-right quarter), restored on Sean's word after the
+# Intervention experiments. The angles are no longer a hand-set pose: Sean (2026-09-23) "have
+# the guns aim towards the reticle, they are too tilted", so each barrel is aimed at the point
+# CONVERGE_M ahead on the camera axis (the reticle) from where it sits, and the cant is gone.
+# The old angles were sniper pitch 3° / yaw −11° / roll −5°, AR 4° / −19° / −7°: both muzzles
+# swung to the right, away from the axis the gun sits right of.
+const CONVERGE_M := 20.0
 var hip_positions: Array[Vector3] = [Vector3(0.23, -0.19, -0.34), Vector3(0.25, -0.20, -0.38)]
-var hip_rotations: Array[Vector3] = [
-	Vector3(deg_to_rad(3.0), deg_to_rad(-11.0), deg_to_rad(-5.0)),
-	Vector3(deg_to_rad(4.0), deg_to_rad(-19.0), deg_to_rad(-7.0)),
-]
+var hip_rotations: Array[Vector3] = [_aim_at_reticle(hip_positions[0]), _aim_at_reticle(hip_positions[1])]
+
+
+## The rotation that points a model's barrel (its −Z) from `pos` at the reticle: the point
+## CONVERGE_M down the camera's own −Z. Godot's YXZ Euler: forward = (−sin yaw cos pitch, sin
+## pitch, −cos yaw cos pitch), so yaw = atan2(−dx, −dz) and pitch = asin(dy); no roll.
+static func _aim_at_reticle(pos: Vector3) -> Vector3:
+	var dir := (Vector3(0.0, 0.0, -CONVERGE_M) - pos).normalized()
+	return Vector3(asin(dir.y), atan2(-dir.x, -dir.z), 0.0)
 # ADS: the sniper's scope tube sits 0.115 above the model origin, so the model goes to
 # y = -0.115 and the eyepiece (z = +0.105) ends 5 cm in front of the eye: the view goes
 # through the glass, not into the receiver (Sean's note 4).
