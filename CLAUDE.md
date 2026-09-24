@@ -30,7 +30,8 @@ that travels with the repo.
   asked for on 2026-09-22): monitor head, visor slit, armoured chest, pauldrons, red pelvis and toe caps.
   The head is ONE piece (an iMac G3 profile as a single mesh, `Figure.head_mesh`): a bezel on a dome
   read as "a mask on a normal circle head".
-- Sniper: the ORIGINAL hip POSITION (he rejected every re-angle of the pose), but since 2026-09-23 the
+- Sniper: the ORIGINAL hip position (he rejected every re-angle of the pose) with ONE change on his note
+  (2026-09-23, x 0.23 → 0.16, "move the gun to the left more so we can see the whole scope"); since the same day the
   barrel AIMS AT THE RETICLE ("they are too tilted"): the hip angles are derived from the position
   (`Viewmodel._aim_at_reticle`, converging 20 m out, no cant), never hand-set again. Cream body, black scope, glass on the
   eyepiece only, one-round-at-a-time reload with a heavy sound. The eyepiece and its reflective glass

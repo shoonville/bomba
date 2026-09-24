@@ -591,7 +591,8 @@ measured at 1920×1080 unless noted, on the 5090, and extrapolated.
   angles are derived from each gun's position so the barrel converges on the camera axis 20 m out
   (sniper yaw +0.67° / pitch +0.55°, AR +0.73° / +0.58°, no cant; they were −11° / −19° yaw with a
   cant, muzzles swung right). Measured on the 1080p frame: the sniper barrel's line hits the
-  reticle; the scope passes 6 px over it. A new board pawn faces its first step (they stood
+  reticle; the scope passes 6 px over it. The sniper then moved 7 cm left (x 0.16) so the whole
+  scope is in frame: its eyepiece had projected past the right edge. A new board pawn faces its first step (they stood
   facing north, backs to the walkway). His verdict pending.
 
 ## 2026-09-22 — session 8: the lost kill, the export preset, KING OF THE HILL

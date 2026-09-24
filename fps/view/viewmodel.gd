@@ -21,7 +21,10 @@ var models: Array[Node3D] = []
 # The old angles were sniper pitch 3° / yaw −11° / roll −5°, AR 4° / −19° / −7°: both muzzles
 # swung to the right, away from the axis the gun sits right of.
 const CONVERGE_M := 20.0
-var hip_positions: Array[Vector3] = [Vector3(0.23, -0.19, -0.34), Vector3(0.25, -0.20, -0.38)]
+# The sniper sat 7 cm further right (x 0.23) until Sean's 2026-09-23 note "move the gun to the
+# left more so we can see the whole scope": its eyepiece, 21 cm from the eye, projected past the
+# right edge of a 16:9 frame. The AR is where it was.
+var hip_positions: Array[Vector3] = [Vector3(0.16, -0.19, -0.34), Vector3(0.25, -0.20, -0.38)]
 var hip_rotations: Array[Vector3] = [_aim_at_reticle(hip_positions[0]), _aim_at_reticle(hip_positions[1])]
 
 
