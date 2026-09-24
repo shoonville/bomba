@@ -60,7 +60,7 @@ Types: `start`, `blank`, `ticket` (+3), `lose` (−3), `item` (draw one; the eve
 teleported is gone, 2026-09-24), `goal` (the moving goal's spawn candidates carry `"goal": true`). A fork is any
 space with two or more `next` entries. BOMBA BAY (`tools/gen_board.gd`, 2026-09-24) is Sean's drawing: the blue lines traced as
 polylines in the drawing's pixels (0.115 m each), spaces every 3.7 m, every junction a shared
-space, the arrows as the one-way directions: 127 spaces, 4 forks (the start, the F3 junction,
+space, the arrows as the one-way directions (0.074 m a pixel: Sean wanted "around 80"): 82 spaces, 4 forks (the start, the F3 junction,
 F2, F4), every space reaching every other. The file also carries the look's data: `slab` (the
 moon chunk, a rounded hull of the spaces, `MoonSlab`), `annexes` (the rim angles of the two
 domes), `shuttle` (the rocket) and `zones` (the blocks between the streets and a few spots in the

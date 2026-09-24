@@ -43,7 +43,7 @@ that travels with the repo.
 - Board: one board (BOMBA BAY, `tools/gen_board.gd`, GDScript). Since 2026-09-24 (evening) it is SEAN'S DRAWING
   (`reference/board_drawing.png`: blue lines for the spaces, black arrows for the one-way directions, two arrows at
   a fork, the start, two yellow domes for the annexes, a rocket with a dotted line to its landing spot): the
-  generator traces it in the drawing's pixels (0.115 m each), 127 spaces, 4 forks, every space reaching every
+  generator traces it in the drawing's pixels (0.074 m each: he wanted "around 80" spots), 82 spaces, 4 forks, every space reaching every
   other. Do not redesign the layout; if it changes, it changes from a new drawing of his. The blocks between the
   streets and a few margin spots are "zones" in the board file and the dressing builds a set-piece in each
   (`BoardDressing._blocks`); the slab is the rounded hull of the spaces (`MoonSlab`, shared by the view, the
@@ -91,7 +91,7 @@ that travels with the repo.
   `--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results|shield|roll|move|laser|hit` to arm
   on an event (`--screenshot_event_index=N` for its Nth occurrence; a `myturn` frame needs
   `--screenshot_at=5` or more, the view is still playing the previous turn's hops before that).
-  Handy flags: `--board_overview`, `--board_map`, `--rocket_test` (everyone a space before the rocket pad with the fare; with `--machine_at=L31` the bots fly), `--spawn_index=N`, `--board_cam=x,y,z:tx,ty,tz`, `--hover_fork=left`,
+  Handy flags: `--board_overview`, `--board_map`, `--rocket_test` (everyone a space before the rocket pad with the fare; with `--machine_at=L19`, the left annex, the bots fly), `--spawn_index=N`, `--board_cam=x,y,z:tx,ty,tz`, `--hover_fork=left`,
   `--social_test`, `--show_scoreboard`, `--figure_test`, `--ads_progress=0..1`, `--force_weapon=0|1`,
   `--force_ads`, `--give_item=ID`, `--give_bots_item=ID`, `--hotbar_test`, `--target_test`, `--pop_test=ITEM`, `--aim_test=DEG`,
   `--machine_at=ID`, `--minigame=ID`, `--render_scale=N`, `--port=N`, `--no_warmup`,

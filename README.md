@@ -48,10 +48,10 @@ A full match from a shell: `-- --host --bots=2 --start --board --autoplay --boar
 --board_minigame_seconds=8 --soak=120` runs the board → minigame → board loop with bots (the
 minigame is drawn from `minigames/*/manifest.json` each round: ARENA, SNIPERS or LAST STAND
 (`MINIGAMES.md`); `--minigame=snipers` pins it); the lobby's START MATCH does the same for humans, QUICK ARENA
-skips the board. The board is BOMBA BAY, drawn by Sean (2026-09-24) and traced by `tools/gen_board.gd`: 127
+skips the board. The board is BOMBA BAY, drawn by Sean (2026-09-24) and traced by `tools/gen_board.gd`: 82
 spaces of one-way walkways on a moon-base plot with 4 forks (the start, the F3 junction, F2 and
 F4), every space reaching every other (`tools/board_laps.gd` prints every route from the start
-back to it, 27–93 steps); `--board_overview` frames all of it for a screenshot. The currency is
+back to it, 18–61 steps); `--board_overview` frames all of it for a screenshot. The currency is
 TICKETS, like an arcade's. The goal is a vending machine on each of the two annexes off the rim
 (the drawing's two domes; `tools/mark_spots.gd` flags the walkway space nearest each as its
 machine spot, and a bridge runs from the space to the annex); pass or land on the live one with

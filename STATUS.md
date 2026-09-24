@@ -894,13 +894,13 @@ identical, the headless four-seat board match on the new board.
 
   | BOMBA BAY | district (morning) | drawn (evening) |
   |---|---|---|
-  | spaces / forks | 186 / 7 | 127 / 4 |
-  | routes from the start back to it | 36–116 steps | 27–93 steps, mean 60 (13.3 turns) |
-  | machine spots | R30, R74 | L31 (left dome), P18 (right dome) |
-  | rocket | — | P4 → L5 for 10 tickets |
-  | GPU ms mean / p95, 1080p on the 5090 | 0.72 / 0.74 | 0.67 / 0.97 |
-  | render CPU ms | 1.26 | 0.76 |
-  | first build under the wipe, longest chunk | 42 ms (craters) | 31 ms (the tile emblems) |
+  | spaces / forks | 186 / 7 | 82 / 4 (127 at first; Sean: "around 80") |
+  | routes from the start back to it | 36–116 steps | 18–61 steps, mean 39.5 (8.8 turns) |
+  | machine spots | R30, R74 | L19 (left dome), P11 (right dome) |
+  | rocket | — | P2 → L3 for 10 tickets |
+  | GPU ms mean / p95, 1080p on the 5090 | 0.72 / 0.74 | 0.62 / 0.63 |
+  | render CPU ms | 1.26 | 0.73 |
+  | first build under the wipe, longest chunk | 42 ms (craters) | 18–23 ms (the annexes) |
 
   Frames: `board_map.png`, `board_overview.png`, `board_turn.png`, `board_fork.png`,
   `board_machine.png` (retaken), `board_rocket_offer.png`, `board_rocket_flight.png` (new). His

@@ -27,7 +27,7 @@ extends SceneTree
 const SPACING := 3.7
 const MAX_HOP := 5.6
 const MIN_PAIR := 3.0
-const SCALE := 0.115          # metres per drawing pixel
+const SCALE := 0.074          # metres per drawing pixel (0.115 gave 127 spaces; Sean: "around 80")
 const ORIGIN := Vector2(701.0, 561.0)   # the drawing pixel that becomes (0, 0)
 const MARGIN := 9.0           # the slab past the hull of the spaces
 const SHUTTLE_PRICE := 10
@@ -129,8 +129,9 @@ func _build_streets() -> void:
 	# M1 to F4.
 	_poly([M1, Vector2(540, 360), Vector2(590, 340), F4], "K", "main")
 	# The LENS: two arcs from F4 to the start.
-	_poly([F4, Vector2(660, 308), Vector2(720, 296), Vector2(790, 298), START], "A", "rich")
-	_poly([F4, Vector2(640, 356), Vector2(700, 362), Vector2(770, 350), Vector2(820, 326), START], "B", "branch")
+	# (the arcs pushed a little apart from the drawing, so the spaces on them keep 3 m between)
+	_poly([F4, Vector2(660, 300), Vector2(720, 288), Vector2(790, 292), START], "A", "rich")
+	_poly([F4, Vector2(640, 358), Vector2(700, 364), Vector2(770, 356), Vector2(825, 340), START], "B", "branch")
 	# The RECTANGLE: south from F3 to the pad, east along the bottom, north, then west along the
 	# top edge through M3 back to F3.
 	_poly([F3, Vector2(860, 760), PAD], "P", "branch")
@@ -287,14 +288,12 @@ func _zones() -> Array:
 	var start_m := _m(START)
 	var plaza := Vector2(start_m.x, start_m.y - 7.6)
 	return [
-		_zone("hab", Vector2(330, 640), 8.0, 0.4),          # inside the big loop: HAB 2, the comms tower
-		_zone("farm", Vector2(690, 555), 8.0, -0.2),        # the bay: greenhouses in rows
-		_zone("park", Vector2(640, 700), 6.0, 0.6),         # the bay's crater with the rig
+		_zone("hab", Vector2(360, 625), 7.0, 0.4),          # inside the big loop: HAB 2, the comms tower
+		_zone("farm", Vector2(700, 610), 7.0, -0.2),        # the bay: greenhouses in rows
 		_zone("rocket", Vector2(768, 768), 4.6, 0.0),       # the rocket on its pad, by the pad space
-		_zone("pad", Vector2(1000, 400), 6.0, 0.3),         # inside the top loop: the rover's pad and lights
-		_zone("depot", Vector2(1040, 585), 7.0, 0.2),       # ... and the hangar, cargo, the crane
-		_zone("power", Vector2(1040, 758), 6.5, 0.0),       # inside the rectangle: the reactor, solar
-		_zone("solar", Vector2(690, 396), 2.4, 0.15),       # the sliver under the lens: a solar row
+		_zone("pad", Vector2(1030, 400), 4.8, 0.3),         # inside the top loop: the rover's pad and lights
+		_zone("park", Vector2(1040, 585), 4.5, 0.6),        # ... and the crater with the rig
+		_zone("solar", Vector2(1040, 758), 3.2, 0.0),       # inside the rectangle: a solar row
 		{"kind": "plaza", "centre": [snappedf(plaza.x, 0.01), snappedf(plaza.y, 0.01)], "r": 1.6, "yaw": 0.0},
 		_margin_zone("lander", -28.0, 0.93, 2.4, 0.5),      # north-east margin: the lander
 		_margin_zone("ufo", 138.0, 0.93, 3.0, 0.0),         # south-west margin: a parked saucer and its pilot
