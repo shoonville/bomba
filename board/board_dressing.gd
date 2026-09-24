@@ -24,6 +24,7 @@ var _rx: float
 var _rz: float
 var _top: float
 var _shadow: Color
+var _density: float = 1.0        # slab area over the 65-space board's, for the prop counts
 var _rng := RandomNumberGenerator.new()
 var _occupied: Array = []        # Vector3(x, z, radius) of everything placed, craters and landmarks included
 var _mats: Dictionary = {}
@@ -73,6 +74,9 @@ func build(view: Node3D, g: BoardGraph, centre: Vector3, rx: float, rz: float, t
 	_rz = rz
 	_top = top
 	_shadow = shadow
+	# The counts below were set on the 31 × 25 m slab of the 65-space board; a bigger board keeps
+	# the same density of hatches, rocks, dust and cracks (per area) and of structures (per rim).
+	_density = (rx * rz) / (31.0 * 25.0)
 	_rng.seed = hash(g.id) + 101
 	for sid in g.ids():
 		_tile_positions.append(g.get_space(sid).position)
@@ -452,7 +456,7 @@ func _path_props() -> void:
 
 func _ground_details() -> void:
 	# Hatches: a plate with a rim and a light, flush with the ground near the walkway.
-	for k in 12:
+	for k in roundi(12 * _density):
 		var sp := _spot(2.1, 1.0, 0.1, 0.92, 200)
 		if sp == Vector2.INF:
 			break
@@ -470,7 +474,7 @@ func _ground_details() -> void:
 			_box(h, Vector3(0.18, 0.05, 0.18), Vector3(0.55, 0.1, 0.55), "glow_yellow" if k % 2 == 0 else "glow_cyan")
 		_count("hatch")
 	# Rock clusters: a few boulders of different sizes and a scatter of pebbles.
-	for k in 10:
+	for k in roundi(10 * _density):
 		var sp := _spot(2.3, 1.7, 0.1, 0.95, 200)
 		if sp == Vector2.INF:
 			break
@@ -488,7 +492,7 @@ func _ground_details() -> void:
 			_sphere(c, r, off, "crater", Vector3(1.2, 0.7, 1.0), false, 6)
 		_count("rock cluster")
 	# Loose pebbles anywhere the ground is bare.
-	for k in 60:
+	for k in roundi(60 * _density):
 		var a := _rng.randf_range(0.0, TAU)
 		var f := sqrt(_rng.randf_range(0.02, 0.9))
 		var x := _centre.x + cos(a) * _rx * f
@@ -499,7 +503,7 @@ func _ground_details() -> void:
 		var p := _sphere(self, r, Vector3(x, _top + r * 0.5, z), "moon_dark" if k % 2 == 0 else "crater", Vector3(1.3, 0.6, 1.0), false, 6)
 		p.rotation.y = _rng.randf_range(0.0, TAU)
 	# Dust patches: a shade off the slab, thin, so the flat ground is not one tone.
-	for k in 9:
+	for k in roundi(9 * _density):
 		var a := _rng.randf_range(0.0, TAU)
 		var f := sqrt(_rng.randf_range(0.05, 0.85))
 		var x := _centre.x + cos(a) * _rx * f
@@ -511,7 +515,7 @@ func _ground_details() -> void:
 		d.rotation.y = _rng.randf_range(0.0, TAU)
 		d.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# Rim edge: chunks of rock along the slab's edge so it reads as a cliff, not a cut.
-	for k in 22:
+	for k in roundi(22 * sqrt(_density)):
 		var a := k * TAU / 22.0 + _rng.randf_range(-0.1, 0.1)
 		var x := _centre.x + cos(a) * _rx * _rng.randf_range(0.99, 1.04)
 		var z := _centre.z + sin(a) * _rz * _rng.randf_range(0.99, 1.04)
@@ -520,7 +524,7 @@ func _ground_details() -> void:
 			Vector3(_rng.randf_range(0.8, 1.4), _rng.randf_range(0.6, 1.1), _rng.randf_range(0.8, 1.4)), false, 7)
 		chunk.rotation = Vector3(_rng.randf_range(0, 1), _rng.randf_range(0.0, TAU), 0)
 	# Cracks in the surface: thin dark lines in a few places.
-	for k in 8:
+	for k in roundi(8 * _density):
 		var sp := _spot(2.2, 1.4, 0.1, 0.9, 150)
 		if sp == Vector2.INF:
 			break
@@ -902,12 +906,12 @@ func _oxygen(on: Node3D, k: int) -> void:
 
 func _structures(craters: Array, landmarks: Array) -> void:
 	# Single-row solar arrays on the slab, where they fit.
-	for k in 2:
+	for k in roundi(2 * sqrt(_density)):
 		var farm := _spot(3.4, 2.4, 0.15, 0.94, 500)
 		if farm != Vector2.INF:
 			_solar_array(Vector3(farm.x, _top, farm.y), _rng.randf_range(0.0, TAU), 1)
 	# Cargo stacks on the slab.
-	for k in 3:
+	for k in roundi(3 * sqrt(_density)):
 		var sp := _spot(2.7, 1.6, 0.15, 0.92, 300)
 		if sp == Vector2.INF:
 			break

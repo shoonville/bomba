@@ -9,6 +9,7 @@ extends SceneTree
 ##   GODOT --headless --path . --script tools/mark_spots.gd -- board/boards/main.json
 
 const CORRIDOR_HALF := 2.6   # the annex bridge is 3.2 m wide
+const MIN_HOPS_FROM_START := 8   # no annex on the start's doorstep, either way round the loop
 
 
 func _initialize() -> void:
@@ -39,6 +40,19 @@ func _initialize() -> void:
 	var rx := (hi.x - lo.x) * 0.5 + 7.0   # the moon slab's radii, as board_view builds them
 	var rz := (hi.y - lo.y) * 0.5 + 7.0
 	var start := str(d.get("start", ""))
+	# Hops from the start forwards and backwards along the paths, so the annexes stay off the
+	# start's doorstep (the 116-space board's east dip in the loop sits one step before it).
+	var fwd := {}
+	var back := {}
+	for sd in spaces:
+		var sid := str(sd["id"])
+		fwd[sid] = Array(sd.get("next", [])).map(func(n): return str(n))
+		for n in fwd[sid]:
+			if not back.has(n):
+				back[n] = []
+			(back[n] as Array).append(sid)
+	var hops_out := _hops(start, fwd)
+	var hops_in := _hops(start, back)
 	var chosen := {}
 	var report := []
 	for a_v in AnnexPlan.angles(tiles, Vector3(centre.x, 0.0, centre.y), rx, rz):
@@ -49,6 +63,8 @@ func _initialize() -> void:
 		for sd in spaces:
 			var sid := str(sd["id"])
 			if sid == start or bool(fork[sid]) or str(sd.get("type", "blank")) != "blank" or chosen.has(sid):
+				continue
+			if mini(int(hops_out.get(sid, 999)), int(hops_in.get(sid, 999))) < MIN_HOPS_FROM_START:
 				continue
 			var v: Vector2 = pos[sid]
 			# The annex stands straight out from the space (the ellipse's own ray through it) and
@@ -82,3 +98,16 @@ func _initialize() -> void:
 	f.close()
 	print("marked %d machine spots on %s: %s" % [chosen.size(), path, ", ".join(report)])
 	quit(0)
+
+
+## Breadth-first hop counts from `from` over `edges` (id → [ids]).
+func _hops(from: String, edges: Dictionary) -> Dictionary:
+	var dist := {from: 0}
+	var queue := [from]
+	while not queue.is_empty():
+		var cur: String = queue.pop_front()
+		for n in edges.get(cur, []):
+			if not dist.has(n):
+				dist[n] = int(dist[cur]) + 1
+				queue.append(n)
+	return dist

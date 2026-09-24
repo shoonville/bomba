@@ -40,7 +40,8 @@ that travels with the repo.
   corner of the hip view; that was the part he wanted gone). AR: the old boxy sight on a 3.5 cm base
   (30 % lower than it was), red dot ON its screen (a translucent pane at ADS; the dot is 30 % smaller
   twice over, radius 0.001715), crisp snap sound, the purple body untouched.
-- Board: one board (BOMBA BAY, `tools/gen_board.py`), pink sky kept, moon-base theme under it, floating
+- Board: one board (BOMBA BAY, `tools/gen_board.gd`, GDScript: 116 spaces, a loop of 86 with four short
+  branches so every lap is 86–92 steps, about 20 turns of the d8, Sean's 2026-09-23 note), pink sky kept, moon-base theme under it, floating
   spinning markers (flat stamps were "ugly"), close Pummel-Party camera on ONE fixed heading (south of the pawn looking north, whichever way it
   travels; 2026-09-23), eight-sided die, no water.
   The vending machine lives on the two annexes only (his "original two spots", the bridges to the

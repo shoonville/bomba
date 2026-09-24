@@ -594,6 +594,12 @@ measured at 1920×1080 unless noted, on the 5090, and extrapolated.
   reticle; the scope passes 6 px over it. The sniper then moved 7 cm left (x 0.16) so the whole
   scope is in frame: its eyepiece had projected past the right edge. A new board pawn faces its first step (they stood
   facing north, backs to the walkway). His verdict pending.
+- **BOMBA BAY at 20 turns a lap** (Sean, 2026-09-23): `tools/gen_board.gd` (GDScript now; the
+  Python is gone) makes the same board bigger: 116 spaces, a loop of 86 with four short
+  branches, every lap 86–92 steps = 19–20 turns of the d8 (was 30–40 steps, 8 turns). The moon
+  base keeps its density on the 4.3× slab (craters, rocks, props scale with the area); the
+  machine spots are L49 and L74, 8+ hops from the start. Flag: the first machine is now a lap
+  away and a 10-round cap ends most matches on rounds, not toys. His verdict pending.
 
 ## 2026-09-22 — session 8: the lost kill, the export preset, KING OF THE HILL
 

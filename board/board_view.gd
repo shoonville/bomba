@@ -21,6 +21,7 @@ var _prop_spots: Array = []    # Vector2 of the five landmark props
 var _moon_c: Vector3 = Vector3.ZERO
 var _moon_rx: float = 20.0
 var _moon_rz: float = 20.0
+var _moon_density: float = 1.0   # slab area over the 65-space board's: feature counts keep their density
 var _bounds_centre: Vector3 = Vector3.ZERO
 var _bounds_radius: float = 20.0
 var _map_blend: float = 0.0
@@ -848,6 +849,9 @@ func _build_moon_chunk() -> void:
 	_moon_c = c
 	_moon_rx = rx
 	_moon_rz = rz
+	# Feature counts were set on the 31 × 25 m slab of the 65-space board; a bigger board keeps
+	# the same density (craters and boulders per square metre) so it does not read as empty.
+	_moon_density = (rx * rz) / (31.0 * 25.0)
 	var moon_mat := CelMaterial.with_print(CelMaterial.for_colour(Palette.map_colour("board", "moon"), shadow), "moon", Palette.map_colour("board", "line"))
 	var moon_dark_mat := CelMaterial.for_colour(Palette.map_colour("board", "moon_dark"), shadow)
 	var post_mat := CelMaterial.for_colour(Palette.map_colour("board", "counter_dark"), shadow)
@@ -899,7 +903,8 @@ func _build_moon_craters() -> void:
 	# Craters: a darker floor and a raised rim, never under a tile.
 	var craters: Array = []
 	var tries := 0
-	while craters.size() < 16 and tries < 400:
+	var crater_n := roundi(16 * _moon_density)
+	while craters.size() < crater_n and tries < roundi(400 * _moon_density):
 		tries += 1
 		var a := rng.randf_range(0.0, TAU)
 		var f := sqrt(rng.randf_range(0.04, 0.9))
@@ -929,9 +934,10 @@ func _build_moon_craters() -> void:
 		rim.material_override = moon_dark_mat
 		add_child(rim)
 	# Boulders, a few on the rim so the edge reads as rock.
-	for k in 28:
+	var inner_boulders := roundi(20 * _moon_density)
+	for k in roundi(28 * _moon_density):
 		var a := rng.randf_range(0.0, TAU)
-		var f := sqrt(rng.randf_range(0.1, 1.0)) if k < 20 else rng.randf_range(0.97, 1.02)
+		var f := sqrt(rng.randf_range(0.1, 1.0)) if k < inner_boulders else rng.randf_range(0.97, 1.02)
 		var x := c.x + cos(a) * rx * f
 		var z := c.z + sin(a) * rz * f
 		if not _clear_of_tiles(g, x, z, 2.4):
@@ -1156,8 +1162,9 @@ func _build_asteroids() -> void:
 	var glow_mat := CelMaterial.for_colour(Palette.hud_colour("meter"), shadow, 1.2)
 	var alien_mat := CelMaterial.for_colour(Palette.map_colour("board", "alien"), shadow, 1.2)
 	var paper_mat := CelMaterial.for_colour(Palette.hud_colour("paper"), shadow)
-	for i in 14:
-		var a := float(i) / 14.0 * TAU + rng.randf_range(-0.2, 0.2)
+	var ast_n := roundi(14 * sqrt(_moon_density))   # more asteroids round a bigger board
+	for i in ast_n:
+		var a := float(i) / ast_n * TAU + rng.randf_range(-0.2, 0.2)
 		var r := _bounds_radius * rng.randf_range(1.5, 2.1)
 		var pos := _bounds_centre + Vector3(cos(a) * r, rng.randf_range(-9.0, 7.0), sin(a) * r * 0.9)
 		var ast := Node3D.new()
@@ -2217,9 +2224,10 @@ func _process(delta: float) -> void:
 	var desired_pos := _cam_look + Vector3(sin(_cam_yaw) * 6.8, 6.2, cos(_cam_yaw) * 6.8)
 	var look := _cam_look
 	if Game.args.has("board_overview"):
-		# Harness: the whole board from above, for layout screenshots.
-		desired_pos = Vector3(0.0, 64.0, 46.0)
-		_cam_look = Vector3.ZERO
+		# Harness: the whole board from above, for layout screenshots (2.8 × and 2.0 × the
+		# bounds radius: the (0, 64, 46) that framed the 65-space board).
+		desired_pos = _bounds_centre + Vector3(0.0, 2.8 * _bounds_radius, 2.0 * _bounds_radius)
+		_cam_look = _bounds_centre
 		look = _cam_look
 	if Game.args.has("board_cam"):
 		# Harness: --board_cam=x,y,z:tx,ty,tz puts the camera anywhere, looking at a point.

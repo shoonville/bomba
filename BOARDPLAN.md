@@ -51,7 +51,7 @@ Every rule returns a list of **events** (`roll`, `move`, `coins`, `goal`, `item`
 `board/boards/<id>.json`: `spaces` (id, position `[x, y, z]`, type, `next: [ids]`) and `start`.
 Types: `start`, `blank`, `coin` (+3), `lose` (−3), `item` (draw one), `event` (v0: teleport to
 a random space), `goal` (the moving goal's spawn candidates carry `"goal": true`). A fork is any
-space with two or more `next` entries. The first board is a hand-made loop of ~28 spaces with two
+space with two or more `next` entries. BOMBA BAY (`tools/gen_board.gd`) is a loop of 86 spaces on a wobbly 59 × 44 m ellipse with four short branches, 116 spaces in all, so a lap is 86–92 steps (about 20 turns of the d8); the v0 board was a hand-made loop of ~28 spaces with two
 forks and a shortcut, positions in metres on a 24×18 m field, some spaces raised.
 
 ## 4. Items
