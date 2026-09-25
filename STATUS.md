@@ -902,6 +902,9 @@ identical, the headless four-seat board match on the new board.
 - **Two more**: a free camera on your turn (R toggles, WASD slides it over the map, the roll brings
   it back; `--free_cam_test`), and the emblems again: a Gundam-style head on the currency spot and a
   wrapped present on the item spot (the pink ticket and the star did not last the hour).
+- **The rover roams** (his frame of the old buggy and its tracks): the rim road planner is gone; the
+  rover drives the open ground, steers round walkways, blocks and the rim, and lays its tyre tracks
+  behind it (240 pairs recycled).
 
   | BOMBA BAY | district (morning) | drawn (evening) |
   |---|---|---|

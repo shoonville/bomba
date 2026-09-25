@@ -41,10 +41,12 @@ var _drone_t: float = 0.0
 var _drone_rotors: Array = []
 var _buggy: Node3D
 var _buggy_wheels: Array = []
-var _buggy_road: Array = []      # Vector3 samples of the longest clear rim arc, or empty
-var _road_loop: bool = false     # a closed ring (drive round) rather than an arc (drive back and forth)
-var _buggy_t: float = 0.0
-var _buggy_len: float = 1.0
+var _buggy_dir: float = PI       # the roaming rover's heading (Sean, 2026-09-24: "it actually moved around, and it left a trail")
+var _buggy_turn: float = PI      # the heading it is easing toward
+var _trail: Array = []           # the tyre-track pool: [left box, right box] per segment, the oldest reused
+var _trail_i: int = 0
+var _trail_last: Vector3 = Vector3.ZERO
+const TRAIL_SEGMENTS := 240      # 0.45 m each: about 100 m of trail behind the rover
 var _star: Node3D
 var _star_from: Vector3
 var _star_to: Vector3
@@ -105,7 +107,6 @@ func build(view: Node3D, g: BoardGraph, slab: MoonSlab, top: float, craters: Arr
 		return times
 	t = Time.get_ticks_usec()
 	_path_props()
-	_plan_road()
 	_ground_details()
 	times.append((Time.get_ticks_usec() - t) / 1000)
 	await _next_frame()
@@ -131,39 +132,6 @@ func _next_frame() -> void:
 	await (Engine.get_main_loop() as SceneTree).process_frame
 	if Engine.get_process_frames() == f:
 		await (Engine.get_main_loop() as SceneTree).process_frame
-
-
-## The buggy's road: the longest clear stretch of a ring near the rim (on the district, the strip
-## of open moon between the ring road and the rim, which the annex bridges cut into two arcs),
-## chosen after the annexes (their bridge mouths are reserved) and before the ground props so
-## they keep off it. Falls back to a loop around the base annex.
-func _plan_road() -> void:
-	var samples: Array = []
-	var clear: Array = []
-	var n := 96
-	for i in n:
-		var a := i * TAU / n
-		var q := _slab.point(a, 0.955)
-		var p := Vector3(q.x, _top, q.y)
-		samples.append(p)
-		clear.append(_tile_clear(p.x, p.z, 2.3) and _prop_clear(p.x, p.z, 1.0))
-	var best_start := -1
-	var best_len := 0
-	for i in n:
-		if not clear[i]:
-			continue
-		var run := 0
-		while run < n and clear[(i + run) % n]:
-			run += 1
-		if run > best_len:
-			best_len = run
-			best_start = i
-	if best_len >= 12:
-		for k in best_len:
-			_buggy_road.append(samples[(best_start + k) % n])
-		_road_loop = best_len >= n
-		for p in _buggy_road:
-			_occupied.append(Vector3(p.x, p.z, 1.4))
 
 
 # --- materials and meshes ---------------------------------------------------------------------------
@@ -1397,29 +1365,34 @@ func _life() -> void:
 			_drone_rotors.append(rotor)
 		_drone.position = _drone_path[0]
 		_count("patrol drone")
-	# A buggy driving the road planned earlier: back and forth along a rim arc, or round the annex.
-	if _buggy_road.is_empty() and _annex != Vector3.INF:
-		for i in 40:
-			var a := i * TAU / 40.0
-			_buggy_road.append(_annex + Vector3(cos(a) * (_annex_r - 1.1), 0, sin(a) * (_annex_r - 1.1)))
-		_road_loop = true
-	if not _buggy_road.is_empty():
-		_buggy_len = 0.0
-		var last := _buggy_road.size() if _road_loop else _buggy_road.size() - 1
-		for k in range(1, last + 1):
-			_buggy_len += (_buggy_road[k % _buggy_road.size()] - _buggy_road[k - 1]).length()
-		_buggy = _rover(self, _buggy_road[0], 0.0, _buggy_wheels)
-		# Tyre tracks along the road.
-		var segs := _buggy_road.size() if _road_loop else _buggy_road.size() - 1
-		for k in range(1, segs + 1):
-			var a: Vector3 = _buggy_road[k - 1]
-			var bb: Vector3 = _buggy_road[k % _buggy_road.size()]
-			var d := (bb - a).normalized()
-			var side := Vector3(-d.z, 0, d.x)
-			for s: float in [-0.8, 0.8]:
-				var tr := _box(self, Vector3(0.14, 0.02, (bb - a).length()), (a + bb) * 0.5 + side * s + Vector3(0, 0.01, 0), "moon_dark")
-				tr.look_at(bb + side * s, Vector3.UP)
+	# The rover roams (Sean, 2026-09-24: "it actually moved around, and it left a trail behind
+	# it"): it starts on the open ground north of the station (or any clear spot), drives at 2 m/s,
+	# steers round the walkways, the blocks, the props and the rim, and drops its tyre tracks
+	# behind it from a pool of TRAIL_SEGMENTS pairs, the oldest reused.
+	var start := Vector3.INF
+	var station := _zone_of("station")
+	if not station.is_empty():
+		var c: Array = station["centre"]
+		start = Vector3(float(c[0]), _top, float(c[1]) - float(station.get("r", 6.5)) - 2.6)
+		if not _way_clear(start):
+			start = Vector3.INF
+	if start == Vector3.INF:
+		var sp := _spot(2.6, 1.2, 0.2, 0.9, 300)
+		if sp != Vector2.INF:
+			start = Vector3(sp.x, _top, sp.y)
+	if start != Vector3.INF:
+		_buggy = _rover(self, start, 0.0, _buggy_wheels)
+		_buggy_dir = PI
+		_buggy_turn = PI
+		_trail_last = start
+		for k in TRAIL_SEGMENTS:
+			var pair := []
+			for s in 2:
+				var tr := _box(self, Vector3(0.14, 0.02, 0.5), Vector3.ZERO, "moon_dark")
 				tr.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				tr.visible = false
+				pair.append(tr)
+			_trail.append(pair)
 		_count("driving buggy")
 	# Shooting star: built once, shown on its runs.
 	_star = Node3D.new()
@@ -1491,33 +1464,40 @@ func _process(delta: float) -> void:
 		_drone.rotation.x = -0.18
 		for r in _drone_rotors:
 			(r as Node3D).rotation.y += delta * 30.0
-	if _buggy != null and _buggy_road.size() >= 2:
-		_buggy_t += delta * 2.0
-		# Round a loop, or back and forth along an arc (a triangle wave over its length).
-		var forward := true
-		var d := fmod(_buggy_t, _buggy_len)
-		if not _road_loop:
-			var cycle := fmod(_buggy_t, _buggy_len * 2.0)
-			forward = cycle < _buggy_len
-			d = cycle if forward else _buggy_len * 2.0 - cycle
-		var count := _buggy_road.size() if _road_loop else _buggy_road.size() - 1
-		var i := 1
-		while i <= count:
-			var a: Vector3 = _buggy_road[i - 1]
-			var b: Vector3 = _buggy_road[i % _buggy_road.size()]
-			var seg := (b - a).length()
-			if d <= seg or i == count:
-				var pos := a.lerp(b, clampf(d / maxf(seg, 0.001), 0.0, 1.0))
-				_buggy.position = pos
-				var face := b if forward else a
-				if (face - pos).length() > 0.01:
-					_buggy.look_at(face, Vector3.UP)
-					_buggy.rotation.y += PI * 0.5
-				break
-			d -= seg
-			i += 1
-		for w in _buggy_wheels:
-			(w as Node3D).rotation.y += delta * (4.8 if forward else -4.8)
+	if _buggy != null:
+		# Look 2.6 m ahead: blocked, swing the heading to the nearest clear way (or turn round);
+		# clear, wander a little. Then ease onto the heading, drive, turn the wheels, and every
+		# 0.45 m lay a pair of tracks.
+		var fwd := Vector3(cos(_buggy_dir), 0.0, sin(_buggy_dir))
+		if not _way_clear(_buggy.position + fwd * 2.6):
+			var found := false
+			for k in range(1, 10):
+				for s: float in [1.0, -1.0]:
+					var a := _buggy_dir + s * k * 0.35
+					if _way_clear(_buggy.position + Vector3(cos(a), 0.0, sin(a)) * 2.6):
+						_buggy_turn = a
+						found = true
+						break
+				if found:
+					break
+			if not found:
+				_buggy_turn = _buggy_dir + PI
+		else:
+			_buggy_turn += sin(_anim_t * 0.37 + 1.0) * delta * 0.3
+		_buggy_dir = _turn_toward(_buggy_dir, _buggy_turn, delta * 1.6)
+		fwd = Vector3(cos(_buggy_dir), 0.0, sin(_buggy_dir))
+		var moved := false
+		if _way_clear(_buggy.position + fwd * 1.2):
+			_buggy.position += fwd * 2.0 * delta
+			moved = true
+		_buggy.look_at(_buggy.position + fwd, Vector3.UP)
+		_buggy.rotation.y += PI * 0.5
+		if moved:
+			for w in _buggy_wheels:
+				(w as Node3D).rotation.y += delta * 4.8
+			if _buggy.position.distance_to(_trail_last) >= 0.45:
+				_drop_track(_trail_last, _buggy.position)
+				_trail_last = _buggy.position
 	if _station != null:
 		_station.rotation.y += delta * 0.05
 	if _machines.has(_active_machine):
@@ -2012,3 +1992,40 @@ func _block_rocket_cradle(c: Vector3, r: float, yaw: float) -> void:
 	var hose := _strut(cn, Vector3(-2.3, 0.4, 1.0), Vector3(-1.4, 0.75, 0.1), 0.05, "ink", 6)
 	hose.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_count("rocket, on a cradle")
+
+
+## The first zone of a kind, or {}.
+func _zone_of(kind: String) -> Dictionary:
+	for z in _graph.zones:
+		if str(z.get("kind", "")) == kind:
+			return z
+	return {}
+
+
+## Where the rover may drive: on the slab, off the walkways, off everything placed.
+func _way_clear(p: Vector3) -> bool:
+	return _inside(p.x, p.z, 0.96) and _tile_clear(p.x, p.z, 2.3) and _prop_clear(p.x, p.z, 1.2)
+
+
+static func _turn_toward(from: float, to: float, max_step: float) -> float:
+	return from + clampf(wrapf(to - from, -PI, PI), -max_step, max_step)
+
+
+## A pair of tyre tracks from `a` to `b`, on the pool's oldest boxes.
+func _drop_track(a: Vector3, b: Vector3) -> void:
+	if _trail.is_empty():
+		return
+	var pair: Array = _trail[_trail_i % _trail.size()]
+	_trail_i += 1
+	var d := b - a
+	var len := d.length()
+	if len < 0.05:
+		return
+	var side := Vector3(-d.z, 0.0, d.x).normalized()
+	for s in 2:
+		var tr: MeshInstance3D = pair[s]
+		var off := side * (0.8 if s == 0 else -0.8) + Vector3(0, 0.012, 0)
+		tr.visible = true
+		tr.position = (a + b) * 0.5 + off
+		tr.look_at(b + off, Vector3.UP)
+		tr.scale = Vector3(1.0, 1.0, len / 0.5)
