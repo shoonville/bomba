@@ -194,3 +194,89 @@ func test_damage_models() -> void:
 	# 100 hp: AR needs 5 near, 9 far; sniper 1. The sniper wins past ~30 m by design.
 	assert_eq(int(ceil(100.0 / ar.damage_near)), 5)
 	assert_eq(int(ceil(100.0 / ar.damage_far)), 9)
+
+
+# --- the katana (FIREBALL, 2026-09-24) ---------------------------------------------------------
+
+func _katana() -> Array:
+	var table := TuningLoader.load_file("res://tuning/weapons.json")
+	var kd := WeaponDef.load_ids(table, ["katana"])
+	var states: Array[WeaponLogic.SlotState] = []
+	var s := WeaponLogic.SlotState.new()
+	s.ammo = kd[0].magazine
+	states.append(s)
+	return [kd, states, WeaponLogic.Shared.new()]
+
+
+func test_katana_is_melee_with_no_shot() -> void:
+	var k := _katana()
+	var kd: Array[WeaponDef] = k[0]
+	assert_eq(kd.size(), 1)
+	assert_true(kd[0].is_melee())
+	assert_false(kd[0].is_sniper())
+	var out := WeaponLogic.step(kd, k[1], k[2], _inp(true, true), 100, true, swap_ticks)
+	assert_true(out.swung, "the trigger swings")
+	assert_false(out.fired, "never a shot")
+	assert_eq((k[1] as Array)[0].ammo, kd[0].magazine, "no ammo spent")
+	var again := WeaponLogic.step(kd, k[1], k[2], _inp(true, true), 101, true, swap_ticks)
+	assert_false(again.swung, "inside the swing")
+	var later := WeaponLogic.step(kd, k[1], k[2], _inp(true, true), 100 + kd[0].swing_ticks, true, swap_ticks)
+	assert_true(later.swung, "the swing cycled")
+
+
+func test_katana_parry_window_and_cooldown() -> void:
+	var k := _katana()
+	var kd: Array[WeaponDef] = k[0]
+	var sh: WeaponLogic.Shared = k[2]
+	var t := 200
+	var out := WeaponLogic.step(kd, k[1], sh, _inp(false, false, true), t, true, swap_ticks)
+	assert_true(out.parry_started)
+	assert_false(out.ads_active, "the right button is the reflect, not a zoom")
+	assert_near(WeaponLogic.ads_progress(kd[0], sh, t + 5), 0.0)
+	assert_true(WeaponLogic.parry_active(kd[0], sh, t))
+	assert_true(WeaponLogic.parry_active(kd[0], sh, t + kd[0].parry_ticks - 1), "open to the last tick of the window")
+	assert_false(WeaponLogic.parry_active(kd[0], sh, t + kd[0].parry_ticks), "closed after it")
+	var held := WeaponLogic.step(kd, k[1], sh, _inp(false, false, true), t + 1, true, swap_ticks)
+	assert_false(held.parry_started, "holding the button does not re-open it")
+	assert_eq(sh.parry_since_tick, t)
+	var early := WeaponLogic.step(kd, k[1], sh, _inp(false, false, true), t + kd[0].parry_cooldown_ticks - 1, true, swap_ticks)
+	assert_false(early.parry_started, "one tick inside the cooldown")
+	var ready := WeaponLogic.step(kd, k[1], sh, _inp(false, false, true), t + kd[0].parry_cooldown_ticks, true, swap_ticks)
+	assert_true(ready.parry_started, "the cooldown is the press-to-press wait")
+	assert_eq(sh.parry_since_tick, t + kd[0].parry_cooldown_ticks)
+
+
+func test_katana_dead_or_swapping_cannot_parry() -> void:
+	var k := _katana()
+	var kd: Array[WeaponDef] = k[0]
+	var sh: WeaponLogic.Shared = k[2]
+	var dead := WeaponLogic.step(kd, k[1], sh, _inp(false, false, true), 300, false, swap_ticks)
+	assert_false(dead.parry_started)
+	assert_false(WeaponLogic.parry_active(kd[0], sh, 300))
+	sh.swap_until_tick = 320
+	var swapping := WeaponLogic.step(kd, k[1], sh, _inp(false, false, true), 310, true, swap_ticks)
+	assert_false(swapping.parry_started, "the blade is still coming up")
+
+
+## The slots node round-trips the parry through its flat state properties (the snapshot the
+## match reads left the parry fields out once, 2026-09-24: every bot pressed, no ball reflected).
+func test_katana_parry_reads_back_through_the_slots_node() -> void:
+	var table := TuningLoader.load_file("res://tuning/weapons.json")
+	var kd := WeaponDef.load_ids(table, ["katana"])
+	var slots := WeaponSlots.new()
+	slots.setup(kd, swap_ticks)
+	var input := PlayerInput.new()
+	input.ads = true
+	var out := slots.step(500, true, input)
+	assert_true(out.parry_started)
+	assert_eq(slots.parry_since_tick, 500)
+	assert_true(slots.parry_active(500), "open on the press tick, read through the node")
+	assert_true(slots.parry_active(500 + kd[0].parry_ticks - 1))
+	assert_false(slots.parry_active(500 + kd[0].parry_ticks))
+	assert_true(slots.parry_progress(509) > 0.0 and slots.parry_progress(509) < 1.0)
+	assert_eq(slots.parry_ready_in(510), kd[0].parry_cooldown_ticks - 10)
+	input.ads = false
+	slots.step(501, true, input)
+	assert_true(slots.parry_active(501), "the window stays open after the button is let go")
+	input.free()
+	slots.free()

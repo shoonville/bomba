@@ -10,6 +10,8 @@ var swap_until_tick: int = 0
 var ads_since_tick: int = -1
 var recoil_pitch: float = 0.0
 var recoil_yaw: float = 0.0
+var parry_since_tick: int = -1   # the katana's reflect window (WeaponLogic.parry_active)
+var parry_ready_tick: int = 0
 
 var w0_ammo: int = 0
 var w0_next_fire_tick: int = 0
@@ -38,7 +40,7 @@ var _shared := WeaponLogic.Shared.new()
 
 static func state_property_paths(node_name: String) -> Array[String]:
 	var out: Array[String] = []
-	for p in ["slot", "swap_until_tick", "ads_since_tick", "recoil_pitch", "recoil_yaw"]:
+	for p in ["slot", "swap_until_tick", "ads_since_tick", "recoil_pitch", "recoil_yaw", "parry_since_tick", "parry_ready_tick"]:
 		out.append("%s:%s" % [node_name, p])
 	for i in MAX_SLOTS:
 		for p in ["ammo", "next_fire_tick", "reload_until_tick", "recoil_index", "last_shot_tick"]:
@@ -96,6 +98,8 @@ func shared_snapshot() -> WeaponLogic.Shared:
 	sh.ads_since_tick = ads_since_tick
 	sh.recoil_pitch = recoil_pitch
 	sh.recoil_yaw = recoil_yaw
+	sh.parry_since_tick = parry_since_tick
+	sh.parry_ready_tick = parry_ready_tick
 	return sh
 
 
@@ -111,6 +115,28 @@ func is_scoped(tick: int) -> bool:
 	if d == null or not d.is_sniper():
 		return false
 	return WeaponLogic.is_scoped(d, shared_snapshot(), tick)
+
+
+## The katana's reflect window is open on this tick.
+func parry_active(tick: int) -> bool:
+	var d := current_def()
+	if d == null:
+		return false
+	return WeaponLogic.parry_active(d, shared_snapshot(), tick)
+
+
+## 0..1 through the reflect window (the blade's guard animation); 0 when it is closed.
+func parry_progress(tick: int) -> float:
+	var d := current_def()
+	if d == null or not d.is_melee() or parry_since_tick < 0 or d.parry_ticks <= 0:
+		return 0.0
+	var k := float(tick - parry_since_tick) / float(d.parry_ticks)
+	return clampf(k, 0.0, 1.0) if k < 1.0 else 0.0
+
+
+## Ticks until the next reflect press counts; 0 when ready.
+func parry_ready_in(tick: int) -> int:
+	return maxi(0, parry_ready_tick - tick)
 
 
 ## Run one tick of weapon logic from the input. Returns the outcome; the player resolves shots.
@@ -136,6 +162,8 @@ func _load() -> void:
 	_shared.ads_since_tick = ads_since_tick
 	_shared.recoil_pitch = recoil_pitch
 	_shared.recoil_yaw = recoil_yaw
+	_shared.parry_since_tick = parry_since_tick
+	_shared.parry_ready_tick = parry_ready_tick
 	for i in defs.size():
 		var s := _states[i]
 		s.ammo = int(get("w%d_ammo" % i))
@@ -151,6 +179,8 @@ func _store() -> void:
 	ads_since_tick = _shared.ads_since_tick
 	recoil_pitch = _shared.recoil_pitch
 	recoil_yaw = _shared.recoil_yaw
+	parry_since_tick = _shared.parry_since_tick
+	parry_ready_tick = _shared.parry_ready_tick
 	for i in defs.size():
 		var s := _states[i]
 		set("w%d_ammo" % i, s.ammo)

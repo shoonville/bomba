@@ -52,6 +52,9 @@ class MatchContext:
 	func notify_shot(shooter: Node, tick: int, origin: Vector3, end_point: Vector3, hit_kind: int) -> void:
 		arena._notify_shot(shooter, tick, origin, end_point, hit_kind)
 
+	func hazard_at(player: Node, tick: int) -> Dictionary:
+		return arena._hazard_at(player, tick)
+
 
 var arena_cfg: Dictionary = {}
 var move_cfg: MovementConfig
@@ -98,7 +101,9 @@ var _killcam_done: bool = false
 
 func _on_setup() -> void:
 	arena_cfg = Tuning.table("arena")
-	move_cfg = MovementConfig.from_dict(Tuning.table("movement"))
+	var move_table: Dictionary = Tuning.table("movement").duplicate()
+	move_table.merge(_movement_overrides(), true)   # a minigame's own feel (FIREBALL: half gravity)
+	move_cfg = MovementConfig.from_dict(move_table)
 	var wt := Tuning.table("weapons")
 	var ids: Array = []
 	if manifest != null:
@@ -110,7 +115,8 @@ func _on_setup() -> void:
 
 	var t0 := Time.get_ticks_usec()
 	layout = _layout()
-	MapDressing.dress(layout, _palette_map())   # decor only: boxes, spawns and the bot graph untouched
+	if _dress_map():
+		MapDressing.dress(layout, _palette_map())   # decor only: boxes, spawns and the bot graph untouched
 	MapBuilder.build_boxes(map_root, layout, _palette_map())
 	spawn_selector.configure(layout["spawns"], arena_cfg, move_cfg.eye_height)
 	_ctx = MatchContext.new()
@@ -321,6 +327,51 @@ func _palette_map() -> String:
 	return "arena"
 
 
+## Keys of tuning/movement.json a minigame overrides (FIREBALL halves gravity); {} for the shared feel.
+func _movement_overrides() -> Dictionary:
+	return {}
+
+
+## The city dressing round the map (MapDressing); false for a map that is not a city.
+func _dress_map() -> bool:
+	return true
+
+
+## A bot's brain (also the --autoplay seat's): anything with setup(player, ctx, difficulty) and
+## gather_into(input). The shared BotBrain hunts with the guns; FIREBALL plugs its own.
+func _make_brain() -> Node:
+	return BotBrain.new()
+
+
+## The weapon named in the kill feed and the result for a death: the slot's weapon by default;
+## a minigame with its own killers (FIREBALL's ball, the fall off its platform) names them here.
+func _kill_weapon_id(_victim: Player, _kind: int, weapon_slot: int) -> String:
+	return weapon_defs[weapon_slot].id if weapon_slot < weapon_defs.size() else "?"
+
+
+## Something other than a shot that kills or hurts `player` on `tick` ({killer, kind, amount}; {}
+## for nothing), asked from the player's own rollback tick on the authority so a resimulation
+## applies it again (PlayerContext.hazard_at). FIREBALL answers for its ball and its drop.
+func _hazard_at(_player: Player, _tick: int) -> Dictionary:
+	return {}
+
+
+## The final-kill cam replays the players from their buffers; a minigame with something else in
+## the shot (FIREBALL's ball) moves it to where it was at replay tick `pt` here, and back after.
+func killcam_place(_pt: float) -> void:
+	pass
+
+
+func killcam_end() -> void:
+	pass
+
+
+## The kill's moment in the replay: true when the minigame played it (its own effect and sound),
+## false for the KillCam's tracer and gunshot.
+func killcam_fire(_weapon: String) -> bool:
+	return false
+
+
 func _score_for(pl: Player) -> int:
 	return kills_for(pl.peer_id)
 
@@ -500,7 +551,7 @@ func _spawn_player(mp: MinigamePlayer, index: int) -> void:
 	elif not mp.is_bot and mp.peer_id == local_peer_id() and Game.args.has("autoplay"):
 		wants_brain = true
 	if wants_brain:
-		var brain := BotBrain.new()
+		var brain: Node = _make_brain()
 		brain.name = "Brain"
 		p.input.add_child(brain)
 		brain.setup(p, _ctx, mp.bot_difficulty if mp.is_bot else str(Game.args.get("autoplay_difficulty", "normal")))
@@ -683,7 +734,7 @@ func _on_player_died(node: Node, tick: int) -> void:
 			(_players[killer_id] as Player).kills += 1
 		var weapon_slot := info % 10
 		var kind := int(info / 10)
-		var weapon_id := weapon_defs[weapon_slot].id if weapon_slot < weapon_defs.size() else "?"
+		var weapon_id := _kill_weapon_id(victim, kind, weapon_slot)
 		_pending_kills.append([killer_id, victim.peer_id, weapon_id, kind == HitscanResolver.HEAD, tick])
 
 

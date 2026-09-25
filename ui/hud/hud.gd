@@ -284,6 +284,9 @@ func _draw_score(size: Vector2) -> void:
 func _draw_ammo(size: Vector2, def: WeaponDef) -> void:
 	if def == null:
 		return
+	if def.is_melee():
+		_draw_reflect(size, def)
+		return
 	var slot := _player.weapons.slot
 	var ammo := _player.weapons.ammo_for_slot(slot)
 	var origin := Vector2(size.x - 40.0, size.y - 34.0)
@@ -303,6 +306,36 @@ func _draw_ammo(size: Vector2, def: WeaponDef) -> void:
 	if _player.weapons.is_reloading():
 		name = "RELOADING"
 	elif NetworkTime.tick < _player.weapons.swap_until_tick:
+		name = "..."
+	var nw := _font.get_string_size(name, HORIZONTAL_ALIGNMENT_RIGHT, -1, 22).x
+	_draw_outlined(Vector2(origin.x - nw, origin.y - 40.0), name, 22, _paper)
+
+
+## The katana's panel where the ammo ticks go (FIREBALL): the blade's name and the reflect's
+## state: a bar that refills over the cooldown, REFLECT while the window is open, READY when a
+## press counts.
+func _draw_reflect(size: Vector2, def: WeaponDef) -> void:
+	var tick := NetworkTime.tick
+	var origin := Vector2(size.x - 40.0, size.y - 34.0)
+	var w := 150.0
+	var h := 12.0
+	var wait := _player.weapons.parry_ready_in(tick)
+	var frac := 1.0 - clampf(float(wait) / float(maxi(def.parry_cooldown_ticks, 1)), 0.0, 1.0)
+	var active := _player.weapons.parry_active(tick)
+	var skew := 6.0
+	var x0 := origin.x - w
+	draw_colored_polygon(PackedVector2Array([Vector2(x0, origin.y), Vector2(origin.x, origin.y), Vector2(origin.x + skew, origin.y - h), Vector2(x0 + skew, origin.y - h)]), _ink)
+	if frac > 0.0:
+		var fw := (w - 3.0) * frac
+		var col := _meter_col if active else (_score_col if frac >= 1.0 else _paper)
+		var k := skew * (h - 3.0) / h
+		draw_colored_polygon(PackedVector2Array([Vector2(x0 + 1.5, origin.y - 1.5), Vector2(x0 + 1.5 + fw, origin.y - 1.5), Vector2(x0 + 1.5 + fw + k, origin.y - h + 1.5), Vector2(x0 + 1.5 + k, origin.y - h + 1.5)]), col)
+	var state := "REFLECT" if active else ("READY" if wait <= 0 else "...")
+	var col2 := _meter_col if active else (_score_col if wait <= 0 else _paper)
+	var sw := _font.get_string_size(state, HORIZONTAL_ALIGNMENT_RIGHT, -1, 18).x
+	_draw_outlined(Vector2(origin.x - sw, origin.y - 18.0), state, 18, col2)
+	var name := def.display_name
+	if tick < _player.weapons.swap_until_tick:
 		name = "..."
 	var nw := _font.get_string_size(name, HORIZONTAL_ALIGNMENT_RIGHT, -1, 22).x
 	_draw_outlined(Vector2(origin.x - nw, origin.y - 40.0), name, 22, _paper)

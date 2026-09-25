@@ -15,6 +15,8 @@ var _r_leg: Node3D
 var _gun: Node3D
 var _gun_long: Node3D
 var _gun_short: Node3D
+var _katana: Node3D
+var _guard: float = 0.0   # the katana held up in the guard (the reflect), eased 0..1
 var _phase: float = 0.0
 var _tilt: float = 0.0
 var _flinch: float = 0.0
@@ -129,6 +131,22 @@ func build(colour: Color, map_id: String, head_y: float = 1.62, with_gun: bool =
 		_box(_gun_short, Vector3(0.06, 0.5, 0.1), Vector3(-0.1, -0.12, 0.0), body_mat)
 		_box(_gun_short, Vector3(0.05, 0.12, 0.05), Vector3(-0.1, -0.2, -0.08), dark_mat)
 		_gun_short.visible = false
+		# The katana (FIREBALL): the handle through the glove, the guard past the fingers, the
+		# blade on down the arm's line with its bright edge, hidden until set_weapon_kind asks.
+		_katana = Node3D.new()
+		_gun.add_child(_katana)
+		var steel_mat := CelMaterial.for_colour(Color.from_hsv(0.58, 0.10, 0.84), shadow)
+		var wrap_mat := CelMaterial.for_colour(Color.from_hsv(0.72, 0.4, 0.2), shadow)
+		_capsule(_katana, 0.02, 0.26, Vector3(0.0, -0.09, 0.0), wrap_mat)                   # the handle
+		for k in 5:
+			var dmd := _box(_katana, Vector3(0.05, 0.016, 0.014), Vector3(0.0, -0.19 + 0.045 * k, 0.0), body_mat)
+			dmd.rotation.y = 0.75 if k % 2 == 0 else -0.75
+		_cyl(_katana, 0.052, 0.008, Vector3(0.0, -0.235, 0.0), dark_mat)                    # the guard
+		_box(_katana, Vector3(0.014, 0.03, 0.04), Vector3(0.0, -0.26, 0.0), metal_mat)        # the collar
+		_box(_katana, Vector3(0.014, 0.74, 0.05), Vector3(0.0, -0.64, 0.0), steel_mat)        # the blade (wide enough to read at 15 m)
+		_box(_katana, Vector3(0.008, 0.72, 0.012), Vector3(0.0, -0.64, -0.028), cream_mat)    # its edge
+		_box(_katana, Vector3(0.012, 0.06, 0.026), Vector3(0.0, -1.03, 0.008), steel_mat)     # the point
+		_katana.visible = false
 
 
 ## An arm from the shoulder down: the ball joint, a dark upper arm, the elbow ball, a flared
@@ -185,10 +203,28 @@ func set_weapon_slot(slot: int) -> void:
 	if _gun_long != null:
 		_gun_long.visible = slot == 0
 		_gun_short.visible = slot != 0
+		if _katana != null:
+			_katana.visible = false
+
+
+## Which held weapon shows, by its id: the sniper, the katana, or the short gun for the rest.
+func set_weapon_kind(kind: String) -> void:
+	if _gun_long == null:
+		return
+	_gun_long.visible = kind == "sniper"
+	_katana.visible = kind == "katana"
+	_gun_short.visible = not (_gun_long.visible or _katana.visible)
+
+
+## The katana up in front (the reflect window open): both arms rise and the blade points up.
+func set_guard(on: bool, delta: float) -> void:
+	_guard = move_toward(_guard, 1.0 if on else 0.0, delta * (12.0 if on else 7.0))
 
 
 ## How far the held gun's muzzle reaches from the shoulder along the aim, for the wall check.
 func gun_reach() -> float:
+	if _katana != null and _katana.visible:
+		return 1.3
 	return 1.45 if (_gun_long != null and _gun_long.visible) else 1.05
 
 
@@ -280,10 +316,10 @@ func animate(speed: float, on_floor: bool, pitch: float, alive: bool, delta: flo
 	if _has_gun:
 		# Both arms up on the gun, following the look pitch; the gun points where the head looks,
 		# lifted by whatever keeps the barrel out of a wall.
-		var aim := PI * 0.5 + pitch + _gun_raise
+		var aim := PI * 0.5 + pitch + _gun_raise + _guard * 0.9
 		_r_arm.rotation.x = aim
 		_l_arm.rotation.x = aim
-		_l_arm.rotation.y = -0.55   # the left hand reaches in to the gun
+		_l_arm.rotation.y = -0.55 - _guard * 0.15   # the left hand reaches in to the gun
 		_l_arm.rotation.z = 0.0
 	elif _aiming:
 		_l_arm.rotation.x = -swing * 0.7

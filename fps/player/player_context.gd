@@ -62,6 +62,14 @@ func objective_position() -> Vector3:
 	return Vector3.INF
 
 
+## Authority-only, inside the player's own tick: something other than a shot that kills or hurts it
+## on this tick (FIREBALL's ball, the fall off its platform), as {killer, kind, amount}; {} for
+## nothing. Applied from the player's _rollback_tick so a resimulated tick applies it again: a
+## change written to a body from outside its tick was undone by the next resimulation (2026-09-24).
+func hazard_at(_player: Node, _tick: int) -> Dictionary:
+	return {}
+
+
 ## Authority-only: a shot resolved (for tracers seen by other players).
 func notify_shot(_shooter: Node, _tick: int, _origin: Vector3, _end_point: Vector3, _hit_kind: int) -> void:
 	pass

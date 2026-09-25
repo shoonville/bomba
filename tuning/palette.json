@@ -388,6 +388,26 @@
         0.42,
         0.12
       ]
+    },
+    "fireball": {
+      "_comment": "FIREBALL's platform in the board's pink sky (Sean: the sky should be the pink from the board game): dark greys under it; fire, fire_core and fire_dark are the ball's light blues.",
+      "field": [ 225, 0.06, 0.40 ],
+      "field_dark": [ 228, 0.08, 0.30 ],
+      "counter": [ 215, 0.12, 0.52 ],
+      "counter_dark": [ 220, 0.14, 0.36 ],
+      "sky_top": [ 268, 0.42, 0.62 ],
+      "sky_bottom": [ 318, 0.28, 0.86 ],
+      "cloud_lit": [ 40, 0.16, 0.97 ],
+      "cloud_shadow": [ 290, 0.36, 0.48 ],
+      "cloud_coverage": 0.36,
+      "shadow_tint": [ 0.76, 0.72, 0.94 ],
+      "accent": [ 55, 0.72, 0.84 ],
+      "line": [ 268, 0.5, 0.12 ],
+      "paper": [ 40, 0.1, 0.9 ],
+      "glow": [ 195, 0.55, 0.92 ],
+      "fire": [ 197, 0.62, 0.95 ],
+      "fire_core": [ 190, 0.18, 1.0 ],
+      "fire_dark": [ 205, 0.75, 0.75 ]
     }
   },
   "hud": {

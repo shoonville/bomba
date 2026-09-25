@@ -85,6 +85,7 @@ func _ready() -> void:
 		Events.kill.connect(_arm_screenshot_on_kill)
 		Events.round_ended.connect(_arm_screenshot_on_round_end)
 		Events.local_hit_predicted.connect(_arm_screenshot_on_hit)
+		Events.local_weapon_event.connect(_arm_screenshot_on_weapon_event)
 	headless = DisplayServer.get_name() == "headless"
 	if args.has("log"):
 		Log.level = int(args["log"])
@@ -778,6 +779,12 @@ func _arm_screenshot_on_kill(_killer: int, victim: int, _weapon: String, _headsh
 ## --screenshot_event=hit: the frame after the local player's next hit (the hitmarker).
 func _arm_screenshot_on_hit(_kind: int, _victim: int) -> void:
 	_arm_screenshot_on([{"kind": "hit"}])
+
+
+## --screenshot_event=parry: the frame after the local player's next reflect press (FIREBALL).
+func _arm_screenshot_on_weapon_event(name: String) -> void:
+	if name == "parry":
+		_arm_screenshot_on([{"kind": "parry"}])
 
 
 func _arm_screenshot_on_round_end() -> void:

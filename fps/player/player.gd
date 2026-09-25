@@ -171,7 +171,8 @@ func _record_replay(tick: int) -> void:
 	_replay[i + 5] = float(health)
 	_replay[i + 6] = float(weapons.slot)
 	_replay[i + 7] = float(tick)
-	_replay[i + 8] = weapons.ads_progress(tick)
+	var def := weapons.current_def()
+	_replay[i + 8] = weapons.parry_progress(tick) if (def != null and def.is_melee()) else weapons.ads_progress(tick)   # the katana: its guard
 
 
 func _replay_at(tick: int) -> Dictionary:
@@ -240,6 +241,14 @@ func _rollback_tick_body(delta: float, tick: int, _is_fresh: bool) -> void:
 		velocity /= NetworkTime.physics_factor
 	else:
 		velocity = Vector3.ZERO
+
+	# Hazards (a minigame's own killers: FIREBALL's ball, its drop), applied here in the body's own
+	# tick on the authority, so a resimulated tick applies them again.
+	if alive and is_multiplayer_authority() and ctx != null:
+		var hazard := ctx.hazard_at(self, tick)
+		if not hazard.is_empty():
+			take_damage(int(hazard.get("amount", max_health)), int(hazard.get("killer", 0)), tick, int(hazard.get("kind", 1)), 0)
+			alive = health > 0
 
 	# Weapons. Inputs queued before the player learned of a death do not fire the fresh body.
 	var recoil_before := Vector2(weapons.recoil_yaw, weapons.recoil_pitch)
@@ -429,6 +438,10 @@ func _emit_weapon_events() -> void:
 	if out.swapped:
 		Events.local_weapon_event.emit("swapped")
 		Events.local_weapon_changed.emit(out.weapon_id)
+	if out.swung:
+		Events.local_weapon_event.emit("swing")
+	if out.parry_started:
+		Events.local_weapon_event.emit("parry")
 
 
 func _emit_movement_events() -> void:

@@ -21,7 +21,7 @@ signal local_damaged(amount: int, from_id: int)
 signal local_died()
 signal local_respawned()
 signal local_weapon_changed(weapon: String)
-signal local_weapon_event(name: String)   # reload_started, reload_finished, dry_fire, swapped
+signal local_weapon_event(name: String)   # reload_started, reload_finished, reload_round, dry_fire, swapped, swing, parry (the katana)
 signal local_footstep()
 signal local_jump()
 signal local_land()

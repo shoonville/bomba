@@ -1,5 +1,5 @@
 {
-  "_comment": "Ticks are 60 Hz. scope_in_ticks is read by BOTH the server accuracy rule and the scope animation; they must never be two numbers.",
+  "_comment": "Ticks are 60 Hz. scope_in_ticks is read by BOTH the server accuracy rule and the scope animation; they must never be two numbers. The katana (model melee, FIREBALL only) has no shot: parry_ticks is the reflect window from a right-click press, parry_cooldown_ticks the wait to the next press, swing_ticks the left-click swing (cosmetic).",
   "loadout": [
     "sniper",
     "ar"
@@ -96,5 +96,20 @@
         0.25
       ]
     ]
+  },
+  "katana": {
+    "display_name": "KATANA",
+    "model": "melee",
+    "auto": false,
+    "fire_interval_ticks": 24,
+    "swing_ticks": 24,
+    "parry_ticks": 18,
+    "parry_cooldown_ticks": 54,
+    "magazine": 1,
+    "reload_ticks": 0,
+    "range_m": 2.0,
+    "ads_fov_vertical": 62.0,
+    "recoil_recovery_delay_ticks": 0,
+    "recoil_recovery_per_tick_deg": 0.5
   }
 }

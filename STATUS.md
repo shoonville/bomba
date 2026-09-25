@@ -924,3 +924,50 @@ identical, the headless four-seat board match on the new board.
 1. Sean: the drawn board in play, the rocket (its fare, the offer on every pass through the pad,
    the ride), the tickets, the emblems on the tiles, the cute things.
 2. Unchanged: the display and driver settings (session 11), the 10–17 ms ticks (session 12).
+
+## 2026-09-24 — session 15: FIREBALL (Sean's Genji Ball); ARENA and SNIPERS parked
+
+Sean's note, item by item; each item measured before it was called done. `tools/check_all.sh`
+green: 94 tests, 108 scripts, determinism identical, the headless board match drawing LAST STAND
+then FIREBALL with no warnings.
+
+- **ARENA and SNIPERS parked** (`"enabled": false` in their manifests): the board draws LAST STAND
+  and FIREBALL; `--minigame=ID` still pins a parked one, QUICK ARENA still starts ARENA.
+- **FIREBALL** (`minigames/fireball/`, `tuning/fireball.json`, `MINIGAMES.md` §3): a round platform
+  (r 17 m, dark grey, the paving print, a dashed ring and a centre disc) floating in the board's
+  pink sky, half gravity (a 2.98 m jump), one katana each, spawns on an 11 m ring as many as seats.
+  The fireball appears over the centre when the countdown ends, hovers 0.75 s, hunts a player at
+  9 m/s; touch it and you are out; off the platform is out too (FELL). RIGHT CLICK opens a 0.3 s
+  reflect window (0.9 s press to press): a ball through it leaves along the crosshair at whoever
+  is nearest that line, 1.5 m/s faster each time (cap 34). One life; the last one standing wins,
+  survivors tie at the clock. The kill feed names FIREBALL, the kill is the last reflector's, the
+  HUD's number is reflects made, the final-kill cam replays the ball.
+- **The katana**: weapon model `melee` (no shot; LEFT CLICK swings and hits nothing), two ints of
+  rollback state for the window and its cooldown, a viewmodel held in both hands (ready pose
+  forward-up, the guard up in front for the reflect, a swing arc), a blade on the Figure with a
+  guard pose everyone sees. The viewmodel now builds one model per loadout slot from the defs.
+- **Netcode**: the ball is host-only inside the tick loop, its state sent every tick and its events
+  reliably, dead-reckoned on clients. Two bugs found by the harness and fixed: the slots' snapshot
+  left the parry fields out (every bot pressed, nothing reflected); a kill written from the ball's
+  tick was undone by the host's next resimulation (the host's seat took four hits, the client's
+  three) — kills now apply inside the victim's own tick through `PlayerContext.hazard_at`.
+- **Bots** (`FireballBrain`): wander, watch the ball, reflect / dodge / freeze by difficulty; two
+  normal bots rallied 9 reflects to 23 m/s in one run.
+
+  | FIREBALL, 1080p scale 1.5, host + 3 bots, the 5090 | |
+  |---|---|
+  | frame ms mean / p95 | 6.18 / 8.00 |
+  | GPU ms mean / p95 | 0.69 / 1.06 |
+  | PACING: over 1.5× median / over 2× / longest | 29 of 3125 (0.9 %) / 0 / 12 ms |
+  | pipelines compiled while playing | 0 |
+  | host + client (good profile), 48 s | 3 hits, 3 kills, 0 errors |
+
+  Frames: `fireball_hover.png` (the ball over the centre, a bot with its katana), `fireball_platform.png`
+  (the ball flying at you), `fireball_reflect.png` (the guard and the burst), `fireball_briefing.png`,
+  `fireball_out.png` (spectating), `fireball_killcam.png` (the ball replayed). His verdict pending.
+
+### Next
+1. Sean plays FIREBALL: the katana's look and pose, the ball's fire, the reflect's feel online (a
+   client's press meets the host's ball; the window and range are in `tuning/fireball.json`), the
+   bots, the name.
+2. Unchanged: the drawn board in play (session 14), the display and driver settings (session 11).

@@ -120,7 +120,9 @@ func _process(delta: float) -> void:
 		if player.health < _last_health and player.health > 0:
 			figure.flinch()
 		_last_health = player.health
-		figure.set_weapon_slot(player.weapons.slot)
+		var def := player.weapons.current_def()
+		figure.set_weapon_kind(def.id if def != null else "ar")
+		figure.set_guard(player.weapons.parry_active(NetworkTime.tick), delta)
 		_wall_check(pitch, player.health > 0, delta)
 		figure.animate(_speed, on_floor, pitch, player.health > 0, delta)
 	if name_label != null:

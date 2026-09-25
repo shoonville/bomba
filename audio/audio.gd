@@ -87,6 +87,8 @@ func _connect_events() -> void:
 			"reload_round": play("shell_in", -4.0, _jitter(0.06))
 			"dry_fire": play("dry", -8.0)
 			"swapped": play("swap", -8.0)
+			"swing": play("katana_swing", -6.0, _jitter(0.06))
+			"parry": play("katana_parry", -4.0)
 	)
 	Events.local_footstep.connect(func(): play("footstep", -14.0, _jitter(0.12)))
 	Events.local_jump.connect(func(): play("jump", -14.0))

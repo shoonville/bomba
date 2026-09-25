@@ -113,11 +113,15 @@ func _place(pt: float) -> void:
 		var s := vis.player.replay_sample(pt)
 		if not s.is_empty():
 			vis.replay_pose(s["pos"], s["yaw"], s["pitch"], int(s["health"]) > 0)
+	if _arena.has_method("killcam_place"):
+		_arena.killcam_place(pt)   # anything else in the shot (FIREBALL's ball) where it was
 
 
 ## The shot: the killer's tracer from the ghost weapon's muzzle to the victim, the impact star,
 ## the weapon's sound and the kick.
 func _fire() -> void:
+	if _arena.has_method("killcam_fire") and _arena.killcam_fire(_weapon):
+		return   # the minigame played the kill's moment (FIREBALL: the ball bursts, no shot)
 	var s := _victim.replay_sample(float(_kill_tick))
 	if s.is_empty():
 		return
@@ -141,6 +145,8 @@ func end() -> void:
 		_local_viewmodel.visible = true
 	if _camera != null:
 		_camera.current = false
+	if _arena != null and is_instance_valid(_arena) and _arena.has_method("killcam_end"):
+		_arena.killcam_end()
 
 
 func is_sniper() -> bool:

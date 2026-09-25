@@ -1,0 +1,17 @@
+{
+  "id": "fireball",
+  "display_name": "FIREBALL",
+  "min_players": 2,
+  "max_players": 6,
+  "camera": "first_person",
+  "scoring": "survival",
+  "time_limit_seconds": 120,
+  "weapons": [
+    "katana"
+  ],
+  "bot_profile": "fireball",
+  "scene": "minigame.tscn",
+  "description": "A round platform in the pink sky, half gravity, a katana each. Three seconds in, a blue fireball appears over the middle and hunts one of you; it gets faster with every reflect. Touch it and you are out. Right click brings the blade up: a fireball reflected off it flies at whoever your crosshair is nearest to. One life; the last one standing wins.",
+  "controls": ["WASD  move", "SPACE  jump (half gravity: twice as high)", "RIGHT CLICK  reflect the fireball toward your crosshair", "LEFT CLICK  swing", "LEFT CLICK  switch who you watch when out"],
+  "tagline": "REFLECT THE FIREBALL. LAST ONE STANDING WINS"
+}

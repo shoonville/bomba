@@ -1,5 +1,6 @@
 {
   "id": "snipers",
+  "enabled": false,
   "display_name": "SNIPERS",
   "min_players": 1,
   "max_players": 6,

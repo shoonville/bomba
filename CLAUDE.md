@@ -72,8 +72,16 @@ that travels with the repo.
   Sniper sound: the ORIGINAL crack-boom-tail (the Halo-shaped take "sounds like a bazooka"; do not
   redo it). No match start or end sound (2026-09-22). Board pawns rollerskate (no hopping), facing
   their travel; no BOMBA BAY sign. Music: off (`Audio.MUSIC_ENABLED`).
-- Minigames: ARENA, SNIPERS, LAST STAND. KING OF THE HILL was removed on his word (2026-09-22); the
-  FpsMatch hooks it added stay for the next objective minigame. Every minigame opens with the
+- Minigames in the board's draw: LAST STAND and FIREBALL. ARENA and SNIPERS are PARKED on his word
+  (2026-09-24, "disable SNIPERS and ARENA for now. Just have the last man standing"): `"enabled": false`
+  in their manifests, the folders untouched, `--minigame=ID` still pins them, the lobby's QUICK ARENA still
+  starts ARENA. KING OF THE HILL was removed on his word (2026-09-22); the FpsMatch hooks it added stay.
+  FIREBALL (2026-09-24) is his Genji Ball, built to his note item by item: a large dark grey round platform
+  everyone spawns on evenly spaced, the board's pink sky, half gravity ("so we can jump higher"), a katana
+  held in both hands (a new weapon, model "melee": RIGHT CLICK reflects, LEFT CLICK swings and hits nothing),
+  a light-blue fireball that appears after the 3 s countdown, homes on a player, kills on touch, reflects
+  off an open guard toward whoever the crosshair is nearest to and gets faster every reflect; one life,
+  last one standing. Numbers in `tuning/fireball.json`; rules in `MINIGAMES.md` §3. His look verdict is pending. Every minigame opens with the
   briefing (name, live map, rules, controls, READY / FORCE START) and ends with the hold: ROUND OVER,
   the final-kill cam from the killer's eyes, then the board. Hands hold the weapons in the
   character's colour (a colour choice comes with his customisation screen later).

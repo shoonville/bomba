@@ -171,12 +171,54 @@ static func names() -> PackedStringArray:
 	return PackedStringArray(["sniper_fire", "ar_fire", "hitmarker", "headshot", "kill", "death", "hurt",
 		"bolt", "reload_start", "reload_end", "dry", "swap", "jump", "land", "footstep", "respawn",
 		"ui_hover", "ui_click", "ui_back", "dice", "ticket", "shell_in",
-		"ping", "emote", "laser", "splat", "bomb_throw", "bomb_blast", "portal", "claw", "rocket", "heal"])
+		"ping", "emote", "laser", "splat", "bomb_throw", "bomb_blast", "portal", "claw", "rocket", "heal",
+		"katana_swing", "katana_parry", "fireball_launch", "fireball_reflect", "fireball_hit", "fireball_hum"])
 
 
 ## Build a named sound as float samples. Unknown names return a short click so a typo is audible.
 static func build(name: String) -> PackedFloat32Array:
 	match name:
+		"katana_swing":
+			# The blade through the air: a band of noise that dips as it passes, 0.22 s.
+			var n := samples(0.22)
+			var out := mul(lowpass(highpass(noise(n, 301), 700.0), 3400.0), env_adsr(n, 0.02, 0.06, 0.45, 0.1))
+			return mix(out, mul(tone(n, 900.0, 260.0, "sine"), env_exp(n, 0.08)), 0.18)
+		"katana_parry":
+			# The guard comes up: a short bright ring of three steel partials over a click.
+			var n := samples(0.3)
+			var out := mul(tone(n, 2400.0, 2380.0, "sine"), env_exp(n, 0.07))
+			out = mix(out, mul(tone(n, 3560.0, 3520.0, "sine"), env_exp(n, 0.05)), 0.55)
+			out = mix(out, mul(tone(n, 5100.0, 5050.0, "sine"), env_exp(n, 0.035)), 0.3)
+			out = mix(out, mul(lowpass(noise(samples(0.012), 302), 5000.0), env_exp(samples(0.012), 0.003)), 0.8)
+			return softclip(out, 1.3)
+		"fireball_launch":
+			# The ball leaves its hover: a rising whoosh with a low tone under it.
+			var n := samples(0.55)
+			var out := mul(lowpass(highpass(noise(n, 303), 250.0), 2200.0), env_adsr(n, 0.08, 0.12, 0.5, 0.2))
+			return mix(out, mul(tone(n, 90.0, 380.0, "tri"), env_adsr(n, 0.05, 0.1, 0.5, 0.2)), 0.35)
+		"fireball_reflect":
+			# The ball off the blade: the parry's ring, a low whump and a whoosh away.
+			var n := samples(0.5)
+			var out := mul(tone(n, 2400.0, 2350.0, "sine"), env_exp(n, 0.08))
+			out = mix(out, mul(tone(n, 3600.0, 3500.0, "sine"), env_exp(n, 0.05)), 0.5)
+			out = mix(out, mul(tone(n, 170.0, 60.0, "sine"), env_exp(n, 0.12)), 0.9)
+			out = mix(out, mul(lowpass(highpass(noise(n, 304), 400.0), 3000.0), env_adsr(n, 0.02, 0.1, 0.4, 0.25)), 0.6)
+			return softclip(out, 1.6)
+		"fireball_hit":
+			# The ball lands: a boom under a splash of noise and a sizzle that lingers.
+			var n := samples(0.7)
+			var out := mul(tone(n, 120.0, 38.0, "sine"), env_exp(n, 0.25))
+			out = mix(out, mul(lowpass(noise(n, 305), 2500.0), env_exp(n, 0.12)), 0.9)
+			out = mix(out, mul(highpass(noise(n, 306), 3000.0), env_exp(n, 0.35, 0.05)), 0.25)
+			return softclip(out, 2.0)
+		"fireball_hum":
+			# The ball in flight, a loop: a low airy roar that wobbles, a sine under it.
+			var n := samples(1.0)
+			var out := lowpass(noise(n, 307), 520.0)
+			for i in n:
+				var tt := float(i) / RATE
+				out[i] *= 0.7 + 0.3 * sin(TAU * 3.0 * tt)
+			return mix(out, tone(n, 110.0, 110.0, "sine"), 0.3)
 		"bomb_throw":
 			# The bomb leaves the hand: a short rising whoosh.
 			var n := samples(0.28)

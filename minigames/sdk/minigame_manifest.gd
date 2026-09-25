@@ -15,6 +15,7 @@ var bot_profile: String = "fps"
 var scene_path: String = ""
 var description: String = ""             # the briefing: how it plays, a few lines
 var controls: PackedStringArray = []     # the briefing: "KEY  what it does", one per line
+var enabled: bool = true                 # false parks the minigame: the board never draws it, --minigame=ID still pins it
 
 
 static func from_json(d: Dictionary, folder: String) -> MinigameManifest:
@@ -34,4 +35,5 @@ static func from_json(d: Dictionary, folder: String) -> MinigameManifest:
 	m.description = str(d.get("description", ""))
 	for c in d.get("controls", []):
 		m.controls.append(str(c))
+	m.enabled = bool(d.get("enabled", true))
 	return m

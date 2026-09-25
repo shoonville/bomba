@@ -1,0 +1,28 @@
+{
+  "_comment": "FIREBALL (Sean's Genji Ball, 2026-09-24): the platform in the pink sky, the ball's flight and the reflect. Units: metres, seconds, degrees, ticks at 60 Hz. The katana's own numbers (the reflect window, its cooldown, the swing) are in weapons.json.",
+  "platform_radius_m": 17.0,
+  "platform_thickness_m": 1.6,
+  "spawn_radius_m": 11.0,
+  "kill_below_y": -14.0,
+  "gravity_multiplier": 0.5,
+  "ball_radius_m": 0.45,
+  "spawn_height_m": 6.0,
+  "launch_delay_seconds": 0.75,
+  "respawn_delay_seconds": 1.5,
+  "speed_start_m_s": 9.0,
+  "speed_gain_per_reflect_m_s": 1.5,
+  "speed_max_m_s": 34.0,
+  "homing_turn_deg_s": 160.0,
+  "aim_height_m": 1.1,
+  "parry_range_m": 3.2,
+  "parry_cone_deg": 75.0,
+  "reflect_immunity_ticks": 12,
+  "bots": {
+    "_comment": "press_seconds: the bot presses reflect when the ball is that many seconds away; reaction_ms is how long it takes to notice the ball turned on it; parry_chance how often it tries at all, dodge_chance how often it sidesteps and jumps instead (the rest just stands there).",
+    "wander_radius_frac": 0.7,
+    "wander_seconds": 2.5,
+    "easy": {"press_seconds": 0.22, "reaction_ms": 220, "parry_chance": 0.55, "dodge_chance": 0.3, "turn_speed_deg_s": 240.0, "jump_chance_per_s": 0.2},
+    "normal": {"press_seconds": 0.24, "reaction_ms": 120, "parry_chance": 0.8, "dodge_chance": 0.15, "turn_speed_deg_s": 360.0, "jump_chance_per_s": 0.3},
+    "hard": {"press_seconds": 0.25, "reaction_ms": 40, "parry_chance": 0.95, "dodge_chance": 0.05, "turn_speed_deg_s": 600.0, "jump_chance_per_s": 0.4}
+  }
+}

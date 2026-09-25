@@ -88,6 +88,21 @@ func _build() -> void:
 	_mesh(BoxMesh.new(), Vector3(0.8, 1.4, 1.0), Viewmodel.screen_material())
 	_mesh(sphere, Vector3(0.8, 1.6, 1.2), Viewmodel.dot_material())
 
+	# FIREBALL's ball (2026-09-24): flat unshaded fire on a sphere (an unshaded opaque material of its
+	# own variant, not the billboard bubble's) and the first omni light in the game, so the cel
+	# shader's omni-lit variant exists before the ball appears over the platform.
+	var fire := StandardMaterial3D.new()
+	fire.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	fire.albedo_color = Color(0.5, 0.85, 1.0)
+	_mesh(sphere, Vector3(-0.8, 1.9, 1.0), fire)
+	var omni := OmniLight3D.new()
+	omni.light_color = Color(0.6, 0.85, 1.0)
+	omni.light_energy = 2.0
+	omni.omni_range = 6.0
+	omni.shadow_enabled = false
+	omni.position = Vector3(-0.8, 1.9, 1.0)
+	add_child(omni)
+
 	# The board's speech bubble (unshaded billboard quad); kept alive with the other warm-up
 	# materials (_keep) so its shader survives the warm-up scene.
 	var bubble := StandardMaterial3D.new()

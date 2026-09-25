@@ -3,9 +3,14 @@ extends Node3D
 ## Gray-box first-person weapons. Roboquest framing (lower-right quarter, angled, chunky),
 ## Bomb Rush shading (cel, ink, one small emissive detail). The scope-in animation duration is
 ## the tuning value scope_in_ticks — the same number the server uses for accuracy.
+##
+## One model per slot of the player's loadout (2026-09-24: FIREBALL's katana joined the sniper
+## and the AR, so the models are built from the weapon defs, not always the two guns); the
+## guns' poses and shapes are exactly as they were.
 
 var player: Player
 var models: Array[Node3D] = []
+var kinds: Array[String] = []   # the weapon id of each slot ("sniper", "ar", "katana")
 # Roboquest framing (STYLE.md appendix): lower-right quarter, ~40 % of frame width, pointing to
 # the upper-left at ~20°, arm from the bottom-right corner.
 # Per weapon: the sniper keeps a small yaw so its length still reads (STYLE.md §6), the AR sits
@@ -24,8 +29,27 @@ const CONVERGE_M := 20.0
 # The sniper sat 7 cm further right (x 0.23) until Sean's 2026-09-23 note "move the gun to the
 # left more so we can see the whole scope": its eyepiece, 21 cm from the eye, projected past the
 # right edge of a 16:9 frame. The AR is where it was.
-var hip_positions: Array[Vector3] = [Vector3(0.16, -0.19, -0.34), Vector3(0.25, -0.20, -0.38)]
-var hip_rotations: Array[Vector3] = [_aim_at_reticle(hip_positions[0]), _aim_at_reticle(hip_positions[1])]
+const SNIPER_HIP := Vector3(0.16, -0.19, -0.34)
+const AR_HIP := Vector3(0.25, -0.20, -0.38)
+# ADS: the sniper's scope tube sits 0.115 above the model origin, so the model goes to
+# y = -0.115 and the eyepiece (z = +0.105) ends 5 cm in front of the eye: the view goes
+# through the glass, not into the receiver (Sean's note 4).
+# The AR's sight screen is at model y 0.125, so the ADS y is -0.125 × the 1.22 scale.
+const SNIPER_ADS := Vector3(0.0, -0.115, -0.155)
+const AR_ADS := Vector3(0.0, -0.125 * 1.22, -0.34)
+const SNIPER_MUZZLE := Vector3(0.0, 0.02, -1.03)
+const AR_MUZZLE := Vector3(0.0, 0.015, -0.52)
+# The katana (FIREBALL): held in both hands at the lower right in a ready stance, the blade
+# pointing forward and up into the screen, foreshortened (a blade laid across the frame filled
+# it, 2026-09-24); the reflect brings it up in front of the face, near vertical (KATANA_GUARD);
+# the swing is an arc laid over the ready pose (_swing).
+const KATANA_HIP := Vector3(0.24, -0.33, -0.44)
+const KATANA_HIP_ROT := Vector3(0.55, -0.12, -0.10)
+const KATANA_GUARD := Vector3(0.06, -0.30, -0.46)
+const KATANA_GUARD_ROT := Vector3(1.25, 0.15, 0.10)
+const KATANA_TIP := Vector3(0.0, 0.0, -0.74)
+var hip_positions: Array[Vector3] = []
+var hip_rotations: Array[Vector3] = []
 
 
 ## The rotation that points a model's barrel (its −Z) from `pos` at the reticle: the point
@@ -34,18 +58,16 @@ var hip_rotations: Array[Vector3] = [_aim_at_reticle(hip_positions[0]), _aim_at_
 static func _aim_at_reticle(pos: Vector3) -> Vector3:
 	var dir := (Vector3(0.0, 0.0, -CONVERGE_M) - pos).normalized()
 	return Vector3(asin(dir.y), atan2(-dir.x, -dir.z), 0.0)
-# ADS: the sniper's scope tube sits 0.115 above the model origin, so the model goes to
-# y = -0.115 and the eyepiece (z = +0.105) ends 5 cm in front of the eye: the view goes
-# through the glass, not into the receiver (Sean's note 4).
-# The AR's sight screen is at model y 0.125, so the ADS y is -0.125 × the 1.22 scale.
-var ads_pos: Array[Vector3] = [Vector3(0.0, -0.115, -0.155), Vector3(0.0, -0.125 * 1.22, -0.34)]
-var muzzles: Array[Vector3] = [Vector3(0.0, 0.02, -1.03), Vector3(0.0, 0.015, -0.52)]
+var ads_pos: Array[Vector3] = []
+var muzzles: Array[Vector3] = []
 var _kick: float = 0.0
 var _bolt: float = 0.0
 var _swap_dip: float = 0.0
 var _last_slot: int = -1
 var _sniper_fired_at: int = -1
 var _bob_t: float = 0.0
+var _guard: float = 0.0    # the katana's guard pose, eased 0..1
+var _swing: float = 0.0    # the katana's swing, 1 at the press and down to 0
 var ghost_slot: int = -1   # the final-kill cam: show this slot, no bob
 var ghost_ads: float = 0.0   # ... at this scope-in (the killer's, replayed; Sean, 2026-09-23)
 
@@ -53,8 +75,14 @@ var ghost_ads: float = 0.0   # ... at this scope-in (the killer's, replayed; Sea
 ## The recoil kick and, for the sniper, the bolt dip: the local shot, or the kill cam's replayed one.
 func kick() -> void:
 	_kick = 1.0
-	if (player.weapons.slot if ghost_slot < 0 else ghost_slot) == 0:
+	if _kind_of(player.weapons.slot if ghost_slot < 0 else ghost_slot) == "sniper":
 		_bolt = 1.0
+
+
+func _kind_of(slot: int) -> String:
+	if slot < 0 or slot >= kinds.size():
+		return ""
+	return kinds[slot]
 
 
 func setup(p: Player) -> void:
@@ -63,24 +91,71 @@ func setup(p: Player) -> void:
 	var colour := Palette.under_ceiling(player.colour)
 	var ink := Palette.map_colour("arena", "line")
 	var shadow := Palette.map_colour("arena", "shadow_tint")
-	var body_mat := CelMaterial.for_colour(Color.from_hsv(colour.h, colour.s * 0.35, 0.62), shadow, 0.0, true)
-	var dark_mat := CelMaterial.for_colour(Color.from_hsv(ink.h, 0.35, 0.28), shadow, 0.0, true)
-	var accent_mat := CelMaterial.for_colour(colour, shadow, 0.0, true)
-	var glow_mat := CelMaterial.for_colour(Palette.hud_colour("meter"), shadow, 1.2, true)
-	var glass_mat := CelMaterial.for_colour(Color.from_hsv(ink.h, 0.5, 0.34), shadow, 0.15, true)
+	var mats := {}
+	mats["body"] = CelMaterial.for_colour(Color.from_hsv(colour.h, colour.s * 0.35, 0.62), shadow, 0.0, true)
+	mats["dark"] = CelMaterial.for_colour(Color.from_hsv(ink.h, 0.35, 0.28), shadow, 0.0, true)
+	mats["accent"] = CelMaterial.for_colour(colour, shadow, 0.0, true)
+	mats["glow"] = CelMaterial.for_colour(Palette.hud_colour("meter"), shadow, 1.2, true)
+	mats["glass"] = CelMaterial.for_colour(Color.from_hsv(ink.h, 0.5, 0.34), shadow, 0.15, true)
 	# The sniper is cream with tan fittings (Sean: "cream instead of the purple"); the AR keeps
 	# the player's colour. The sleeve on both is the player's outfit.
-	var cream_mat := CelMaterial.for_colour(Palette.hud_colour("paper"), shadow, 0.0, true)
+	mats["cream"] = CelMaterial.for_colour(Palette.hud_colour("paper"), shadow, 0.0, true)
 	# The hands: the identity colour, with the Figure's pale cuff tint at the wrist.
-	var cuff_mat := CelMaterial.for_colour(Color.from_hsv(colour.h, colour.s * 0.62, minf(1.0, colour.v * 1.12)), shadow, 0.0, true)
-	var tan_mat := CelMaterial.for_colour(Color.from_hsv(0.09, 0.5, 0.6), shadow, 0.0, true)
+	mats["cuff"] = CelMaterial.for_colour(Color.from_hsv(colour.h, colour.s * 0.62, minf(1.0, colour.v * 1.12)), shadow, 0.0, true)
+	mats["tan"] = CelMaterial.for_colour(Color.from_hsv(0.09, 0.5, 0.6), shadow, 0.0, true)
 	# The scope is black (Sean): the tube, bell, eyepiece and mounts near-black, the rings a
 	# charcoal step lighter so the shapes still separate under the cel bands.
-	var scope_mat := CelMaterial.for_colour(Color(0.04, 0.035, 0.05), shadow, 0.0, true)
-	var scope_ring_mat := CelMaterial.for_colour(Color(0.16, 0.15, 0.18), shadow, 0.0, true)
-	var lens_mat := lens_material()
-	# Sniper: long and thin. Barrel, receiver, scope, stock, bolt handle.
+	mats["scope"] = CelMaterial.for_colour(Color(0.04, 0.035, 0.05), shadow, 0.0, true)
+	mats["scope_ring"] = CelMaterial.for_colour(Color(0.16, 0.15, 0.18), shadow, 0.0, true)
 	var t_mats := Time.get_ticks_usec()
+	models.clear()
+	kinds.clear()
+	hip_positions.clear()
+	hip_rotations.clear()
+	ads_pos.clear()
+	muzzles.clear()
+	var defs: Array[WeaponDef] = player.weapons.defs
+	var times: Array = []
+	for def in defs:
+		var t := Time.get_ticks_usec()
+		var model: Node3D
+		match def.id:
+			"sniper":
+				model = _build_sniper(mats)
+				hip_positions.append(SNIPER_HIP)
+				hip_rotations.append(_aim_at_reticle(SNIPER_HIP))
+				ads_pos.append(SNIPER_ADS)
+				muzzles.append(SNIPER_MUZZLE)
+			"katana":
+				model = _build_katana(mats, shadow)
+				hip_positions.append(KATANA_HIP)
+				hip_rotations.append(KATANA_HIP_ROT)
+				ads_pos.append(KATANA_HIP)
+				muzzles.append(KATANA_TIP)
+			_:
+				model = _build_ar(mats)
+				hip_positions.append(AR_HIP)
+				hip_rotations.append(_aim_at_reticle(AR_HIP))
+				ads_pos.append(AR_ADS)
+				muzzles.append(AR_MUZZLE)
+		add_child(model)
+		models.append(model)
+		kinds.append(def.id)
+		times.append("%s %d ms" % [def.id, (Time.get_ticks_usec() - t) / 1000])
+	Log.info("perf", "Viewmodel built: materials %d ms, %s" % [(t_mats - t0) / 1000, ", ".join(times)])
+	scale = Vector3.ONE * 1.22
+	Events.local_fired.connect(_on_fired)
+	Events.local_weapon_event.connect(_on_weapon_event)
+
+
+## Sniper: long and thin. Barrel, receiver, scope, stock, bolt handle.
+func _build_sniper(mats: Dictionary) -> Node3D:
+	var dark_mat: Material = mats["dark"]
+	var tan_mat: Material = mats["tan"]
+	var cream_mat: Material = mats["cream"]
+	var scope_mat: Material = mats["scope"]
+	var scope_ring_mat: Material = mats["scope_ring"]
+	var lens_mat := lens_material()
 	var sniper := Node3D.new()
 	sniper.name = "Sniper"
 	# Intervention-shaped: long round barrel with a big brake and a folded bipod, a tube
@@ -117,14 +192,20 @@ func setup(p: Player) -> void:
 	# the hip they sat in the frame's bottom-right corner, a tan slab and a dark lump against the
 	# ammo bar (Sean, 2026-09-22, with a picture: "the very right part... no idea what it is").
 	# The bolt cycle is still the whole rifle's dip after a shot (bolt_off in _process).
-	_hands(sniper, Vector3(0.0, -0.10, 0.07), Vector3(0.0, -0.047, -0.30), accent_mat, cuff_mat)
-	add_child(sniper)
-	var t_sniper := Time.get_ticks_usec()
-	# AR (Sean: the body was a solid block; give it the shape of a real assault rifle). Same
-	# footprint and the same grip point, so the pose is unchanged: an upper receiver stepped
-	# over a lower, a vented handguard with a top rail and a front post, a round barrel with a
-	# muzzle device, a charging handle, an ejection port, a trigger guard, a curved magazine, a
-	# pistol grip, a buffer tube and a stock with a butt pad. The sight is as it was.
+	_hands(sniper, Vector3(0.0, -0.10, 0.07), Vector3(0.0, -0.047, -0.30), mats["accent"], mats["cuff"])
+	return sniper
+
+
+## AR (Sean: the body was a solid block; give it the shape of a real assault rifle). Same
+## footprint and the same grip point, so the pose is unchanged: an upper receiver stepped
+## over a lower, a vented handguard with a top rail and a front post, a round barrel with a
+## muzzle device, a charging handle, an ejection port, a trigger guard, a curved magazine, a
+## pistol grip, a buffer tube and a stock with a butt pad. The sight is as it was.
+func _build_ar(mats: Dictionary) -> Node3D:
+	var body_mat: Material = mats["body"]
+	var dark_mat: Material = mats["dark"]
+	var tan_mat: Material = mats["tan"]
+	var accent_mat: Material = mats["accent"]
 	var ar := Node3D.new()
 	ar.name = "AR"
 	_box(ar, Vector3(0.09, 0.07, 0.30), Vector3(0, 0.02, -0.02), body_mat)          # upper receiver
@@ -178,13 +259,52 @@ func setup(p: Player) -> void:
 	_cyl(ar, 0.02, 0.14, Vector3(0, 0.01, 0.20), dark_mat)                          # buffer tube
 	_box(ar, Vector3(0.06, 0.09, 0.12), Vector3(0, -0.02, 0.29), body_mat)          # stock
 	_box(ar, Vector3(0.065, 0.1, 0.02), Vector3(0, -0.02, 0.36), dark_mat)          # butt pad
-	_hands(ar, Vector3(0.0, -0.09, 0.14), Vector3(0.0, -0.028, -0.30), accent_mat, cuff_mat)
-	add_child(ar)
-	var t_ar := Time.get_ticks_usec()
-	models = [sniper, ar]
-	Log.info("perf", "Viewmodel built: materials %d ms, sniper %d ms, AR %d ms" % [(t_mats - t0) / 1000, (t_sniper - t_mats) / 1000, (t_ar - t_sniper) / 1000])
-	scale = Vector3.ONE * 1.22
-	Events.local_fired.connect(_on_fired)
+	_hands(ar, Vector3(0.0, -0.09, 0.14), Vector3(0.0, -0.028, -0.30), accent_mat, mats["cuff"])
+	return ar
+
+
+## The katana (FIREBALL, 2026-09-24): the origin at the guard, the blade along −Z, the handle
+## along +Z. A shallow curve (four blade segments, each pitched a little further up, the edge on
+## the convex underside as on the real sword), a bright edge line, a brass collar, a round
+## guard, a wrapped handle with diamonds in the player's colour, a pommel cap; both hands on the
+## handle, the right at the guard and the left at the pommel, in the player's colour.
+func _build_katana(mats: Dictionary, shadow: Color) -> Node3D:
+	var dark_mat: Material = mats["dark"]
+	var tan_mat: Material = mats["tan"]
+	var accent_mat: Material = mats["accent"]
+	var steel_mat := CelMaterial.for_colour(Color.from_hsv(0.58, 0.10, 0.84), shadow, 0.0, true)
+	var edge_mat := CelMaterial.for_colour(Palette.hud_colour("paper"), shadow, 0.3, true)
+	var wrap_mat := CelMaterial.for_colour(Color.from_hsv(0.72, 0.4, 0.2), shadow, 0.0, true)
+	var katana := Node3D.new()
+	katana.name = "Katana"
+	# The blade: four segments from the collar to the tip, the curve 0.05 rad a segment.
+	var seg := 0.18
+	var cur := Vector3(0.0, 0.0, -0.02)
+	var pitch := 0.0
+	for k in 4:
+		var length := seg if k < 3 else seg * 0.9
+		var dir := Vector3(0.0, sin(pitch), -cos(pitch))
+		var centre := cur + dir * (length * 0.5)
+		var width := 0.030 if k < 3 else 0.024
+		var blade := _box(katana, Vector3(0.006, width, length), centre, steel_mat)
+		blade.rotation.x = pitch
+		var edge := _box(katana, Vector3(0.0035, 0.007, length), centre + Vector3(0.0, -width * 0.5, 0.0).rotated(Vector3.RIGHT, pitch), edge_mat)
+		edge.rotation.x = pitch
+		cur += dir * length
+		pitch += 0.05
+	# The point: a short wedge, thinner still.
+	var tip := _box(katana, Vector3(0.005, 0.014, 0.05), cur + Vector3(0.0, sin(pitch) * 0.025 + 0.004, -cos(pitch) * 0.025), steel_mat)
+	tip.rotation.x = pitch + 0.35
+	_box(katana, Vector3(0.012, 0.036, 0.028), Vector3(0.0, 0.0, -0.005), tan_mat)      # habaki, the brass collar
+	_cyl(katana, 0.046, 0.006, Vector3(0.0, 0.0, 0.012), dark_mat)                     # tsuba, the guard
+	_cyl(katana, 0.02, 0.012, Vector3(0.0, 0.0, 0.022), tan_mat)                       # its seat
+	_capsule(katana, 0.017, 0.27, Vector3(0.0, 0.0, 0.165), wrap_mat)                  # tsuka, the handle
+	for k in 7:
+		var d := _box(katana, Vector3(0.042, 0.011, 0.016), Vector3(0.0, 0.0, 0.05 + k * 0.036), accent_mat)   # the wrap's diamonds
+		d.rotation.z = 0.75 if k % 2 == 0 else -0.75
+	_cyl(katana, 0.019, 0.016, Vector3(0.0, 0.0, 0.31), tan_mat)                       # kashira, the pommel cap
+	_katana_hands(katana, accent_mat, mats["cuff"])
+	return katana
 
 
 static var _lens_mat: StandardMaterial3D
@@ -300,7 +420,7 @@ func _sphere(parent: Node3D, radius: float, pos: Vector3, mat: Material) -> void
 	_mesh_node(parent, sm, pos, mat)
 
 
-func _box(parent: Node3D, size: Vector3, pos: Vector3, mat: Material) -> void:
+func _box(parent: Node3D, size: Vector3, pos: Vector3, mat: Material) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	var bm := BoxMesh.new()
 	bm.size = size
@@ -310,6 +430,7 @@ func _box(parent: Node3D, size: Vector3, pos: Vector3, mat: Material) -> void:
 	mi.layers = 2
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(mi)
+	return mi
 
 
 ## Both hands on the weapon, in the character's own colour (Sean, 2026-09-22: "hands holding the
@@ -337,6 +458,23 @@ func _hands(parent: Node3D, grip: Vector3, support: Vector3, skin_mat: Material,
 		_box(parent, Vector3(0.026, 0.06, 0.022), Vector3(support.x + 0.046, support.y - 0.01, z), skin_mat)   # fingers up the right side
 	_box(parent, Vector3(0.026, 0.06, 0.026), Vector3(support.x - 0.046, support.y - 0.005, support.z - 0.01), skin_mat)   # thumb up the left
 	_forearm(parent, spalm + Vector3(-0.01, -0.02, 0.02), Vector3(-0.32, -0.42, 0.38), skin_mat, cuff_mat)
+
+
+## Both hands round the katana's handle (the handle runs along +Z from the guard): each a palm
+## beside the handle, four fingers wrapped over it and a thumb along it. The right hand sits at
+## the guard with its forearm off to the bottom right, the left at the pommel with its forearm
+## off to the bottom left.
+func _katana_hands(parent: Node3D, skin_mat: Material, cuff_mat: Material) -> void:
+	for hand in [[0.075, 1.0, Vector3(0.22, -0.40, 0.30)], [0.215, -1.0, Vector3(-0.30, -0.44, 0.36)]]:
+		var z: float = hand[0]
+		var side: float = hand[1]
+		var palm := Vector3(side * 0.03, -0.012, z)
+		_box(parent, Vector3(0.045, 0.06, 0.075), palm, skin_mat)                                  # palm
+		for k in 4:
+			var fz := z - 0.028 + 0.019 * k
+			_box(parent, Vector3(0.068, 0.02, 0.016), Vector3(side * 0.008, 0.024, fz), skin_mat)   # fingers over the handle
+		_box(parent, Vector3(0.024, 0.024, 0.06), Vector3(-side * 0.032, -0.02, z - 0.01), skin_mat)   # thumb along it
+		_forearm(parent, palm + Vector3(side * 0.01, -0.04, 0.02), hand[2], skin_mat, cuff_mat)
 
 
 ## A forearm from the wrist at `wrist` along `dir` (toward the elbow, off the frame): the pale
@@ -369,23 +507,62 @@ func _on_fired(weapon: String) -> void:
 		_bolt = 1.0
 
 
+func _on_weapon_event(name: String) -> void:
+	if name == "swing":
+		_swing = 1.0
+
+
+## The swing's arc as a rotation and a lift over the ready pose: a short wind-up to the upper
+## right, the cut down across to the lower left, then the blade eases back. `k` runs 0..1.
+static func _swing_pose(k: float) -> Array:
+	var up := Vector3(0.25, -0.45, 0.15)
+	var down := Vector3(-1.15, 0.75, 0.35)
+	if k < 0.16:
+		var t := smoothstep(0.0, 0.16, k)
+		return [up * t, Vector3(0.03, 0.05, 0.02) * t]
+	if k < 0.42:
+		var t := smoothstep(0.16, 0.42, k)
+		return [up.lerp(down, t), Vector3(0.03, 0.05, 0.02).lerp(Vector3(-0.10, -0.06, -0.06), t)]
+	var t := smoothstep(0.42, 1.0, k)
+	return [down * (1.0 - t), Vector3(-0.10, -0.06, -0.06) * (1.0 - t)]
+
+
 func _process(delta: float) -> void:
-	if player == null or not is_instance_valid(player):
+	if player == null or not is_instance_valid(player) or models.is_empty():
 		return
 	var tick := NetworkTime.tick
 	var ghost := ghost_slot >= 0
-	var slot := ghost_slot if ghost else player.weapons.slot
+	var slot := clampi(ghost_slot if ghost else player.weapons.slot, 0, models.size() - 1)
+	var kind := kinds[slot]
 	if slot != _last_slot:
 		_last_slot = slot
 		_swap_dip = 0.0 if ghost else 1.0
 	var progress := ghost_ads if ghost else Game.ads_progress_override(player.weapons.ads_progress(tick))
+	if kind == "katana":
+		progress = 0.0   # the right button is the reflect, not a zoom
 	for i in models.size():
 		# The sniper leaves the frame once its eyepiece fills the view and the iris takes over.
-		models[i].visible = (i == slot) and not (i == 0 and progress >= 0.64)
+		models[i].visible = (i == slot) and not (kinds[i] == "sniper" and progress >= 0.64)
 	var eased := 1.0 - pow(1.0 - progress, 3.0)
-	var hi := mini(slot, hip_positions.size() - 1)
-	var target_pos := hip_positions[hi].lerp(ads_pos[mini(slot, ads_pos.size() - 1)], eased)
-	var target_rot := hip_rotations[hi].lerp(Vector3.ZERO, eased)
+	var target_pos := hip_positions[slot].lerp(ads_pos[slot], eased)
+	var target_rot := hip_rotations[slot].lerp(Vector3.ZERO, eased)
+	var extra_rot := Vector3.ZERO
+	if kind == "katana":
+		# The guard: up in front of the face while the reflect window is open (the replayed one
+		# in the kill cam), eased in fast and out a little slower; the swing arcs over the ready
+		# pose when not guarding.
+		var window := ghost_ads if ghost else player.weapons.parry_progress(tick)
+		_guard = move_toward(_guard, 1.0 if window > 0.0 else 0.0, delta * (16.0 if window > 0.0 else 9.0))
+		var g := 1.0 - pow(1.0 - _guard, 2.0)
+		target_pos = KATANA_HIP.lerp(KATANA_GUARD, g)
+		target_rot = KATANA_HIP_ROT.lerp(KATANA_GUARD_ROT, g)
+		if _swing > 0.0:
+			var def := player.weapons.current_def()
+			var seconds := float(def.swing_ticks if def != null else 24) / float(NetworkTime.tickrate)
+			_swing = maxf(0.0, _swing - delta / maxf(seconds, 0.1))
+			var pose := _swing_pose(1.0 - _swing)
+			extra_rot = pose[0] * (1.0 - g)
+			target_pos += pose[1] * (1.0 - g)
 	# Weapon bob from horizontal speed, only from the hip.
 	var speed := 0.0 if ghost else Vector2(player.velocity.x, player.velocity.z).length()
 	_bob_t += delta * speed * 1.6
@@ -394,7 +571,7 @@ func _process(delta: float) -> void:
 	_bolt = maxf(0.0, _bolt - delta * 1.4)
 	_swap_dip = maxf(0.0, _swap_dip - delta * 3.5)
 	var kick_off := Vector3(0.0, 0.008, 0.06) * _kick
-	var bolt_off := Vector3(0.0, -0.01, 0.03) * sin(_bolt * PI) * (1.0 if slot == 0 else 0.0)
+	var bolt_off := Vector3(0.0, -0.01, 0.03) * sin(_bolt * PI) * (1.0 if kind == "sniper" else 0.0)
 	var dip := Vector3(0.0, -0.25, 0.0) * _swap_dip
 	position = target_pos + bob + kick_off + bolt_off + dip
-	rotation = target_rot + Vector3(-_kick * 0.06, 0.0, 0.0)
+	rotation = target_rot + extra_rot + Vector3(-_kick * 0.06, 0.0, 0.0)

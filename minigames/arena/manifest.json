@@ -1,5 +1,6 @@
 {
   "id": "arena",
+  "enabled": false,
   "display_name": "ARENA",
   "min_players": 1,
   "max_players": 6,

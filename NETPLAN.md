@@ -97,6 +97,7 @@ Per player scene (`fps/player/player.tscn`):
 | `Weapons:slot`, `Weapons:swap_until_tick` | |
 | `Weapons:sniper_ammo`, `Weapons:sniper_next_fire_tick`, `Weapons:sniper_reload_until_tick`, `Weapons:ads_since_tick` | |
 | `Weapons:ar_ammo`, `Weapons:ar_next_fire_tick`, `Weapons:ar_reload_until_tick`, `Weapons:ar_recoil_index`, `Weapons:ar_last_shot_tick`, `Weapons:recoil_pitch`, `Weapons:recoil_yaw` | |
+| `Weapons:parry_since_tick`, `Weapons:parry_ready_tick` | the katana's reflect window and its cooldown (FIREBALL, 2026-09-24); the swing is not state, it hits nothing |
 
 Interpolated for display: `:transform` (local player via `TickInterpolator`; remote players via
 the smoother in §7). Pitch is read raw from the mouse for the local camera.

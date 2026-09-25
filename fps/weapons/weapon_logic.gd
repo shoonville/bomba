@@ -19,6 +19,8 @@ class Shared:
 	var ads_since_tick: int = -1  # -1 = hip
 	var recoil_pitch: float = 0.0
 	var recoil_yaw: float = 0.0
+	var parry_since_tick: int = -1   # the katana: the reflect window's first tick, -1 for none yet
+	var parry_ready_tick: int = 0    # ... and when the next press counts
 
 
 class Inputs:
@@ -40,6 +42,8 @@ class Outcome:
 	var reload_finished: bool = false
 	var reload_round: bool = false   # one round went in (per-round reloads)
 	var dry_fire: bool = false
+	var swung: bool = false          # the katana swung (cosmetic: it hits nothing)
+	var parry_started: bool = false  # the katana's reflect window opened this tick
 
 
 static func can_fire(def: WeaponDef, st: SlotState, sh: Shared, tick: int, alive: bool) -> bool:
@@ -61,13 +65,22 @@ static func is_scoped(def: WeaponDef, sh: Shared, tick: int) -> bool:
 
 
 ## ADS progress 0..1 for animation and FOV; sniper uses scope_in_ticks, AR uses ads_in_ticks.
+## The katana never zooms: its right button is the reflect (parry_active).
 static func ads_progress(def: WeaponDef, sh: Shared, tick: int) -> float:
-	if sh.ads_since_tick < 0:
+	if sh.ads_since_tick < 0 or def.is_melee():
 		return 0.0
 	var dur := def.scope_in_ticks if def.is_sniper() else def.ads_in_ticks
 	if dur <= 0:
 		return 1.0
 	return clampf(float(tick - sh.ads_since_tick) / float(dur), 0.0, 1.0)
+
+
+## The katana's reflect window: parry_ticks from the press. Derived from state, so a rollback
+## replays it exactly.
+static func parry_active(def: WeaponDef, sh: Shared, tick: int) -> bool:
+	if not def.is_melee() or sh.parry_since_tick < 0:
+		return false
+	return tick >= sh.parry_since_tick and tick < sh.parry_since_tick + def.parry_ticks
 
 
 static func step(defs: Array[WeaponDef], states: Array[SlotState], sh: Shared, inp: Inputs,
@@ -86,6 +99,9 @@ static func step(defs: Array[WeaponDef], states: Array[SlotState], sh: Shared, i
 	var def := defs[sh.slot]
 	var st := states[sh.slot]
 	out.weapon_id = def.id
+	if def.is_melee():
+		_step_melee(def, st, sh, inp, tick, alive, out)
+		return out
 
 	# 2. Reload progress (derived from state, so it is rollback-safe). A per-round weapon loads
 	# one round each interval until full; anything else refills at the end.
@@ -158,3 +174,25 @@ static func step(defs: Array[WeaponDef], states: Array[SlotState], sh: Shared, i
 		sh.recoil_pitch = move_toward(sh.recoil_pitch, 0.0, rec)
 		sh.recoil_yaw = move_toward(sh.recoil_yaw, 0.0, rec)
 	return out
+
+
+## The katana (FIREBALL): no ammo, no reload, no shot. The right button opens the reflect
+## window (parry_ticks) and starts its cooldown (parry_cooldown_ticks from the press; holding
+## the button re-opens it each time it is ready). The trigger swings the blade on its own
+## cooldown; the swing hits nothing, the ball is the only thing that kills there. Recoil left by
+## a gun swapped away from recovers as usual.
+static func _step_melee(def: WeaponDef, st: SlotState, sh: Shared, inp: Inputs, tick: int, alive: bool, out: Outcome) -> void:
+	sh.ads_since_tick = -1
+	out.ads_active = false
+	var swapping := tick < sh.swap_until_tick
+	if alive and inp.ads and not swapping and tick >= sh.parry_ready_tick:
+		sh.parry_since_tick = tick
+		sh.parry_ready_tick = tick + def.parry_cooldown_ticks
+		out.parry_started = true
+	if alive and inp.fire_pressed and not swapping and tick >= st.next_fire_tick:
+		st.next_fire_tick = tick + def.swing_ticks
+		st.last_shot_tick = tick
+		out.swung = true
+	var rec := def.recoil_recovery_per_tick_deg
+	sh.recoil_pitch = move_toward(sh.recoil_pitch, 0.0, rec)
+	sh.recoil_yaw = move_toward(sh.recoil_yaw, 0.0, rec)

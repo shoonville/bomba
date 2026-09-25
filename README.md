@@ -47,8 +47,8 @@ Online from a shell: `-- --host_online --bots=1 --start --expect=1` prints `HOST
 
 A full match from a shell: `-- --host --bots=2 --start --board --autoplay --board_rounds=2
 --board_minigame_seconds=8 --soak=120` runs the board → minigame → board loop with bots (the
-minigame is drawn from `minigames/*/manifest.json` each round: ARENA, SNIPERS or LAST STAND
-(`MINIGAMES.md`); `--minigame=snipers` pins it); the lobby's START MATCH does the same for humans, QUICK ARENA
+minigame is drawn from `minigames/*/manifest.json` each round: LAST STAND or FIREBALL; ARENA and
+SNIPERS are parked, `"enabled": false` in their manifests (`MINIGAMES.md`); `--minigame=snipers` pins any of them); the lobby's START MATCH does the same for humans, QUICK ARENA
 skips the board. The board is BOMBA BAY, drawn by Sean (2026-09-24) and traced by `tools/gen_board.gd`: 127
 spaces of one-way walkways on a moon-base plot with 4 forks (the start, the F3 junction, F2 and
 F4), every space reaching every other (`tools/board_laps.gd` prints every route from the start
@@ -84,8 +84,8 @@ Useful flags after `--`: `--autoplay` (a bot drives your seat), `--seed=N`, `--s
 (quit and write `reports/<label>_summary.json` + `_traj.csv`), `--report=LABEL`, `--expect=N`
 (host waits for N humans before `--start`), `--round_seconds=N`, `--log=0..4`,
 `--screenshot=path.png --screenshot_at=5 --screenshot_quit` (add
-`--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results|laser|hit` to start the
-timer on an event, `--screenshot_event_index=N` on its Nth occurrence; `--spawn_index=N` puts you at
+`--screenshot_event=minigame|reward|myturn|mychoose|finished|out|results|laser|hit|parry` to start the
+timer on an event (`parry`: your next reflect press in FIREBALL), `--screenshot_event_index=N` on its Nth occurrence; `--spawn_index=N` puts you at
 a chosen spawn for a frame; `--give_item=laser`,
 `--give_bots_item=laser` (`--give_item` takes a comma list), `--hotbar_test` (the bar open), `--target_test`
 (the portal's player picker), `--pop_test=ITEM` (a pickup icon over your pawn), `--aim_test=DEG` (the
@@ -143,7 +143,7 @@ board (graph, rules, director, view; `BOARDPLAN.md`), `net/` transport,
 conditioner, hitscan and history, `session/` lobby and registry, `fps/` player, weapons, view
 and `fps/match/` the shared first-person match (map, spawns, clock, kill log),
 `minigames/sdk/` the contract and `minigames/arena/`, `minigames/snipers/`,
-`minigames/last_stand/` (a manifest and a few lines each; LAST STAND also carries its own map
+`minigames/last_stand/`, `minigames/fireball/` (a manifest and a few lines each; LAST STAND also carries its own map
 table), `bots/`, `art/`
 shaders and palette, `ui/` HUD, menu, results, `tools/` harnesses and tests, `tuning/` every
 gameplay number as JSON. `addons/netfox` is vendored with six documented patches

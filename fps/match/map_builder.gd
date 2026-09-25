@@ -62,7 +62,8 @@ static func unit_box() -> BoxMesh:
 
 
 ## The layout's boxes: static bodies with a box shape and a cel mesh; the floor and anything
-## wall sized take the print layer.
+## wall sized take the print layer. A box with "shape": "cylinder" is a round one (FIREBALL's
+## platform): size.x its top diameter, size.z its bottom diameter, size.y its height.
 static func build_boxes(parent: Node3D, layout: Dictionary, map_id: String) -> void:
 	for b in layout["boxes"]:
 		var tone: String = b["tone"]
@@ -80,13 +81,26 @@ static func build_boxes(parent: Node3D, layout: Dictionary, map_id: String) -> v
 		body.collision_mask = 0
 		body.position = b["pos"]
 		var shape := CollisionShape3D.new()
-		var box_shape := BoxShape3D.new()
-		box_shape.size = b["size"]
-		shape.shape = box_shape
-		body.add_child(shape)
 		var mesh := MeshInstance3D.new()
-		mesh.mesh = unit_box()
-		mesh.scale = b["size"]
+		if str(b.get("shape", "box")) == "cylinder":
+			var cyl_shape := CylinderShape3D.new()
+			cyl_shape.radius = maxf(size.x, size.z) * 0.5
+			cyl_shape.height = size.y
+			shape.shape = cyl_shape
+			var cm := CylinderMesh.new()
+			cm.top_radius = size.x * 0.5
+			cm.bottom_radius = size.z * 0.5
+			cm.height = size.y
+			cm.radial_segments = int(b.get("segments", 48))
+			cm.rings = 1
+			mesh.mesh = cm
+		else:
+			var box_shape := BoxShape3D.new()
+			box_shape.size = b["size"]
+			shape.shape = box_shape
+			mesh.mesh = unit_box()
+			mesh.scale = b["size"]
+		body.add_child(shape)
 		mesh.material_override = CelMaterial.for_tone(map_id, tone, print_kind)
 		mesh.layers = 1
 		body.add_child(mesh)

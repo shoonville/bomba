@@ -294,8 +294,8 @@ func _pick_minigame() -> String:
 	var ids: Array = []
 	for id in MinigameRegistry.ids():
 		var m := MinigameRegistry.get_manifest(str(id))
-		if m == null or (n > 0 and (n < m.min_players or n > m.max_players)):
-			continue
+		if m == null or not m.enabled or (n > 0 and (n < m.min_players or n > m.max_players)):
+			continue   # a parked minigame (manifest "enabled": false) is never drawn
 		ids.append(str(id))
 	ids.sort()
 	if ids.is_empty():

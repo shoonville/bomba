@@ -1,7 +1,8 @@
 class_name WeaponDef
 extends RefCounted
 ## Typed view of one entry in tuning/weapons.json. Two damage models: "flat" (sniper: head/body/
-## legs) and "falloff" (AR: linear near→far by distance, headshot multiplier).
+## legs) and "falloff" (AR: linear near→far by distance, headshot multiplier), and "melee" (the
+## katana: no shot at all; a swing on the trigger and the reflect window on the right button).
 
 var id: String = ""
 var display_name: String = ""
@@ -16,7 +17,7 @@ var range_m: float = 100.0
 var ads_fov_vertical: float = 40.0
 var recoil_recovery_per_tick_deg: float = 0.1
 var recoil_recovery_delay_ticks: int = 4
-var model: String = "flat"
+var model: String = "flat"   # "flat", "falloff" or "melee" (explicit "model" in the table, else inferred)
 
 # flat model
 var damage_body: int = 100
@@ -40,6 +41,11 @@ var ads_recoil_multiplier: float = 0.7
 var recoil_reset_ticks: int = 14
 var recoil_pattern_deg: Array[Vector2] = []
 
+# melee model (FIREBALL's katana)
+var parry_ticks: int = 18            # the reflect window from the press
+var parry_cooldown_ticks: int = 54   # from one press to the next
+var swing_ticks: int = 24            # the swing's cooldown (and its animation)
+
 
 static func from_dict(p_id: String, d: Dictionary) -> WeaponDef:
 	var w := WeaponDef.new()
@@ -56,7 +62,7 @@ static func from_dict(p_id: String, d: Dictionary) -> WeaponDef:
 	w.ads_fov_vertical = float(d.get("ads_fov_vertical", w.ads_fov_vertical))
 	w.recoil_recovery_per_tick_deg = float(d.get("recoil_recovery_per_tick_deg", w.recoil_recovery_per_tick_deg))
 	w.recoil_recovery_delay_ticks = int(d.get("recoil_recovery_delay_ticks", w.recoil_recovery_delay_ticks))
-	w.model = "falloff" if d.has("damage_near") else "flat"
+	w.model = str(d.get("model", "falloff" if d.has("damage_near") else "flat"))
 	w.damage_body = int(d.get("damage_body", w.damage_body))
 	w.damage_head = int(d.get("damage_head", w.damage_head))
 	w.damage_legs = int(d.get("damage_legs", w.damage_legs))
@@ -76,6 +82,9 @@ static func from_dict(p_id: String, d: Dictionary) -> WeaponDef:
 	w.recoil_reset_ticks = int(d.get("recoil_reset_ticks", w.recoil_reset_ticks))
 	for p in d.get("recoil_pattern_deg", []):
 		w.recoil_pattern_deg.append(Vector2(float(p[0]), float(p[1])))
+	w.parry_ticks = int(d.get("parry_ticks", w.parry_ticks))
+	w.parry_cooldown_ticks = int(d.get("parry_cooldown_ticks", w.parry_cooldown_ticks))
+	w.swing_ticks = int(d.get("swing_ticks", w.swing_ticks))
 	return w
 
 
@@ -101,6 +110,11 @@ static func load_ids(table: Dictionary, ids: Array) -> Array[WeaponDef]:
 
 func is_sniper() -> bool:
 	return model == "flat"
+
+
+## The katana: a swing that hits nothing and the reflect on the right button; never a shot.
+func is_melee() -> bool:
+	return model == "melee"
 
 
 ## Damage for a hit. hit_kind: HitscanResolver.HEAD / BODY. hit_height is metres above the
