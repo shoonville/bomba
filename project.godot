@@ -200,6 +200,8 @@ common/physics_jitter_fix=0.0
 
 [rendering]
 
+rendering_device/vsync/frame_queue_size=1
+rendering_device/vsync/swapchain_image_count=2
 lights_and_shadows/directional_shadow/size=8192
 lights_and_shadows/directional_shadow/soft_shadow_filter_quality=0
 lights_and_shadows/directional_shadow/16_bits=false
@@ -207,6 +209,4 @@ lights_and_shadows/positional_shadow/soft_shadow_filter_quality=0
 textures/default_filters/anisotropic_filtering_level=0
 anti_aliasing/quality/msaa_3d=2
 scaling_3d/scale=1.5
-rendering_device/vsync/frame_queue_size=1
-rendering_device/vsync/swapchain_image_count=2
 environment/defaults/default_clear_color=Color(0.72, 0.62, 0.48, 1)

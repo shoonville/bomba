@@ -37,7 +37,7 @@ static func build(cfg: Dictionary, seats: int) -> Dictionary:
 	# Decor: a dashed ring near the rim and a disc at the centre, both flush with the top, in the
 	# lighter greys, so the platform's size and its middle (where the ball appears) read.
 	var decor: Array = []
-	var dashes := 36
+	var dashes := int(TAU * (r - 1.4) / 3.0)   # one every 3 m of rim, whatever the radius
 	for i in dashes:
 		var a := TAU * float(i) / float(dashes)
 		var d := r - 1.4
@@ -47,5 +47,5 @@ static func build(cfg: Dictionary, seats: int) -> Dictionary:
 	for i in 4:
 		var a := TAU * float(i) / 4.0
 		decor.append({"pos": Vector3(cos(a) * 1.9, 0.02, sin(a) * 1.9), "size": Vector3(1.0, 0.02, 0.16), "tone": "counter", "yaw": -a, "shape": "box", "shadow": false})
-	var showcase := {"pos": Vector3(-22.0, 9.0, 26.0), "look": Vector3(0.0, 1.5, 0.0)}
+	var showcase := {"pos": Vector3(-1.3 * r, 0.53 * r, 1.53 * r), "look": Vector3(0.0, 1.5, 0.0)}   # the briefing's orbit, scaled with the platform
 	return {"boxes": boxes, "spawns": spawns, "waypoints": wp, "edges": edges, "size": Vector2(r * 2.0, r * 2.0), "decor": decor, "showcase": showcase}

@@ -77,7 +77,7 @@ that travels with the repo.
   in their manifests, the folders untouched, `--minigame=ID` still pins them, the lobby's QUICK ARENA still
   starts ARENA. KING OF THE HILL was removed on his word (2026-09-22); the FpsMatch hooks it added stay.
   FIREBALL (2026-09-24) is his Genji Ball, built to his note item by item: a large dark grey round platform
-  everyone spawns on evenly spaced, the board's pink sky, half gravity ("so we can jump higher"), a katana
+  everyone spawns on evenly spaced (r 17 m, doubled to 34 m with the ball starting at 12 m on his 2026-09-25 note), the board's pink sky, a quarter of the shared gravity (half on 2026-09-24, "so we can jump higher", halved again 2026-09-25), a katana
   held in both hands (a new weapon, model "melee": RIGHT CLICK reflects, LEFT CLICK swings and hits nothing),
   a light-blue fireball that appears after the 3 s countdown, homes on a player, kills on touch, reflects
   off an open guard toward whoever the crosshair is nearest to and gets faster every reflect; one life,

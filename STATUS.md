@@ -971,3 +971,14 @@ then FIREBALL with no warnings.
    client's press meets the host's ball; the window and range are in `tuning/fireball.json`), the
    bots, the name.
 2. Unchanged: the drawn board in play (session 14), the display and driver settings (session 11).
+
+## 2026-09-25 — session 16: FIREBALL twice the size
+
+Sean's three items: the platform's radius 17 → 34 m (spawns on a 22 m ring), the ball starting
+at 12 m instead of 6, gravity a quarter of the shared value (3.125 m/s²: a 5.95 m jump, 3.9 s in
+the air). Speeds untouched. 94 tests green; a headless match with 3 bots rallied to 15 m/s with
+nobody off the edge; `fireball_hover.png`, `fireball_briefing.png`, `fireball_platform.png` retaken.
+
+### Next
+1. Sean plays the big platform: the ball's 9 m/s start across 68 m, the floaty jump, the bots.
+2. Unchanged: session 15's list (the katana's look, the reflect online, the name).

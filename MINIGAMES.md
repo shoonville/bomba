@@ -45,18 +45,19 @@ own uses the ARENA layout (`GrayboxLayout`); LAST STAND carries `pit_layout.gd`,
 Sean's Genji Ball (2026-09-24). Every number is in `tuning/fireball.json`; the katana's are in
 `tuning/weapons.json` under `katana`.
 
-- **The map**: one round platform (radius 17 m, its top at y = 0, dark grey with the paving print,
+- **The map**: one round platform (radius 34 m, doubled on his 2026-09-25 note, its top at y = 0, dark grey with the paving print,
   a dashed ring inside the rim and a disc at the centre) floating in the board's pink sky, no walls.
-  Everyone spawns on a ring (11 m) evenly spaced, facing the centre, as many spawns as seats. Off
-  the platform is out (a fall past y = −14 m; the feed says FELL). Gravity is half the shared
-  movement's (6.25 m/s²) with the same jump, so a jump goes twice as high and hangs twice as long.
+  Everyone spawns on a ring (22 m) evenly spaced, facing the centre, as many spawns as seats. Off
+  the platform is out (a fall past y = −14 m; the feed says FELL). Gravity is a quarter of the
+  shared movement's (3.125 m/s²: half on 2026-09-24, halved again on his 2026-09-25 note) with the
+  same jump, so a jump goes 5.95 m instead of 1.49 and hangs 3.9 s.
 - **The katana** (weapon model `melee`, the only weapon): RIGHT CLICK opens the reflect window
   (`parry_ticks` 18 = 0.3 s) and starts its cooldown (`parry_cooldown_ticks` 54 = 0.9 s, press to
   press; holding the button re-opens it whenever it is ready). LEFT CLICK swings the blade
   (`swing_ticks` 24); the swing hits nothing, the ball is the only thing that kills. The window
   and the cooldown are rollback state (`Weapons:parry_since_tick`, `Weapons:parry_ready_tick`);
   the swing is not.
-- **The ball**: appears 6 m over the centre when the GET READY countdown ends, hovers 0.75 s, then
+- **The ball**: appears 12 m over the centre (6 m until 2026-09-25) when the GET READY countdown ends, hovers 0.75 s, then
   flies at a player drawn from the living (seeded) at `speed_start_m_s` 9, homing on their chest
   (`aim_height_m` 1.1) at `homing_turn_deg_s` 160. Its light-blue fire is drawn on every peer from
   the host's state (sent every tick, unreliable, dead-reckoned between), its events (spawn,
