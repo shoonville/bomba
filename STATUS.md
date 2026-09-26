@@ -979,6 +979,11 @@ at 12 m instead of 6, gravity a quarter of the shared value (3.125 m/s²: a 5.95
 the air). Speeds untouched. 94 tests green; a headless match with 3 bots rallied to 15 m/s with
 nobody off the edge; `fireball_hover.png`, `fireball_briefing.png`, `fireball_platform.png` retaken.
 
+His second note: the fireball is an **electrifying orb** now, the same light blue: a sphere in two
+translucent aura shells that pulse, eight arcs flickering over the aura (a pool of thin boxes
+re-laid every few frames), the light flickering, a spark trail. The flame tongues are gone.
+`fireball_hover.png` and `fireball_platform.png` retaken.
+
 ### Next
 1. Sean plays the big platform: the ball's 9 m/s start across 68 m, the floaty jump, the bots.
 2. Unchanged: session 15's list (the katana's look, the reflect online, the name).

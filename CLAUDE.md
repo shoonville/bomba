@@ -79,7 +79,7 @@ that travels with the repo.
   FIREBALL (2026-09-24) is his Genji Ball, built to his note item by item: a large dark grey round platform
   everyone spawns on evenly spaced (r 17 m, doubled to 34 m with the ball starting at 12 m on his 2026-09-25 note), the board's pink sky, a quarter of the shared gravity (half on 2026-09-24, "so we can jump higher", halved again 2026-09-25), a katana
   held in both hands (a new weapon, model "melee": RIGHT CLICK reflects, LEFT CLICK swings and hits nothing),
-  a light-blue fireball that appears after the 3 s countdown, homes on a player, kills on touch, reflects
+  a light-blue fireball (since 2026-09-25 a round orb in an aura of the same blue with arcs over it, "an electrifying orb", the flames gone on his word) that appears after the 3 s countdown, homes on a player, kills on touch, reflects
   off an open guard toward whoever the crosshair is nearest to and gets faster every reflect; one life,
   last one standing. Numbers in `tuning/fireball.json`; rules in `MINIGAMES.md` §3. His look verdict is pending. Every minigame opens with the
   briefing (name, live map, rules, controls, READY / FORCE START) and ends with the hold: ROUND OVER,

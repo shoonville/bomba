@@ -59,7 +59,8 @@ Sean's Genji Ball (2026-09-24). Every number is in `tuning/fireball.json`; the k
   the swing is not.
 - **The ball**: appears 12 m over the centre (6 m until 2026-09-25) when the GET READY countdown ends, hovers 0.75 s, then
   flies at a player drawn from the living (seeded) at `speed_start_m_s` 9, homing on their chest
-  (`aim_height_m` 1.1) at `homing_turn_deg_s` 160. Its light-blue fire is drawn on every peer from
+  (`aim_height_m` 1.1) at `homing_turn_deg_s` 160. It is a light-blue orb in an aura of the same blue with arcs flickering over it (Sean,
+  2026-09-25: "an electrifying orb, keep it the same color"; flame tongues until then), drawn on every peer from
   the host's state (sent every tick, unreliable, dead-reckoned between), its events (spawn,
   launch, reflect, hit, vanish) reliable for the look and the sounds.
 - **The reflect**: a ball passing through an open window, within `parry_range_m` 3.2 of the eye and
